@@ -185,6 +185,17 @@ func (p *Parser) parseBlock() (*Block, error) {
 			return nil, err
 		}
 		statements = append(statements, stmt)
+
+		lex, err = p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ";" {
+			_, err := p.consume()
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// consume '}'

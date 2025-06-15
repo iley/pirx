@@ -203,18 +203,3 @@ func TestLexerWhitespace(t *testing.T) {
 		})
 	}
 }
-
-func lexAll(l *Lexer) ([]Lexeme, error) {
-	lexemes := []Lexeme{}
-	for {
-		lex, err := l.Next()
-		if err != nil {
-			return nil, err
-		}
-		lexemes = append(lexemes, lex)
-		if lex.Type == LEX_EOF {
-			break
-		}
-	}
-	return lexemes, nil
-}

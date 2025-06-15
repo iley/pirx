@@ -132,6 +132,15 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 		}
 		name := lex.Str
 
+		// colon
+		lex, err = p.consume()
+		if err != nil {
+			return nil, err
+		}
+		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ":" {
+			return nil, fmt.Errorf("expected ':' after parameter name, got %v", lex)
+		}
+
 		// param type
 		lex, err = p.consume()
 		if err != nil {
@@ -186,15 +195,12 @@ func (p *Parser) parseBlock() (*Block, error) {
 		}
 		statements = append(statements, stmt)
 
-		lex, err = p.peek()
+		lex, err = p.consume()
 		if err != nil {
 			return nil, err
 		}
-		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ";" {
-			_, err := p.consume()
-			if err != nil {
-				return nil, err
-			}
+		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ";" {
+			return nil, fmt.Errorf("expected ';' after statement, got %v", lex)
 		}
 	}
 
@@ -339,6 +345,15 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 		return nil, fmt.Errorf("expected variable name, got %v", lex)
 	}
 	name := lex.Str
+
+	// colon
+	lex, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ":" {
+		return nil, fmt.Errorf("expected ':' after variable name, got %v", lex)
+	}
 
 	// type
 	lex, err = p.consume()

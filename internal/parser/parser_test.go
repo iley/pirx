@@ -29,7 +29,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with var declaration",
-			src:  `func main() { var x int }`,
+			src:  `func main() { var x: int; }`,
 			expected: &Program{
 				Functions: []*Function{
 					{
@@ -49,7 +49,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with arguments",
-			src:  `func add(a int, b int) {}`,
+			src:  `func add(a: int, b: int) {}`,
 			expected: &Program{
 				Functions: []*Function{
 					{
@@ -65,7 +65,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with expression statements",
-			src:  `func main() { foo(1, "two") }`,
+			src:  `func main() { foo(1, "two"); }`,
 			expected: &Program{
 				Functions: []*Function{
 					{
@@ -87,6 +87,30 @@ func TestParseProgram(t *testing.T) {
 											},
 										},
 									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with multiple statements",
+			src:  `func main() { var x: int; var y: string; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								&VariableDeclaration{
+									Name: "x",
+									Type: "int",
+								},
+								&VariableDeclaration{
+									Name: "y",
+									Type: "string",
 								},
 							},
 						},
@@ -144,8 +168,18 @@ func TestParseProgram_Error(t *testing.T) {
 		},
 		{
 			name:          "incomplete var declaration",
-			src:           `func main() { var x }`,
-			expectedError: "expected type",
+			src:           `func main() { var x; }`,
+			expectedError: "expected ':' after variable name",
+		},
+		{
+			name:          "missing semicolon",
+			src:           `func main() { var x: int }`,
+			expectedError: "expected ';' after statement",
+		},
+		{
+			name:          "missing colon in var declaration",
+			src:           `func main() { var x int; }`,
+			expectedError: "expected ':' after variable name",
 		},
 	}
 

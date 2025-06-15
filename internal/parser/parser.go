@@ -158,7 +158,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "," {
-			return nil, fmt.Errorf("expected ',', got %v", lex)
+			return nil, fmt.Errorf("expected ',' or ')', got %v", lex)
 		}
 	}
 
@@ -172,6 +172,9 @@ func (p *Parser) parseBlock() (*Block, error) {
 		lex, err := p.peek()
 		if err != nil {
 			return nil, err
+		}
+		if lex.Type == lexer.LEX_EOF {
+			return nil, fmt.Errorf("unexpected EOF")
 		}
 		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == "}" {
 			break

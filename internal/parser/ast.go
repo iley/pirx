@@ -81,3 +81,11 @@ type FunctionCall struct {
 func (f *FunctionCall) Accept(visitor AstVisitor) {
 	visitor.VisitFunctionCall(f)
 }
+
+type ExpressionStatement struct {
+	Expression Expression
+}
+
+func (s *ExpressionStatement) Accept(visitor AstVisitor) {
+	visitor.VisitExpressionStatement(s)
+}

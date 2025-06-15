@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/iley/pirx/internal/lexer"
 )
@@ -200,7 +201,112 @@ func (p *Parser) parseStatement() (Statement, error) {
 	if lex.Type == lexer.LEX_KEYWORD && lex.Str == "var" {
 		return p.parseVariableDeclaration()
 	}
-	return nil, fmt.Errorf("unknown statement: %v", lex)
+	expression, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	return &ExpressionStatement{Expression: expression}, nil
+}
+
+func (p *Parser) parseExpression() (Expression, error) {
+	lex, err := p.peek()
+	if err != nil {
+		return nil, err
+	}
+	switch lex.Type {
+	case lexer.LEX_IDENT:
+		return p.parseFunctionCall()
+	case lexer.LEX_NUMBER:
+		return p.parseIntegerLiteral()
+	case lexer.LEX_STRING:
+		return p.parseStringLiteral()
+	default:
+		return nil, fmt.Errorf("unknown expression: %v", lex)
+	}
+}
+
+func (p *Parser) parseFunctionCall() (*FunctionCall, error) {
+	// function name
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type != lexer.LEX_IDENT {
+		return nil, fmt.Errorf("expected function name, got %v", lex)
+	}
+	name := lex.Str
+
+	// '('
+	lex, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "(" {
+		return nil, fmt.Errorf("expected '(', got %v", lex)
+	}
+
+	args := []Expression{}
+	// check for ')'
+	lex, err = p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
+		p.consume() // consume ')'
+		return &FunctionCall{FunctionName: name, Args: args}, nil
+	}
+
+	for {
+		arg, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
+
+		lex, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
+			break
+		}
+
+		lex, err = p.consume()
+		if err != nil {
+			return nil, err
+		}
+		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "," {
+			return nil, fmt.Errorf("expected ',' or ')', got %v", lex)
+		}
+	}
+
+	// consume ')'
+	_, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+
+	return &FunctionCall{FunctionName: name, Args: args}, nil
+}
+
+func (p *Parser) parseIntegerLiteral() (*Literal, error) {
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	val, err := strconv.Atoi(lex.Str)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse integer: %w", err)
+	}
+	return &Literal{Type: LiteralTypeInt, IntValue: val}, nil
+}
+
+func (p *Parser) parseStringLiteral() (*Literal, error) {
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	return &Literal{Type: LiteralTypeString, StringValue: lex.Str}, nil
 }
 
 func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {

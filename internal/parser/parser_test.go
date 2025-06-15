@@ -63,6 +63,37 @@ func TestParseProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "function with expression statements",
+			src:  `func main() { foo(1, "two") }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								&ExpressionStatement{
+									Expression: &FunctionCall{
+										FunctionName: "foo",
+										Args: []Expression{
+											&Literal{
+												Type:     LiteralTypeInt,
+												IntValue: 1,
+											},
+											&Literal{
+												Type:        LiteralTypeString,
+												StringValue: "two",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

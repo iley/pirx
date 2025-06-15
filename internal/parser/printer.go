@@ -111,3 +111,8 @@ func (p *Printer) VisitFunctionCall(fc *FunctionCall) {
 	p.write(strings.Join(args, ", "))
 	p.write(")")
 }
+
+func (p *Printer) VisitExpressionStatement(s *ExpressionStatement) {
+	s.Expression.Accept(p)
+	p.writeln("")
+}

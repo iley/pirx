@@ -1,73 +1,81 @@
 package parser
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/iley/pirx/internal/lexer"
 )
 
-func TestParseTrivialProgram(t *testing.T) {
-	src := `func main() {}`
+func TestParseProgram(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected *Program
+	}{
+		{
+			name: "trivial program",
+			src:  `func main() {}`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body:   &Block{Statements: []Statement{}},
+					},
+				},
+			},
+		},
+		{
+			name: "function with var declaration",
+			src:  `func main() { var x int }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								&VariableDeclaration{
+									Name: "x",
+									Type: "int",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with arguments",
+			src:  `func add(a int, b int) {}`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name: "add",
+						Params: []*Param{
+							{Name: "a", Type: "int"},
+							{Name: "b", Type: "int"},
+						},
+						Body: &Block{Statements: []Statement{}},
+					},
+				},
+			},
+		},
+	}
 
-	lex := lexer.New(strings.NewReader(src))
-	parser := New(lex)
-	prog, err := parser.ParseProgram()
-	if err != nil {
-		t.Fatalf("ParseProgram() error = %v", err)
-	}
-	if prog == nil {
-		t.Fatal("ParseProgram() returned nil program")
-	}
-	if len(prog.Functions) != 1 {
-		t.Fatalf("expected 1 function, got %d", len(prog.Functions))
-	}
-	fn := prog.Functions[0]
-	if fn.Name != "main" {
-		t.Errorf("expected function name 'main', got %q", fn.Name)
-	}
-	if len(fn.Params) != 0 {
-		t.Errorf("expected 0 params, got %d", len(fn.Params))
-	}
-	if fn.Body == nil || len(fn.Body.Statements) != 0 {
-		t.Errorf("expected empty function body, got %+v", fn.Body)
-	}
-}
-
-func TestParseFunctionWithVarDeclaration(t *testing.T) {
-	src := `func main() { var x int }`
-
-	lex := lexer.New(strings.NewReader(src))
-	parser := New(lex)
-	prog, err := parser.ParseProgram()
-	if err != nil {
-		t.Fatalf("ParseProgram() error = %v", err)
-	}
-	if prog == nil {
-		t.Fatal("ParseProgram() returned nil program")
-	}
-	if len(prog.Functions) != 1 {
-		t.Fatalf("expected 1 function, got %d", len(prog.Functions))
-	}
-	fn := prog.Functions[0]
-	if fn.Name != "main" {
-		t.Errorf("expected function name 'main', got %q", fn.Name)
-	}
-	if fn.Body == nil {
-		t.Fatalf("expected function body, got nil")
-	}
-	if len(fn.Body.Statements) != 1 {
-		t.Fatalf("expected 1 statement, got %d", len(fn.Body.Statements))
-	}
-	stmt := fn.Body.Statements[0]
-	varDecl, ok := stmt.(*VariableDeclaration)
-	if !ok {
-		t.Fatalf("expected statement to be *VariableDeclaration, got %T", stmt)
-	}
-	if varDecl.Name != "x" {
-		t.Errorf("expected var name 'x', got %q", varDecl.Name)
-	}
-	if varDecl.Type != "int" {
-		t.Errorf("expected var type 'int', got %q", varDecl.Type)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			prog, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("ParseProgram() error = %v", err)
+			}
+			if !reflect.DeepEqual(prog, tc.expected) {
+				t.Errorf("ParseProgram() got = %+v, want %+v", prog, tc.expected)
+			}
+		})
 	}
 }

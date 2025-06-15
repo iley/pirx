@@ -2,13 +2,16 @@ package lexer
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"unicode"
 )
 
+type TokenType int
+
 // Token types
 const (
-	LEX_EOF = iota
+	LEX_EOF TokenType = iota
 	LEX_IDENT
 	LEX_NUMBER
 	LEX_STRING
@@ -16,6 +19,27 @@ const (
 	LEX_OPERATOR
 	LEX_PUNCTUATION
 )
+
+func (t TokenType) String() string {
+	switch t {
+	case LEX_EOF:
+		return "EOF"
+	case LEX_IDENT:
+		return "IDENT"
+	case LEX_NUMBER:
+		return "NUMBER"
+	case LEX_STRING:
+		return "STRING"
+	case LEX_KEYWORD:
+		return "KEYWORD"
+	case LEX_OPERATOR:
+		return "OPERATOR"
+	case LEX_PUNCTUATION:
+		return "PUNCTUATION"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 // Keywords in Pirx
 var keywords = map[string]bool{
@@ -32,7 +56,7 @@ var keywords = map[string]bool{
 }
 
 // Single-character operators and punctuation
-var singleCharTokens = map[rune]int{
+var singleCharTokens = map[rune]TokenType{
 	'(': LEX_PUNCTUATION,
 	')': LEX_PUNCTUATION,
 	'{': LEX_PUNCTUATION,
@@ -53,10 +77,17 @@ var singleCharTokens = map[rune]int{
 }
 
 type Lexeme struct {
-	Type int
+	Type TokenType
 	Str  string
 	Line int
 	Col  int
+}
+
+func (l Lexeme) String() string {
+	if l.Str == "" {
+		return fmt.Sprintf("<%s>", l.Type)
+	}
+	return fmt.Sprintf("<%s %q>", l.Type, l.Str)
 }
 
 type Lexer struct {

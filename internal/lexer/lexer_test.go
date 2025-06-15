@@ -107,7 +107,7 @@ func TestLexer(t *testing.T) {
 				}
 
 				if got.Type != expected.Type {
-					t.Errorf("token %d: expected type %v, got %v", i, expected.Type, got.Type)
+					t.Errorf("token %d: expected type %s, got %s", i, expected.Type, got.Type)
 				}
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
@@ -188,7 +188,7 @@ func TestLexerWhitespace(t *testing.T) {
 				}
 
 				if got.Type != expected.Type {
-					t.Errorf("token %d: expected type %v, got %v", i, expected.Type, got.Type)
+					t.Errorf("token %d: expected type %s, got %s", i, expected.Type, got.Type)
 				}
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)

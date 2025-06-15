@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/iley/pirx/internal/codegen/amd64_darwin"
 	"github.com/iley/pirx/internal/parser"
 )
 
@@ -26,7 +27,7 @@ func Generate(target Target, program *parser.Program, output io.Writer) error {
 
 	switch target {
 	case TargetARM64Darwin:
-		visitor = &ARM64DarwinCodegenVisitor{output}
+		visitor = amd64_darwin.NewCodegenVisitor(output)
 	default:
 		return fmt.Errorf("unknown target: %d", target)
 	}

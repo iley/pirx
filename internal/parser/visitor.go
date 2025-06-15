@@ -10,4 +10,5 @@ type AstVisitor interface {
 	VisitVariableDeclaration(variableDeclaration *VariableDeclaration)
 	VisitFunctionCall(functionCall *FunctionCall)
 	VisitExpressionStatement(e *ExpressionStatement)
+	VisitAssignment(assignment *Assignment)
 }

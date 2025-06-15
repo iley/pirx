@@ -89,3 +89,12 @@ type ExpressionStatement struct {
 func (s *ExpressionStatement) Accept(visitor AstVisitor) {
 	visitor.VisitExpressionStatement(s)
 }
+
+type Assignment struct {
+	VariableName string
+	Value        Expression
+}
+
+func (a *Assignment) Accept(visitor AstVisitor) {
+	visitor.VisitAssignment(a)
+}

@@ -95,3 +95,4 @@ func (v *CodegenVisitor) VisitLiteral(l *parser.Literal)                        
 func (v *CodegenVisitor) VisitVariableDeclaration(d *parser.VariableDeclaration) {}
 func (v *CodegenVisitor) VisitFunctionCall(f *parser.FunctionCall)               {}
 func (v *CodegenVisitor) VisitExpressionStatement(e *parser.ExpressionStatement) {}
+func (v *CodegenVisitor) VisitAssignment(a *parser.Assignment)                   {}

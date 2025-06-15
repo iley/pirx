@@ -116,3 +116,8 @@ func (p *Printer) VisitExpressionStatement(s *ExpressionStatement) {
 	s.Expression.Accept(p)
 	p.writeln("")
 }
+
+func (p *Printer) VisitAssignment(assignment *Assignment) {
+	p.write(assignment.VariableName + " = ")
+	assignment.Value.Accept(p)
+}

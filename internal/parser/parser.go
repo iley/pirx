@@ -235,7 +235,8 @@ func (p *Parser) parseExpression() (Expression, error) {
 	}
 	switch lex.Type {
 	case lexer.LEX_IDENT:
-		return p.parseFunctionCall()
+		// Look ahead to determine if this is a function call or assignment
+		return p.parseIdentifierExpression()
 	case lexer.LEX_NUMBER:
 		return p.parseIntegerLiteral()
 	case lexer.LEX_STRING:
@@ -368,5 +369,66 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 	return &VariableDeclaration{
 		Name: name,
 		Type: typeStr,
+	}, nil
+}
+
+func (p *Parser) parseIdentifierExpression() (Expression, error) {
+	// Look ahead to see what follows the identifier
+	if p.pos+1 < len(p.lexemes) {
+		nextLex := p.lexemes[p.pos+1]
+		if nextLex.Type == lexer.LEX_OPERATOR && nextLex.Str == "=" {
+			return p.parseAssignment()
+		}
+	} else {
+		// Need to peek at the next lexeme from the lexer
+		currentPos := p.pos
+		_, err := p.consume() // consume the identifier
+		if err != nil {
+			return nil, err
+		}
+		nextLex, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		p.pos = currentPos // reset position
+
+		if nextLex.Type == lexer.LEX_OPERATOR && nextLex.Str == "=" {
+			return p.parseAssignment()
+		}
+	}
+
+	// Default to function call if not assignment
+	return p.parseFunctionCall()
+}
+
+func (p *Parser) parseAssignment() (*Assignment, error) {
+	// variable name
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type != lexer.LEX_IDENT {
+		return nil, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
+	}
+	varName := lex.Str
+
+	// '='
+	lex, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type != lexer.LEX_OPERATOR || lex.Str != "=" {
+		return nil, fmt.Errorf("%d:%d: expected '=', got %v", lex.Line, lex.Col, lex)
+	}
+
+	// value expression
+	value, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Assignment{
+		VariableName: varName,
+		Value:        value,
 	}, nil
 }

@@ -11,10 +11,10 @@ $(BIN_FILES): %: %.o
 $(OBJ_FILES): %.o: %.s
 	as -arch arm64 -o $@ $<
 
-$(ASSEMBLY_FILES): %.s: %.pirx
+$(ASSEMBLY_FILES): %.s: %.pirx always
 	go run github.com/iley/pirx/cmd/pirx -o $@ $<
 
 clean:
 	rm -f $(BIN_FILES) $(OBJ_FILES) $(ASSEMBLY_FILES)
 
-.PHONY: default clean
+.PHONY: always default clean

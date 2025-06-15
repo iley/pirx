@@ -1,6 +1,9 @@
 .global _start
 .align 4
 
+print:
+  ret
+
 _start:
   bl main
   mov X0, #0

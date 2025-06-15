@@ -56,7 +56,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_KEYWORD || lex.Str != "func" {
-		return nil, fmt.Errorf("expected 'func', got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected 'func', got %v", lex.Line, lex.Col, lex)
 	}
 	// function name
 	lex, err = p.consume()
@@ -64,7 +64,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("expected function name, got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 	// '('
@@ -73,7 +73,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "(" {
-		return nil, fmt.Errorf("expected '(', got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
 	params, err := p.parseParameters()
@@ -87,7 +87,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ")" {
-		return nil, fmt.Errorf("expected ')', got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
 	}
 	// '{'
 	lex, err = p.consume()
@@ -95,7 +95,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "{" {
-		return nil, fmt.Errorf("expected '{', got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected '{', got %v", lex.Line, lex.Col, lex)
 	}
 
 	body, err := p.parseBlock()
@@ -128,7 +128,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_IDENT {
-			return nil, fmt.Errorf("expected param name, got %v", lex)
+			return nil, fmt.Errorf("%d:%d: expected param name, got %v", lex.Line, lex.Col, lex)
 		}
 		name := lex.Str
 
@@ -138,7 +138,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ":" {
-			return nil, fmt.Errorf("expected ':' after parameter name, got %v", lex)
+			return nil, fmt.Errorf("%d:%d: expected ':' after parameter name, got %v", lex.Line, lex.Col, lex)
 		}
 
 		// param type
@@ -147,7 +147,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_IDENT {
-			return nil, fmt.Errorf("expected param type, got %v", lex)
+			return nil, fmt.Errorf("%d:%d: expected param type, got %v", lex.Line, lex.Col, lex)
 		}
 		typeStr := lex.Str
 
@@ -167,7 +167,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "," {
-			return nil, fmt.Errorf("expected ',' or ')', got %v", lex)
+			return nil, fmt.Errorf("%d:%d: expected ',' or ')', got %v", lex.Line, lex.Col, lex)
 		}
 	}
 
@@ -200,7 +200,7 @@ func (p *Parser) parseBlock() (*Block, error) {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ";" {
-			return nil, fmt.Errorf("expected ';' after statement, got %v", lex)
+			return nil, fmt.Errorf("%d:%d: expected ';' after statement, got %v", lex.Line, lex.Col, lex)
 		}
 	}
 
@@ -241,7 +241,7 @@ func (p *Parser) parseExpression() (Expression, error) {
 	case lexer.LEX_STRING:
 		return p.parseStringLiteral()
 	default:
-		return nil, fmt.Errorf("unknown expression: %v", lex)
+		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	}
 }
 
@@ -252,7 +252,7 @@ func (p *Parser) parseFunctionCall() (*FunctionCall, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("expected function name, got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 
@@ -262,7 +262,7 @@ func (p *Parser) parseFunctionCall() (*FunctionCall, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "(" {
-		return nil, fmt.Errorf("expected '(', got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
 	args := []Expression{}
@@ -296,7 +296,7 @@ func (p *Parser) parseFunctionCall() (*FunctionCall, error) {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "," {
-			return nil, fmt.Errorf("expected ',' or ')', got %v", lex)
+			return nil, fmt.Errorf("%d:%d: expected ',' or ')', got %v", lex.Line, lex.Col, lex)
 		}
 	}
 
@@ -316,7 +316,7 @@ func (p *Parser) parseIntegerLiteral() (*Literal, error) {
 	}
 	val, err := strconv.Atoi(lex.Str)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse integer: %w", err)
+		return nil, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
 	}
 	return &Literal{Type: LiteralTypeInt, IntValue: val}, nil
 }
@@ -342,7 +342,7 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("expected variable name, got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 
@@ -352,7 +352,7 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ":" {
-		return nil, fmt.Errorf("expected ':' after variable name, got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected ':' after variable name, got %v", lex.Line, lex.Col, lex)
 	}
 
 	// type
@@ -361,7 +361,7 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("expected type, got %v", lex)
+		return nil, fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
 	}
 	typeStr := lex.Str
 

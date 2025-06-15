@@ -14,7 +14,7 @@ import (
 
 func main() {
 	output := flag.String("o", "", "output file name")
-	target := flag.String("t", "arm64-darwin", "target architecture")
+	targetString := flag.String("t", "arm64-darwin", "target architecture")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -23,6 +23,12 @@ func main() {
 		os.Exit(1)
 	}
 	inputFileName := flag.Args()[0]
+
+	target, err := codegen.TargetFromName(*targetString)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error parsing target: %v\n", err)
+		os.Exit(1)
+	}
 
 	if *output == "" {
 		*output = strings.TrimSuffix(inputFileName, filepath.Ext(inputFileName)) + ".s"
@@ -50,16 +56,9 @@ func main() {
 	}
 	defer outputFile.Close()
 
-	var visitor parser.AstVisitor
-	switch *target {
-	case "arm64-darwin":
-		visitor = codegen.NewARM64DarwinCodegenVisitor(outputFile)
-	default:
-		fmt.Fprintf(os.Stderr, "unsupported target: %s\n", *target)
+	err = codegen.Generate(target, program, outputFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error generating code: %v\n", err)
 		os.Exit(1)
 	}
-
-	program.Accept(visitor)
-
-	fmt.Printf("Compiled %s to %s for target %s\n", inputFileName, *output, *target)
 }

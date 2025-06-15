@@ -144,22 +144,22 @@ func TestParseProgram_Error(t *testing.T) {
 		{
 			name:          "missing func keyword",
 			src:           `main() {}`,
-			expectedError: "expected 'func'",
+			expectedError: "1:1: expected 'func'",
 		},
 		{
 			name:          "missing function name",
 			src:           `func() {}`,
-			expectedError: "expected function name",
+			expectedError: "1:5: expected function name",
 		},
 		{
 			name:          "missing opening parenthesis",
 			src:           `func main) {}`,
-			expectedError: "expected '('",
+			expectedError: "1:10: expected '('",
 		},
 		{
 			name:          "missing closing parenthesis in function call",
 			src:           `func main() { foo(1 }`,
-			expectedError: "expected ',' or ')'",
+			expectedError: "1:21: expected ',' or ')'",
 		},
 		{
 			name:          "missing closing brace",
@@ -169,17 +169,17 @@ func TestParseProgram_Error(t *testing.T) {
 		{
 			name:          "incomplete var declaration",
 			src:           `func main() { var x; }`,
-			expectedError: "expected ':' after variable name",
+			expectedError: "1:20: expected ':' after variable name",
 		},
 		{
 			name:          "missing semicolon",
 			src:           `func main() { var x: int }`,
-			expectedError: "expected ';' after statement",
+			expectedError: "1:26: expected ';' after statement",
 		},
 		{
 			name:          "missing colon in var declaration",
 			src:           `func main() { var x int; }`,
-			expectedError: "expected ':' after variable name",
+			expectedError: "1:21: expected ':' after variable name",
 		},
 	}
 

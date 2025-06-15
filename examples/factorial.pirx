@@ -9,3 +9,9 @@ func factorial(n: int) int {
     }
     return result;
 }
+
+func main() {
+    var r: int
+    r = factorial(10)
+    print(r)
+}

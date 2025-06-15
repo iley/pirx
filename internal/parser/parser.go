@@ -90,17 +90,87 @@ func (p *Parser) parseFunction() (*Function, error) {
 	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "{" {
 		return nil, fmt.Errorf("expected '{', got %v", lex)
 	}
-	// '}'
+
+	body, err := p.parseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Function{
+		Name:   name,
+		Params: []*Param{},
+		Body:   body,
+	}, nil
+}
+
+func (p *Parser) parseBlock() (*Block, error) {
+	statements := []Statement{}
+
+	for {
+		lex, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == "}" {
+			break
+		}
+
+		stmt, err := p.parseStatement()
+		if err != nil {
+			return nil, err
+		}
+		statements = append(statements, stmt)
+	}
+
+	// consume '}'
+	_, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Block{Statements: statements}, nil
+}
+
+func (p *Parser) parseStatement() (Statement, error) {
+	lex, err := p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type == lexer.LEX_KEYWORD && lex.Str == "var" {
+		return p.parseVariableDeclaration()
+	}
+	return nil, fmt.Errorf("unknown statement: %v", lex)
+}
+
+func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
+	// consume 'var'
+	_, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+
+	// variable name
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type != lexer.LEX_IDENT {
+		return nil, fmt.Errorf("expected variable name, got %v", lex)
+	}
+	name := lex.Str
+
+	// type
 	lex, err = p.consume()
 	if err != nil {
 		return nil, err
 	}
-	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "}" {
-		return nil, fmt.Errorf("expected '}', got %v", lex)
+	if lex.Type != lexer.LEX_IDENT {
+		return nil, fmt.Errorf("expected type, got %v", lex)
 	}
-	return &Function{
-		Name:   name,
-		Params: []*Param{},
-		Body:   &Block{Statements: []Statement{}},
+	typeStr := lex.Str
+
+	return &VariableDeclaration{
+		Name: name,
+		Type: typeStr,
 	}, nil
 }

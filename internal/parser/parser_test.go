@@ -575,6 +575,20 @@ func TestParseExpression_Assignment(t *testing.T) {
 				}},
 			}},
 		},
+		{
+			name: "chained assignment",
+			src:  `func main() { x = y = 1; }`,
+			expected: Expression{Assignment: &Assignment{
+				VariableName: "x",
+				Value: Expression{Assignment: &Assignment{
+					VariableName: "y",
+					Value: Expression{Literal: &Literal{
+						Type:     LiteralTypeInt,
+						IntValue: 1,
+					}},
+				}},
+			}},
+		},
 	}
 
 	for _, tc := range testCases {

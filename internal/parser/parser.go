@@ -216,22 +216,26 @@ func (p *Parser) parseBlock() (*Block, error) {
 func (p *Parser) parseStatement() (Statement, error) {
 	lex, err := p.peek()
 	if err != nil {
-		return nil, err
+		return Statement{}, err
 	}
 	if lex.Type == lexer.LEX_KEYWORD && lex.Str == "var" {
-		return p.parseVariableDeclaration()
+		varDecl, err := p.parseVariableDeclaration()
+		if err != nil {
+			return Statement{}, err
+		}
+		return Statement{VariableDeclaration: varDecl}, nil
 	}
 	expression, err := p.parseExpression()
 	if err != nil {
-		return nil, err
+		return Statement{}, err
 	}
-	return &ExpressionStatement{Expression: expression}, nil
+	return Statement{ExpressionStatement: &ExpressionStatement{Expression: expression}}, nil
 }
 
 func (p *Parser) parseExpression() (Expression, error) {
 	lex, err := p.peek()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 	switch lex.Type {
 	case lexer.LEX_IDENT:
@@ -242,51 +246,51 @@ func (p *Parser) parseExpression() (Expression, error) {
 	case lexer.LEX_STRING:
 		return p.parseStringLiteral()
 	default:
-		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
+		return Expression{}, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	}
 }
 
-func (p *Parser) parseFunctionCall() (*FunctionCall, error) {
+func (p *Parser) parseFunctionCall() (Expression, error) {
 	// function name
 	lex, err := p.consume()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
+		return Expression{}, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 
 	// '('
 	lex, err = p.consume()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "(" {
-		return nil, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
+		return Expression{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
 	args := []Expression{}
 	// check for ')'
 	lex, err = p.peek()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 	if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
 		p.consume() // consume ')'
-		return &FunctionCall{FunctionName: name, Args: args}, nil
+		return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args}}, nil
 	}
 
 	for {
 		arg, err := p.parseExpression()
 		if err != nil {
-			return nil, err
+			return Expression{}, err
 		}
 		args = append(args, arg)
 
 		lex, err := p.peek()
 		if err != nil {
-			return nil, err
+			return Expression{}, err
 		}
 		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
 			break
@@ -294,40 +298,40 @@ func (p *Parser) parseFunctionCall() (*FunctionCall, error) {
 
 		lex, err = p.consume()
 		if err != nil {
-			return nil, err
+			return Expression{}, err
 		}
 		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "," {
-			return nil, fmt.Errorf("%d:%d: expected ',' or ')', got %v", lex.Line, lex.Col, lex)
+			return Expression{}, fmt.Errorf("%d:%d: expected ',' or ')', got %v", lex.Line, lex.Col, lex)
 		}
 	}
 
 	// consume ')'
 	_, err = p.consume()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 
-	return &FunctionCall{FunctionName: name, Args: args}, nil
+	return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args}}, nil
 }
 
-func (p *Parser) parseIntegerLiteral() (*Literal, error) {
+func (p *Parser) parseIntegerLiteral() (Expression, error) {
 	lex, err := p.consume()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 	val, err := strconv.Atoi(lex.Str)
 	if err != nil {
-		return nil, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
+		return Expression{}, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
 	}
-	return &Literal{Type: LiteralTypeInt, IntValue: val}, nil
+	return Expression{Literal: &Literal{Type: LiteralTypeInt, IntValue: val}}, nil
 }
 
-func (p *Parser) parseStringLiteral() (*Literal, error) {
+func (p *Parser) parseStringLiteral() (Expression, error) {
 	lex, err := p.consume()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
-	return &Literal{Type: LiteralTypeString, StringValue: lex.Str}, nil
+	return Expression{Literal: &Literal{Type: LiteralTypeString, StringValue: lex.Str}}, nil
 }
 
 func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
@@ -384,11 +388,11 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 		currentPos := p.pos
 		_, err := p.consume() // consume the identifier
 		if err != nil {
-			return nil, err
+			return Expression{}, err
 		}
 		nextLex, err := p.peek()
 		if err != nil {
-			return nil, err
+			return Expression{}, err
 		}
 		p.pos = currentPos // reset position
 
@@ -401,34 +405,34 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 	return p.parseFunctionCall()
 }
 
-func (p *Parser) parseAssignment() (*Assignment, error) {
+func (p *Parser) parseAssignment() (Expression, error) {
 	// variable name
 	lex, err := p.consume()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
+		return Expression{}, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
 	}
 	varName := lex.Str
 
 	// '='
 	lex, err = p.consume()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 	if lex.Type != lexer.LEX_OPERATOR || lex.Str != "=" {
-		return nil, fmt.Errorf("%d:%d: expected '=', got %v", lex.Line, lex.Col, lex)
+		return Expression{}, fmt.Errorf("%d:%d: expected '=', got %v", lex.Line, lex.Col, lex)
 	}
 
 	// value expression
 	value, err := p.parseExpression()
 	if err != nil {
-		return nil, err
+		return Expression{}, err
 	}
 
-	return &Assignment{
+	return Expression{Assignment: &Assignment{
 		VariableName: varName,
 		Value:        value,
-	}, nil
+	}}, nil
 }

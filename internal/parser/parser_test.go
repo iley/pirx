@@ -37,10 +37,10 @@ func TestParseProgram(t *testing.T) {
 						Params: []*Param{},
 						Body: &Block{
 							Statements: []Statement{
-								&VariableDeclaration{
+								{VariableDeclaration: &VariableDeclaration{
 									Name: "x",
 									Type: "int",
-								},
+								}},
 							},
 						},
 					},
@@ -73,21 +73,21 @@ func TestParseProgram(t *testing.T) {
 						Params: []*Param{},
 						Body: &Block{
 							Statements: []Statement{
-								&ExpressionStatement{
-									Expression: &FunctionCall{
+								{ExpressionStatement: &ExpressionStatement{
+									Expression: Expression{FunctionCall: &FunctionCall{
 										FunctionName: "foo",
 										Args: []Expression{
-											&Literal{
+											{Literal: &Literal{
 												Type:     LiteralTypeInt,
 												IntValue: 1,
-											},
-											&Literal{
+											}},
+											{Literal: &Literal{
 												Type:        LiteralTypeString,
 												StringValue: "two",
-											},
+											}},
 										},
-									},
-								},
+									}},
+								}},
 							},
 						},
 					},
@@ -104,14 +104,14 @@ func TestParseProgram(t *testing.T) {
 						Params: []*Param{},
 						Body: &Block{
 							Statements: []Statement{
-								&VariableDeclaration{
+								{VariableDeclaration: &VariableDeclaration{
 									Name: "x",
 									Type: "int",
-								},
-								&VariableDeclaration{
+								}},
+								{VariableDeclaration: &VariableDeclaration{
 									Name: "y",
 									Type: "string",
-								},
+								}},
 							},
 						},
 					},
@@ -207,70 +207,70 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 		{
 			name: "function call with no arguments",
 			src:  `func main() { foo(); }`,
-			expected: &FunctionCall{
+			expected: Expression{FunctionCall: &FunctionCall{
 				FunctionName: "foo",
 				Args:         []Expression{},
-			},
+			}},
 		},
 		{
 			name: "function call with single integer argument",
 			src:  `func main() { foo(42); }`,
-			expected: &FunctionCall{
+			expected: Expression{FunctionCall: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					&Literal{
+					{Literal: &Literal{
 						Type:     LiteralTypeInt,
 						IntValue: 42,
-					},
+					}},
 				},
-			},
+			}},
 		},
 		{
 			name: "function call with single string argument",
 			src:  `func main() { foo("hello"); }`,
-			expected: &FunctionCall{
+			expected: Expression{FunctionCall: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					&Literal{
+					{Literal: &Literal{
 						Type:        LiteralTypeString,
 						StringValue: "hello",
-					},
+					}},
 				},
-			},
+			}},
 		},
 		{
 			name: "function call with multiple arguments",
 			src:  `func main() { foo(1, "two", 3); }`,
-			expected: &FunctionCall{
+			expected: Expression{FunctionCall: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					&Literal{
+					{Literal: &Literal{
 						Type:     LiteralTypeInt,
 						IntValue: 1,
-					},
-					&Literal{
+					}},
+					{Literal: &Literal{
 						Type:        LiteralTypeString,
 						StringValue: "two",
-					},
-					&Literal{
+					}},
+					{Literal: &Literal{
 						Type:     LiteralTypeInt,
 						IntValue: 3,
-					},
+					}},
 				},
-			},
+			}},
 		},
 		{
 			name: "nested function calls",
 			src:  `func main() { foo(bar()); }`,
-			expected: &FunctionCall{
+			expected: Expression{FunctionCall: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					&FunctionCall{
+					{FunctionCall: &FunctionCall{
 						FunctionName: "bar",
 						Args:         []Expression{},
-					},
+					}},
 				},
-			},
+			}},
 		},
 	}
 
@@ -290,13 +290,13 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 			if len(prog.Functions[0].Body.Statements) != 1 {
 				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
 			}
-			exprStmt, ok := prog.Functions[0].Body.Statements[0].(*ExpressionStatement)
-			if !ok {
-				t.Fatalf("Expected ExpressionStatement, got %T", prog.Functions[0].Body.Statements[0])
+			stmt := prog.Functions[0].Body.Statements[0]
+			if stmt.ExpressionStatement == nil {
+				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
 
-			if !reflect.DeepEqual(exprStmt.Expression, tc.expected) {
-				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
+			if !reflect.DeepEqual(stmt.ExpressionStatement.Expression, tc.expected) {
+				t.Errorf("Expression got = %+v, want %+v", stmt.ExpressionStatement.Expression, tc.expected)
 			}
 		})
 	}
@@ -311,34 +311,34 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 		{
 			name: "zero",
 			src:  `func main() { 0; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:     LiteralTypeInt,
 				IntValue: 0,
-			},
+			}},
 		},
 		{
 			name: "positive integer",
 			src:  `func main() { 42; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:     LiteralTypeInt,
 				IntValue: 42,
-			},
+			}},
 		},
 		{
 			name: "large integer",
 			src:  `func main() { 999999; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:     LiteralTypeInt,
 				IntValue: 999999,
-			},
+			}},
 		},
 		{
 			name: "single digit",
 			src:  `func main() { 7; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:     LiteralTypeInt,
 				IntValue: 7,
-			},
+			}},
 		},
 	}
 
@@ -358,13 +358,13 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 			if len(prog.Functions[0].Body.Statements) != 1 {
 				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
 			}
-			exprStmt, ok := prog.Functions[0].Body.Statements[0].(*ExpressionStatement)
-			if !ok {
-				t.Fatalf("Expected ExpressionStatement, got %T", prog.Functions[0].Body.Statements[0])
+			stmt := prog.Functions[0].Body.Statements[0]
+			if stmt.ExpressionStatement == nil {
+				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
 
-			if !reflect.DeepEqual(exprStmt.Expression, tc.expected) {
-				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
+			if !reflect.DeepEqual(stmt.ExpressionStatement.Expression, tc.expected) {
+				t.Errorf("Expression got = %+v, want %+v", stmt.ExpressionStatement.Expression, tc.expected)
 			}
 		})
 	}
@@ -379,42 +379,42 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 		{
 			name: "empty string",
 			src:  `func main() { ""; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:        LiteralTypeString,
 				StringValue: "",
-			},
+			}},
 		},
 		{
 			name: "simple string",
 			src:  `func main() { "hello"; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:        LiteralTypeString,
 				StringValue: "hello",
-			},
+			}},
 		},
 		{
 			name: "string with spaces",
 			src:  `func main() { "hello world"; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:        LiteralTypeString,
 				StringValue: "hello world",
-			},
+			}},
 		},
 		{
 			name: "string with numbers",
 			src:  `func main() { "abc123"; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:        LiteralTypeString,
 				StringValue: "abc123",
-			},
+			}},
 		},
 		{
 			name: "string with special characters",
 			src:  `func main() { "hello, world!"; }`,
-			expected: &Literal{
+			expected: Expression{Literal: &Literal{
 				Type:        LiteralTypeString,
 				StringValue: "hello, world!",
-			},
+			}},
 		},
 	}
 
@@ -434,13 +434,13 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 			if len(prog.Functions[0].Body.Statements) != 1 {
 				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
 			}
-			exprStmt, ok := prog.Functions[0].Body.Statements[0].(*ExpressionStatement)
-			if !ok {
-				t.Fatalf("Expected ExpressionStatement, got %T", prog.Functions[0].Body.Statements[0])
+			stmt := prog.Functions[0].Body.Statements[0]
+			if stmt.ExpressionStatement == nil {
+				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
 
-			if !reflect.DeepEqual(exprStmt.Expression, tc.expected) {
-				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
+			if !reflect.DeepEqual(stmt.ExpressionStatement.Expression, tc.expected) {
+				t.Errorf("Expression got = %+v, want %+v", stmt.ExpressionStatement.Expression, tc.expected)
 			}
 		})
 	}
@@ -503,77 +503,77 @@ func TestParseExpression_Assignment(t *testing.T) {
 		{
 			name: "assignment with integer literal",
 			src:  `func main() { x = 42; }`,
-			expected: &Assignment{
+			expected: Expression{Assignment: &Assignment{
 				VariableName: "x",
-				Value: &Literal{
+				Value: Expression{Literal: &Literal{
 					Type:     LiteralTypeInt,
 					IntValue: 42,
-				},
-			},
+				}},
+			}},
 		},
 		{
 			name: "assignment with string literal",
 			src:  `func main() { name = "hello"; }`,
-			expected: &Assignment{
+			expected: Expression{Assignment: &Assignment{
 				VariableName: "name",
-				Value: &Literal{
+				Value: Expression{Literal: &Literal{
 					Type:        LiteralTypeString,
 					StringValue: "hello",
-				},
-			},
+				}},
+			}},
 		},
 		{
 			name: "assignment with function call",
 			src:  `func main() { result = foo(); }`,
-			expected: &Assignment{
+			expected: Expression{Assignment: &Assignment{
 				VariableName: "result",
-				Value: &FunctionCall{
+				Value: Expression{FunctionCall: &FunctionCall{
 					FunctionName: "foo",
 					Args:         []Expression{},
-				},
-			},
+				}},
+			}},
 		},
 		{
 			name: "assignment with function call with args",
 			src:  `func main() { result = add(1, 2); }`,
-			expected: &Assignment{
+			expected: Expression{Assignment: &Assignment{
 				VariableName: "result",
-				Value: &FunctionCall{
+				Value: Expression{FunctionCall: &FunctionCall{
 					FunctionName: "add",
 					Args: []Expression{
-						&Literal{
+						{Literal: &Literal{
 							Type:     LiteralTypeInt,
 							IntValue: 1,
-						},
-						&Literal{
+						}},
+						{Literal: &Literal{
 							Type:     LiteralTypeInt,
 							IntValue: 2,
-						},
+						}},
 					},
-				},
-			},
+				}},
+			}},
 		},
 		{
 			name: "assignment with zero",
 			src:  `func main() { counter = 0; }`,
-			expected: &Assignment{
+			expected: Expression{Assignment: &Assignment{
 				VariableName: "counter",
-				Value: &Literal{
+				Value: Expression{Literal: &Literal{
 					Type:     LiteralTypeInt,
 					IntValue: 0,
-				},
-			},
+				}},
+			}},
 		},
 		{
 			name: "assignment with empty string",
 			src:  `func main() { text = ""; }`,
-			expected: &Assignment{
+			expected: Expression{Assignment: &Assignment{
 				VariableName: "text",
-				Value: &Literal{
+				Value: Expression{Literal: &Literal{
 					Type:        LiteralTypeString,
 					StringValue: "",
-				},
-			},
+				}},
+			}},
 		},
 	}
 
@@ -593,13 +593,13 @@ func TestParseExpression_Assignment(t *testing.T) {
 			if len(prog.Functions[0].Body.Statements) != 1 {
 				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
 			}
-			exprStmt, ok := prog.Functions[0].Body.Statements[0].(*ExpressionStatement)
-			if !ok {
-				t.Fatalf("Expected ExpressionStatement, got %T", prog.Functions[0].Body.Statements[0])
+			stmt := prog.Functions[0].Body.Statements[0]
+			if stmt.ExpressionStatement == nil {
+				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
 
-			if !reflect.DeepEqual(exprStmt.Expression, tc.expected) {
-				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
+			if !reflect.DeepEqual(stmt.ExpressionStatement.Expression, tc.expected) {
+				t.Errorf("Expression got = %+v, want %+v", stmt.ExpressionStatement.Expression, tc.expected)
 			}
 		})
 	}

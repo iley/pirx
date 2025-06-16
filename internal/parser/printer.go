@@ -114,7 +114,6 @@ func (p *Printer) VisitFunctionCall(fc *FunctionCall) {
 
 func (p *Printer) VisitExpressionStatement(s *ExpressionStatement) {
 	s.Expression.Accept(p)
-	p.writeln("")
 }
 
 func (p *Printer) VisitAssignment(assignment *Assignment) {

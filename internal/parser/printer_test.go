@@ -60,8 +60,8 @@ func TestPrinter(t *testing.T) {
 						Params: []*Param{},
 						Body: &Block{
 							Statements: []Statement{
-								&VariableDeclaration{Name: "x", Type: "int"},
-								&VariableDeclaration{Name: "message", Type: "string"},
+								{VariableDeclaration: &VariableDeclaration{Name: "x", Type: "int"}},
+								{VariableDeclaration: &VariableDeclaration{Name: "message", Type: "string"}},
 							},
 						},
 					},
@@ -78,22 +78,26 @@ func TestPrinter(t *testing.T) {
 						Params: []*Param{},
 						Body: &Block{
 							Statements: []Statement{
-								&FunctionCall{
-									FunctionName: "print",
-									Args: []Expression{
-										&Literal{
-											Type:        LiteralTypeString,
-											StringValue: "Hello, Pirx!",
+								{ExpressionStatement: &ExpressionStatement{
+									Expression: Expression{FunctionCall: &FunctionCall{
+										FunctionName: "print",
+										Args: []Expression{
+											{Literal: &Literal{
+												Type:        LiteralTypeString,
+												StringValue: "Hello, Pirx!",
+											}},
 										},
-									},
-								},
-								&FunctionCall{
-									FunctionName: "add",
-									Args: []Expression{
-										&Literal{Type: LiteralTypeInt, IntValue: 42},
-										&Literal{Type: LiteralTypeInt, IntValue: 58},
-									},
-								},
+									}},
+								}},
+								{ExpressionStatement: &ExpressionStatement{
+									Expression: Expression{FunctionCall: &FunctionCall{
+										FunctionName: "add",
+										Args: []Expression{
+											{Literal: &Literal{Type: LiteralTypeInt, IntValue: 42}},
+											{Literal: &Literal{Type: LiteralTypeInt, IntValue: 58}},
+										},
+									}},
+								}},
 							},
 						},
 					},
@@ -110,15 +114,17 @@ func TestPrinter(t *testing.T) {
 						Params: []*Param{},
 						Body: &Block{
 							Statements: []Statement{
-								&FunctionCall{
-									FunctionName: "greet",
-									Args: []Expression{
-										&Literal{
-											Type:        LiteralTypeString,
-											StringValue: "World",
+								{ExpressionStatement: &ExpressionStatement{
+									Expression: Expression{FunctionCall: &FunctionCall{
+										FunctionName: "greet",
+										Args: []Expression{
+											{Literal: &Literal{
+												Type:        LiteralTypeString,
+												StringValue: "World",
+											}},
 										},
-									},
-								},
+									}},
+								}},
 							},
 						},
 					},
@@ -129,15 +135,17 @@ func TestPrinter(t *testing.T) {
 						},
 						Body: &Block{
 							Statements: []Statement{
-								&FunctionCall{
-									FunctionName: "print",
-									Args: []Expression{
-										&Literal{
-											Type:        LiteralTypeString,
-											StringValue: "Hello, ",
+								{ExpressionStatement: &ExpressionStatement{
+									Expression: Expression{FunctionCall: &FunctionCall{
+										FunctionName: "print",
+										Args: []Expression{
+											{Literal: &Literal{
+												Type:        LiteralTypeString,
+												StringValue: "Hello, ",
+											}},
 										},
-									},
-								},
+									}},
+								}},
 							},
 						},
 					},

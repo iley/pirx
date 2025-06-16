@@ -41,7 +41,7 @@ func (v *CodegenVisitor) VisitFunction(f *parser.Function) {
 
 	nDeclarations := 0
 	for _, s := range f.Body.Statements {
-		if _, ok := s.(*parser.VariableDeclaration); ok {
+		if s.VariableDeclaration != nil {
 			nDeclarations++
 		}
 	}
@@ -69,9 +69,9 @@ func (v *CodegenVisitor) VisitFunction(f *parser.Function) {
 	// Store offsets of local variables in a map.
 	localsStart := paramsStart + len(f.Params)*WORD_SIZE
 	localsMap := make(map[string]int)
-	for i, decl := range f.Body.Statements {
-		if decl, ok := decl.(*parser.VariableDeclaration); ok {
-			localsMap[decl.Name] = localsStart + i*WORD_SIZE
+	for i, stmt := range f.Body.Statements {
+		if stmt.VariableDeclaration != nil {
+			localsMap[stmt.VariableDeclaration.Name] = localsStart + i*WORD_SIZE
 		}
 	}
 

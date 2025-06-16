@@ -39,12 +39,55 @@ func (b *Block) Accept(visitor AstVisitor) {
 	visitor.VisitBlock(b)
 }
 
-type Statement interface {
-	Accept(visitor AstVisitor)
+type Statement struct {
+	VariableDeclaration *VariableDeclaration
+	ExpressionStatement *ExpressionStatement
 }
 
-type Expression interface {
-	Accept(visitor AstVisitor)
+func (s *Statement) Accept(visitor AstVisitor) {
+	if s.VariableDeclaration != nil {
+		s.VariableDeclaration.Accept(visitor)
+	} else if s.ExpressionStatement != nil {
+		s.ExpressionStatement.Accept(visitor)
+	}
+}
+
+// Helper functions for creating Statement unions
+func NewVariableDeclarationStatement(variableDeclaration *VariableDeclaration) Statement {
+	return Statement{VariableDeclaration: variableDeclaration}
+}
+
+func NewExpressionStatement(expressionStatement *ExpressionStatement) Statement {
+	return Statement{ExpressionStatement: expressionStatement}
+}
+
+type Expression struct {
+	Literal      *Literal
+	FunctionCall *FunctionCall
+	Assignment   *Assignment
+}
+
+func (e *Expression) Accept(visitor AstVisitor) {
+	if e.Literal != nil {
+		e.Literal.Accept(visitor)
+	} else if e.FunctionCall != nil {
+		e.FunctionCall.Accept(visitor)
+	} else if e.Assignment != nil {
+		e.Assignment.Accept(visitor)
+	}
+}
+
+// Helper functions for creating Expression unions
+func NewLiteralExpression(literal *Literal) Expression {
+	return Expression{Literal: literal}
+}
+
+func NewFunctionCallExpression(functionCall *FunctionCall) Expression {
+	return Expression{FunctionCall: functionCall}
+}
+
+func NewAssignmentExpression(assignment *Assignment) Expression {
+	return Expression{Assignment: assignment}
 }
 
 type LiteralType int

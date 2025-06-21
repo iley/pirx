@@ -1,0 +1,24 @@
+// This test validates that we can:
+// 1. Call functions.
+// 2. Pass arguments to functions.
+// 3. Return values from functions.
+
+func first(x: int, y: int) {
+    return x;
+}
+
+func second(x: int, y: int) {
+    return y;
+}
+
+func main() {
+    var x: int;
+    var y: int;
+
+    x = first(65, 66);
+    y = second(65, 66);
+
+    putchar(x);
+    putchar(y);
+    return 0;
+}

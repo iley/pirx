@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"syscall"
 )
@@ -217,6 +218,11 @@ func main() {
 		fmt.Println("No tests found in tests/ directory")
 		return
 	}
+
+	// Sort tests by name for consistent ordering
+	sort.Slice(tests, func(i, j int) bool {
+		return tests[i].Name < tests[j].Name
+	})
 
 	fmt.Printf("Found %d test(s)\n", len(tests))
 

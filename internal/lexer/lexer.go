@@ -166,6 +166,23 @@ func (l *Lexer) skipSpace() error {
 	}
 }
 
+// skipComment skips a C++ style comment (from // to end of line)
+func (l *Lexer) skipComment() error {
+	for {
+		r, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if r == '\n' {
+			// Don't unread the newline - we want to consume it
+			return nil
+		}
+	}
+}
+
 // Next returns the next lexeme from the input
 func (l *Lexer) Next() (Lexeme, error) {
 	// Skip whitespace
@@ -196,6 +213,38 @@ func (l *Lexer) Next() (Lexeme, error) {
 		// Number
 		l.unreadRune()
 		return l.lexNumber(startLine, startCol)
+	case r == '/':
+		// Check for comment
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				// Just a single '/' at EOF
+				return Lexeme{
+					Type: LEX_OPERATOR,
+					Str:  "/",
+					Line: startLine,
+					Col:  startCol,
+				}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		if nextR == '/' {
+			// It's a comment, skip to end of line
+			if err := l.skipComment(); err != nil {
+				return Lexeme{Type: LEX_EOF}, err
+			}
+			// Recursively call Next to get the next token after the comment
+			return l.Next()
+		} else {
+			// It's just a division operator, put back the second character
+			l.unreadRune()
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "/",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		}
 	default:
 		// Check for single-character tokens
 		if tokenType, ok := singleCharTokens[r]; ok {

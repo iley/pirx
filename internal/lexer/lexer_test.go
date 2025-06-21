@@ -203,3 +203,134 @@ func TestLexerWhitespace(t *testing.T) {
 		})
 	}
 }
+
+func TestLexerComments(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []Lexeme
+	}{
+		{
+			name:  "comment at end of line",
+			input: "hello // this is a comment\nworld",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "comment on its own line",
+			input: "hello\n// this is a comment\nworld",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "world", Line: 3, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "multiple comments",
+			input: "hello // comment 1\nworld // comment 2\n42",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
+				{Type: LEX_NUMBER, Str: "42", Line: 3, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "empty comment",
+			input: "hello //\nworld",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "comment at end of file",
+			input: "hello // comment at EOF",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "comment with special characters",
+			input: "hello // comment with symbols !@#$%^&*()\nworld",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "division operator vs comment",
+			input: "x / y // division vs comment",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 1},
+				{Type: LEX_OPERATOR, Str: "/", Line: 1, Col: 3},
+				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 5},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "single slash at EOF",
+			input: "hello /",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
+				{Type: LEX_OPERATOR, Str: "/", Line: 1, Col: 7},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name: "comment in complex code",
+			input: `func main() { // function definition
+    var x = 42 // variable declaration
+    // this is a standalone comment
+    return x // return statement
+}`,
+			expected: []Lexeme{
+				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "main", Line: 1, Col: 6},
+				{Type: LEX_PUNCTUATION, Str: "(", Line: 1, Col: 10},
+				{Type: LEX_PUNCTUATION, Str: ")", Line: 1, Col: 11},
+				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 13},
+				{Type: LEX_KEYWORD, Str: "var", Line: 2, Col: 5},
+				{Type: LEX_IDENT, Str: "x", Line: 2, Col: 9},
+				{Type: LEX_OPERATOR, Str: "=", Line: 2, Col: 11},
+				{Type: LEX_NUMBER, Str: "42", Line: 2, Col: 13},
+				{Type: LEX_KEYWORD, Str: "return", Line: 4, Col: 5},
+				{Type: LEX_IDENT, Str: "x", Line: 4, Col: 12},
+				{Type: LEX_PUNCTUATION, Str: "}", Line: 5, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(strings.NewReader(tt.input))
+			for i, expected := range tt.expected {
+				got, err := l.Next()
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+					return
+				}
+
+				if got.Type != expected.Type {
+					t.Errorf("token %d: expected type %s, got %s", i, expected.Type, got.Type)
+				}
+				if got.Str != expected.Str {
+					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
+				}
+				if got.Line != expected.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				}
+				if got.Col != expected.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				}
+			}
+		})
+	}
+}

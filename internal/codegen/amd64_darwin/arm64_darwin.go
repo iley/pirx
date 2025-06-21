@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	WORD_SIZE = 8
+	WORD_SIZE     = 8
+	MAX_FUNC_ARGS = 8
 )
 
 //go:embed prologue.txt
@@ -108,6 +109,7 @@ func generateOp(output io.Writer, op ir.Op, locals map[string]int) error {
 			// Assign variable to variable.
 			src := assign.Value.Variable
 			dst := assign.Target
+			// TODO: Support for non-local variables.
 			fmt.Fprintf(output, "  ldr x0, [x29, #-%d]  // %s\n", locals[src], op.String())
 			fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[dst])
 		} else if assign.Value.ImmediateInt != nil {
@@ -128,8 +130,31 @@ func generateOp(output io.Writer, op ir.Op, locals map[string]int) error {
 		} else {
 			panic(fmt.Sprintf("Invalid rvalue in assignment: %v", assign.Value))
 		}
-	} else if _, ok := op.(ir.Call); ok {
-		fmt.Fprintf(output, "  // %s not implemented yet\n", op.String())
+	} else if call, ok := op.(ir.Call); ok {
+		if len(call.Args) > MAX_FUNC_ARGS {
+			return fmt.Errorf("Too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
+		}
+
+		for i, arg := range call.Args {
+			if arg.Variable != "" {
+				// TODO: Support for non-local variables.
+				fmt.Fprintf(output, "  str x%d, [x29, #-%d]\n", i, locals[arg.Variable])
+			} else if arg.ImmediateInt != nil {
+				val := *arg.ImmediateInt
+				fmt.Fprintf(output, "  mov x%d, %s\n", i, util.Slice16bits(val, 0))
+				if (val<<16)&0xffff != 0 {
+					fmt.Fprintf(output, "  movk x%d, %s, lsl #16\n", i, util.Slice16bits(val, 16))
+				}
+				if (val<<32)&0xffff != 0 {
+					fmt.Fprintf(output, "  movk x%d, %s, lsl #32\n", i, util.Slice16bits(val, 32))
+				}
+				if (val<<48)&0xffff != 0 {
+					fmt.Fprintf(output, "  movk x%d, %s, lsl #48\n", i, util.Slice16bits(val, 48))
+				}
+				fmt.Fprintf(output, "  bl _%s\n", call.Function)
+				fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[call.Result])
+			}
+		}
 	} else if _, ok := op.(ir.BinaryOp); ok {
 		fmt.Fprintf(output, "  // %s not implemented yet\n", op.String())
 	} else {

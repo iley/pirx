@@ -14,7 +14,8 @@ func main() {
     z = x;
     x = y;
     y = x;
-    puts(x);
-    puts(y);
-    puts(z);
+    foo();
+    putchar(x);
+    putchar(y);
+    putchar(z);
 }

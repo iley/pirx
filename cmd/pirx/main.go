@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +15,7 @@ import (
 )
 
 func main() {
-	output := flag.String("o", "", "output file name")
+	outputString := flag.String("o", "", "output file name")
 	targetString := flag.String("t", "arm64-darwin", "target architecture")
 	flag.Parse()
 
@@ -24,10 +25,6 @@ func main() {
 		os.Exit(1)
 	}
 	inputFileName := flag.Args()[0]
-
-	if *output == "" {
-		*output = strings.TrimSuffix(inputFileName, filepath.Ext(inputFileName)) + ".s"
-	}
 
 	inputFile, err := os.Open(inputFileName)
 	if err != nil {
@@ -44,18 +41,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	outputFile, err := os.Create(*output)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating output file: %v\n", err)
-		os.Exit(1)
-	}
-	defer outputFile.Close()
+	var output io.Writer
 
+	if *outputString == "-" {
+		output = os.Stdout
+	} else {
+		if *outputString == "" {
+			*outputString = strings.TrimSuffix(inputFileName, filepath.Ext(inputFileName)) + ".s"
+		}
+
+		outputFile, err := os.Create(*outputString)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error creating output file: %v\n", err)
+			os.Exit(1)
+		}
+		defer outputFile.Close()
+		output = outputFile
+	}
 	irgen := ir.NewIrGenerator()
 	programIr := irgen.Generate(ast)
 
 	if *targetString == "ir" {
-		programIr.Print(outputFile)
+		programIr.Print(output)
 	} else {
 		target, err := codegen.TargetFromName(*targetString)
 		if err != nil {

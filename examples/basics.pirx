@@ -1,3 +1,10 @@
+func foo(x: int, y: int) {
+  var z: int;
+  z = x;
+  x = y;
+  y = x;
+}
+
 func main() {
     var x: int;
     var y: int;

@@ -1,4 +1,4 @@
-EXAMPLES=hello.pirx
+EXAMPLES=hello.pirx basics.pirx
 ASSEMBLY_FILES=$(EXAMPLES:.pirx=.s)
 OBJ_FILES=$(EXAMPLES:.pirx=.o)
 BIN_FILES=$(EXAMPLES:.pirx=)

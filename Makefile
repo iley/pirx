@@ -7,6 +7,7 @@ testrunner: always
 	go build -o testrunner ./cmd/testrunner
 
 tests: pirx testrunner
+	go test ./...
 	./testrunner
 
 always:

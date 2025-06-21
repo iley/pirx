@@ -1,4 +1,4 @@
-package amd64_darwin
+package aarch64_darwin
 
 import (
 	_ "embed"

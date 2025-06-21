@@ -16,7 +16,7 @@ import (
 
 func main() {
 	outputString := flag.String("o", "", "output file name")
-	targetString := flag.String("t", "arm64-darwin", "target architecture")
+	targetString := flag.String("t", "aarch64-darwin", "target architecture")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {

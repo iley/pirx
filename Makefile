@@ -1,10 +1,13 @@
-all: pirx examples
+default: pirx
 
 pirx: always
 	go build -o pirx ./cmd/pirx
 
 testrunner: always
 	go build -o testrunner ./cmd/testrunner
+
+tests: pirx testrunner
+	./testrunner
 
 always:
 
@@ -15,7 +18,4 @@ clean:
 examples:
 	$(MAKE) -C ./examples
 
-tests: pirx testrunner
-	./testrunner
-
-.PHONY: always clean examples tests
+.PHONY: always clean default examples tests

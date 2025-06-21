@@ -218,7 +218,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Found %d test(s)\n\n", len(tests))
+	fmt.Printf("Found %d test(s)\n", len(tests))
 
 	// Run all tests
 	passed := 0
@@ -236,7 +236,7 @@ func main() {
 	}
 
 	// Print summary
-	fmt.Printf("\nTest Results: %d passed, %d failed\n", passed, failed)
+	fmt.Printf("Test Results: %d passed, %d failed\n", passed, failed)
 
 	if failed > 0 {
 		os.Exit(1)

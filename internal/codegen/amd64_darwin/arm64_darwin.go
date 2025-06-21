@@ -103,6 +103,20 @@ func generateFunction(output io.Writer, f ir.IrFunction) error {
 	return nil
 }
 
+// generateRegisterLoad generates ARM64 assembly to load an immediate integer value into the specified register
+func generateRegisterLoad(output io.Writer, reg string, val int) {
+	fmt.Fprintf(output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
+	if (val<<16)&0xffff != 0 {
+		fmt.Fprintf(output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
+	}
+	if (val<<32)&0xffff != 0 {
+		fmt.Fprintf(output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
+	}
+	if (val<<48)&0xffff != 0 {
+		fmt.Fprintf(output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
+	}
+}
+
 func generateOp(output io.Writer, op ir.Op, locals map[string]int) error {
 	if assign, ok := op.(ir.Assign); ok {
 		if assign.Value.Variable != "" {
@@ -116,16 +130,7 @@ func generateOp(output io.Writer, op ir.Op, locals map[string]int) error {
 			// Assign integer constant to variable.
 			name := assign.Target
 			val := *assign.Value.ImmediateInt
-			fmt.Fprintf(output, "  mov x0, %s  // %s\n", util.Slice16bits(val, 0), op.String())
-			if (val<<16)&0xffff != 0 {
-				fmt.Fprintf(output, "  movk x0, %s, lsl #16\n", util.Slice16bits(val, 16))
-			}
-			if (val<<32)&0xffff != 0 {
-				fmt.Fprintf(output, "  movk x0, %s, lsl #32\n", util.Slice16bits(val, 32))
-			}
-			if (val<<48)&0xffff != 0 {
-				fmt.Fprintf(output, "  movk x0, %s, lsl #48\n", util.Slice16bits(val, 48))
-			}
+			generateRegisterLoad(output, "x0", val)
 			fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[name])
 		} else {
 			panic(fmt.Sprintf("Invalid rvalue in assignment: %v", assign.Value))
@@ -141,16 +146,7 @@ func generateOp(output io.Writer, op ir.Op, locals map[string]int) error {
 				fmt.Fprintf(output, "  str x%d, [x29, #-%d]\n", i, locals[arg.Variable])
 			} else if arg.ImmediateInt != nil {
 				val := *arg.ImmediateInt
-				fmt.Fprintf(output, "  mov x%d, %s\n", i, util.Slice16bits(val, 0))
-				if (val<<16)&0xffff != 0 {
-					fmt.Fprintf(output, "  movk x%d, %s, lsl #16\n", i, util.Slice16bits(val, 16))
-				}
-				if (val<<32)&0xffff != 0 {
-					fmt.Fprintf(output, "  movk x%d, %s, lsl #32\n", i, util.Slice16bits(val, 32))
-				}
-				if (val<<48)&0xffff != 0 {
-					fmt.Fprintf(output, "  movk x%d, %s, lsl #48\n", i, util.Slice16bits(val, 48))
-				}
+				generateRegisterLoad(output, fmt.Sprintf("x%d", i), val)
 				fmt.Fprintf(output, "  bl _%s\n", call.Function)
 				fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[call.Result])
 			}

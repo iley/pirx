@@ -1,8 +1,4 @@
-func foo(x: int, y: int) {
-  var z: int;
-  z = x;
-  x = y;
-  y = x;
+func add(x: int, y: int) {
 }
 
 func main() {
@@ -14,7 +10,6 @@ func main() {
     z = x;
     x = y;
     y = x;
-    foo();
     putchar(x);
     putchar(y);
     putchar(z);

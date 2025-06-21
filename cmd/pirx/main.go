@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/iley/pirx/internal/codegen"
+	"github.com/iley/pirx/internal/ir"
 	"github.com/iley/pirx/internal/lexer"
 	"github.com/iley/pirx/internal/parser"
 )
@@ -24,12 +25,6 @@ func main() {
 	}
 	inputFileName := flag.Args()[0]
 
-	target, err := codegen.TargetFromName(*targetString)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error parsing target: %v\n", err)
-		os.Exit(1)
-	}
-
 	if *output == "" {
 		*output = strings.TrimSuffix(inputFileName, filepath.Ext(inputFileName)) + ".s"
 	}
@@ -43,7 +38,7 @@ func main() {
 
 	lex := lexer.New(inputFile)
 	p := parser.New(lex)
-	program, err := p.ParseProgram()
+	ast, err := p.ParseProgram()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error parsing program: %v\n", err)
 		os.Exit(1)
@@ -56,9 +51,23 @@ func main() {
 	}
 	defer outputFile.Close()
 
-	err = codegen.Generate(target, program, outputFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error generating code: %v\n", err)
-		os.Exit(1)
+	irgen := ir.NewIrGenerator()
+	programIr := irgen.Generate(ast)
+
+	if *targetString == "ir" {
+		programIr.Print(outputFile)
+	} else {
+		target, err := codegen.TargetFromName(*targetString)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error parsing target: %v\n", err)
+			os.Exit(1)
+		}
+
+		// TODO: Run codegen.
+		_ = target
 	}
+
+}
+
+func printIr(irp ir.IrProgram) {
 }

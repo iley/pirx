@@ -1,5 +1,7 @@
 package parser
 
+import "fmt"
+
 type AstNode interface {
 	Accept(visitor AstVisitor)
 }
@@ -63,18 +65,19 @@ func NewExpressionStatement(expressionStatement *ExpressionStatement) Statement 
 
 type Expression struct {
 	Literal      *Literal
-	FunctionCall *FunctionCall
 	Assignment   *Assignment
+	FunctionCall *FunctionCall
 }
 
 func (e *Expression) Accept(visitor AstVisitor) {
 	if e.Literal != nil {
 		e.Literal.Accept(visitor)
-	} else if e.FunctionCall != nil {
-		e.FunctionCall.Accept(visitor)
 	} else if e.Assignment != nil {
 		e.Assignment.Accept(visitor)
+	} else if e.FunctionCall != nil {
+		e.FunctionCall.Accept(visitor)
 	}
+	panic(fmt.Sprintf("Invalid expression type: %v", e))
 }
 
 // Helper functions for creating Expression unions

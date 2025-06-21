@@ -1,4 +1,3 @@
-// calculate factorial of n
 func factorial(n: int) int {
     if n <= 1 {
         return 1;

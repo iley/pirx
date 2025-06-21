@@ -6,7 +6,7 @@ BIN_FILES=$(EXAMPLES:.pirx=)
 default: $(BIN_FILES)
 
 $(BIN_FILES): %: %.o
-	ld -o $@ $< -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -e _start -arch arm64
+	ld -o $@ $< -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -arch arm64
 
 $(OBJ_FILES): %.o: %.s
 	as -arch arm64 -o $@ $<

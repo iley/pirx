@@ -118,6 +118,24 @@ func TestParseProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "program with two empty functions",
+			src:  `func main() {} func helper() {}`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body:   &Block{Statements: []Statement{}},
+					},
+					{
+						Name:   "helper",
+						Params: []*Param{},
+						Body:   &Block{Statements: []Statement{}},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

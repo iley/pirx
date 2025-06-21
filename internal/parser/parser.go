@@ -42,12 +42,25 @@ func (p *Parser) peek() (lexer.Lexeme, error) {
 }
 
 func (p *Parser) ParseProgram() (*Program, error) {
-	// Parse: func main() {}
-	fn, err := p.parseFunction()
-	if err != nil {
-		return nil, err
+	functions := []*Function{}
+
+	for {
+		lex, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if lex.Type == lexer.LEX_EOF {
+			break
+		}
+
+		fn, err := p.parseFunction()
+		if err != nil {
+			return nil, err
+		}
+		functions = append(functions, fn)
 	}
-	return &Program{Functions: []*Function{fn}}, nil
+
+	return &Program{Functions: functions}, nil
 }
 
 func (p *Parser) parseFunction() (*Function, error) {

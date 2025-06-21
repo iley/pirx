@@ -16,6 +16,12 @@ const (
 	MAX_FUNC_ARGS = 8
 )
 
+type CodegenContext struct {
+	output    io.Writer
+	locals    map[string]int
+	frameSize int
+}
+
 //go:embed prologue.txt
 var prologue string
 
@@ -86,8 +92,14 @@ func generateFunction(output io.Writer, f ir.IrFunction) error {
 		offset += WORD_SIZE
 	}
 
+	cc := &CodegenContext{
+		output:    output,
+		locals:    locals,
+		frameSize: frameSize,
+	}
+
 	for _, op := range f.Ops {
-		err := generateOp(output, op, locals, frameSize)
+		err := generateOp(cc, op)
 		if err != nil {
 			return nil
 		}
@@ -100,38 +112,38 @@ func generateFunction(output io.Writer, f ir.IrFunction) error {
 	return nil
 }
 
-func generateRegisterLoad(output io.Writer, reg string, arg ir.Arg, locals map[string]int) {
+func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	// TODO: Support for non-local variables.
 	if arg.Variable != "" {
-		fmt.Fprintf(output, "  ldr %s, [x29, #-%d]\n", reg, locals[arg.Variable])
+		fmt.Fprintf(cc.output, "  ldr %s, [x29, #-%d]\n", reg, cc.locals[arg.Variable])
 	} else if arg.ImmediateInt != nil {
 		val := *arg.ImmediateInt
-		fmt.Fprintf(output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
+		fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
 		if (val<<16)&0xffff != 0 {
-			fmt.Fprintf(output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
+			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
 		}
 		if (val<<32)&0xffff != 0 {
-			fmt.Fprintf(output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
+			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
 		}
 		if (val<<48)&0xffff != 0 {
-			fmt.Fprintf(output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
+			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
 		}
 	}
 }
 
-func generateOp(output io.Writer, op ir.Op, locals map[string]int, frameSize int) error {
+func generateOp(cc *CodegenContext, op ir.Op) error {
 	if assign, ok := op.(ir.Assign); ok {
 		if assign.Value.Variable != "" {
 			// Assign variable to variable.
 			src := assign.Value.Variable
 			dst := assign.Target
-			fmt.Fprintf(output, "  ldr x0, [x29, #-%d]  // %s\n", locals[src], op.String())
-			fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[dst])
+			fmt.Fprintf(cc.output, "  ldr x0, [x29, #-%d]  // %s\n", cc.locals[src], op.String())
+			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[dst])
 		} else if assign.Value.ImmediateInt != nil {
 			// Assign integer constant to variable.
 			name := assign.Target
-			generateRegisterLoad(output, "x0", assign.Value, locals)
-			fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[name])
+			generateRegisterLoad(cc, "x0", assign.Value)
+			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[name])
 		} else {
 			panic(fmt.Sprintf("Invalid rvalue in assignment: %v", assign.Value))
 		}
@@ -141,19 +153,19 @@ func generateOp(output io.Writer, op ir.Op, locals map[string]int, frameSize int
 		}
 
 		for i, arg := range call.Args {
-			generateRegisterLoad(output, fmt.Sprintf("x%d", i), arg, locals)
-			fmt.Fprintf(output, "  bl _%s\n", call.Function)
-			fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[call.Result])
+			generateRegisterLoad(cc, fmt.Sprintf("x%d", i), arg)
+			fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
+			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
 		}
 	} else if _, ok := op.(ir.BinaryOp); ok {
-		fmt.Fprintf(output, "  // %s not implemented yet\n", op.String())
+		fmt.Fprintf(cc.output, "  // %s not implemented yet\n", op.String())
 	} else if ret, ok := op.(ir.Return); ok {
 		if ret.Value != nil {
-			generateRegisterLoad(output, "x0", *ret.Value, locals)
+			generateRegisterLoad(cc, "x0", *ret.Value)
 		}
-		fmt.Fprintf(output, "  ldp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
-		fmt.Fprintf(output, "  add sp, sp, #%d\n", frameSize)
-		fmt.Fprintf(output, "  ret\n")
+		fmt.Fprintf(cc.output, "  ldp x29, x30, [sp, #%d]\n", cc.frameSize-2*WORD_SIZE)
+		fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", cc.frameSize)
+		fmt.Fprintf(cc.output, "  ret\n")
 	} else {
 		panic(fmt.Sprintf("unknown op type: %v", op))
 	}

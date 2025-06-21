@@ -79,6 +79,8 @@ func (g *IrGenerator) generateExpressionOps(node parser.Expression, nextTempInde
 		temp := allocTemp(nextTempIndex)
 		ops = append(ops, Call{Result: temp, Function: node.FunctionCall.FunctionName, Args: args})
 		return ops, Arg{Variable: temp}
+	} else if node.VariableReference != nil {
+		return []Op{}, Arg{Variable: node.VariableReference.Name}
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }

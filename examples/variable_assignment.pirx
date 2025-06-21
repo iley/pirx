@@ -1,0 +1,6 @@
+func main() {
+    var x: int;
+    var y: int;
+    x = 42;
+    y = x;
+} 

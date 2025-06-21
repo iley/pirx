@@ -8,4 +8,6 @@ func main() {
     x = y;
     y = x;
     puts(x);
+    puts(y);
+    puts(z);
 }

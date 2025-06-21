@@ -120,3 +120,7 @@ func (p *Printer) VisitAssignment(assignment *Assignment) {
 	p.write(assignment.VariableName + " = ")
 	assignment.Value.Accept(p)
 }
+
+func (p *Printer) VisitVariableReference(vr *VariableReference) {
+	p.write(vr.Name)
+}

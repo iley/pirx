@@ -11,4 +11,5 @@ type AstVisitor interface {
 	VisitFunctionCall(functionCall *FunctionCall)
 	VisitExpressionStatement(e *ExpressionStatement)
 	VisitAssignment(assignment *Assignment)
+	VisitVariableReference(variableReference *VariableReference)
 }

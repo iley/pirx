@@ -383,6 +383,9 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 		if nextLex.Type == lexer.LEX_OPERATOR && nextLex.Str == "=" {
 			return p.parseAssignment()
 		}
+		if nextLex.Type == lexer.LEX_PUNCTUATION && nextLex.Str == "(" {
+			return p.parseFunctionCall()
+		}
 	} else {
 		// Need to peek at the next lexeme from the lexer
 		currentPos := p.pos
@@ -399,10 +402,13 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 		if nextLex.Type == lexer.LEX_OPERATOR && nextLex.Str == "=" {
 			return p.parseAssignment()
 		}
+		if nextLex.Type == lexer.LEX_PUNCTUATION && nextLex.Str == "(" {
+			return p.parseFunctionCall()
+		}
 	}
 
-	// Default to function call if not assignment
-	return p.parseFunctionCall()
+	// Default to variable reference if not assignment or function call
+	return p.parseVariableReference()
 }
 
 func (p *Parser) parseAssignment() (Expression, error) {
@@ -434,5 +440,20 @@ func (p *Parser) parseAssignment() (Expression, error) {
 	return Expression{Assignment: &Assignment{
 		VariableName: varName,
 		Value:        value,
+	}}, nil
+}
+
+func (p *Parser) parseVariableReference() (Expression, error) {
+	// variable name
+	lex, err := p.consume()
+	if err != nil {
+		return Expression{}, err
+	}
+	if lex.Type != lexer.LEX_IDENT {
+		return Expression{}, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
+	}
+
+	return Expression{VariableReference: &VariableReference{
+		Name: lex.Str,
 	}}, nil
 }

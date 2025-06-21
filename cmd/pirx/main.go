@@ -70,11 +70,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		// TODO: Run codegen.
-		_ = target
+		codegen.Generate(output, target, programIr)
 	}
-
-}
-
-func printIr(irp ir.IrProgram) {
 }

@@ -470,7 +470,7 @@ func TestParseExpression_Error(t *testing.T) {
 		{
 			name:          "function call missing opening parenthesis",
 			src:           `func main() { foo 1); }`,
-			expectedError: "expected '('",
+			expectedError: "expected ';' after statement",
 		},
 		{
 			name:          "empty expression",
@@ -589,6 +589,16 @@ func TestParseExpression_Assignment(t *testing.T) {
 				}},
 			}},
 		},
+		{
+			name: "assignment with variable",
+			src:  `func main() { x = y; }`,
+			expected: Expression{Assignment: &Assignment{
+				VariableName: "x",
+				Value: Expression{VariableReference: &VariableReference{
+					Name: "y",
+				}},
+			}},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -628,7 +638,7 @@ func TestParseExpression_Assignment_Error(t *testing.T) {
 		{
 			name:          "assignment missing equals sign",
 			src:           `func main() { x 42; }`,
-			expectedError: "expected '('",
+			expectedError: "expected ';' after statement",
 		},
 		{
 			name:          "assignment missing value",

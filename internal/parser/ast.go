@@ -64,9 +64,10 @@ func NewExpressionStatement(expressionStatement *ExpressionStatement) Statement 
 }
 
 type Expression struct {
-	Literal      *Literal
-	Assignment   *Assignment
-	FunctionCall *FunctionCall
+	Literal           *Literal
+	Assignment        *Assignment
+	FunctionCall      *FunctionCall
+	VariableReference *VariableReference
 }
 
 func (e *Expression) Accept(visitor AstVisitor) {
@@ -76,8 +77,11 @@ func (e *Expression) Accept(visitor AstVisitor) {
 		e.Assignment.Accept(visitor)
 	} else if e.FunctionCall != nil {
 		e.FunctionCall.Accept(visitor)
+	} else if e.VariableReference != nil {
+		e.VariableReference.Accept(visitor)
+	} else {
+		panic(fmt.Sprintf("Invalid expression type: %v", e))
 	}
-	panic(fmt.Sprintf("Invalid expression type: %v", e))
 }
 
 // Helper functions for creating Expression unions
@@ -91,6 +95,10 @@ func NewFunctionCallExpression(functionCall *FunctionCall) Expression {
 
 func NewAssignmentExpression(assignment *Assignment) Expression {
 	return Expression{Assignment: assignment}
+}
+
+func NewVariableReferenceExpression(variableReference *VariableReference) Expression {
+	return Expression{VariableReference: variableReference}
 }
 
 type LiteralType int
@@ -143,4 +151,12 @@ type Assignment struct {
 
 func (a *Assignment) Accept(visitor AstVisitor) {
 	visitor.VisitAssignment(a)
+}
+
+type VariableReference struct {
+	Name string
+}
+
+func (v *VariableReference) Accept(visitor AstVisitor) {
+	visitor.VisitVariableReference(v)
 }

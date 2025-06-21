@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/iley/pirx/internal/codegen/amd64_darwin"
-	"github.com/iley/pirx/internal/parser"
+	"github.com/iley/pirx/internal/ir"
 )
 
 type Target int
@@ -22,16 +22,10 @@ func TargetFromName(name string) (Target, error) {
 	return 0, fmt.Errorf("unknown target: %s", name)
 }
 
-func Generate(target Target, program *parser.Program, output io.Writer) error {
-	var visitor parser.AstVisitor
-
+func Generate(output io.Writer, target Target, irp ir.IrProgram) error {
 	switch target {
 	case TargetARM64Darwin:
-		visitor = amd64_darwin.NewCodegenVisitor(output)
-	default:
-		return fmt.Errorf("unknown target: %d", target)
+		return amd64_darwin.Generate(output, irp)
 	}
-
-	program.Accept(visitor)
-	return nil
+	return fmt.Errorf("Unknown target: %v", target)
 }

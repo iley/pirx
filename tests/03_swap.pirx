@@ -1,0 +1,13 @@
+func main() {
+  var x: int;
+  var y: int;
+  var z: int;
+  x = 65; // 'A'
+  y = 66; // 'B'
+  z = x;
+  x = y;
+  y = z;
+  putchar(x);
+  putchar(y);
+  return 0;
+}

@@ -224,7 +224,11 @@ func main() {
 		return tests[i].Name < tests[j].Name
 	})
 
-	fmt.Printf("Found %d test(s)\n", len(tests))
+	if len(tests) == 1 {
+		fmt.Printf("Found 1 test\n")
+	} else {
+		fmt.Printf("Found %d tests\n", len(tests))
+	}
 
 	// Run all tests
 	passed := 0
@@ -242,7 +246,11 @@ func main() {
 	}
 
 	// Print summary
-	fmt.Printf("Test Results: %d passed, %d failed\n", passed, failed)
+	if failed == 0 {
+		fmt.Printf("Test Results: %d passed. All good!\n", passed)
+	} else {
+		fmt.Printf("Test Results: %d passed, %d failed\n", passed, failed)
+	}
 
 	if failed > 0 {
 		os.Exit(1)

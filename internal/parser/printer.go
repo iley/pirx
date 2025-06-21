@@ -124,3 +124,11 @@ func (p *Printer) VisitAssignment(assignment *Assignment) {
 func (p *Printer) VisitVariableReference(vr *VariableReference) {
 	p.write(vr.Name)
 }
+
+func (p *Printer) VisitReturnStatement(rs *ReturnStatement) {
+	p.write("return")
+	if rs.Value != nil {
+		p.write(" ")
+		rs.Value.Accept(p)
+	}
+}

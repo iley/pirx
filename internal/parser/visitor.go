@@ -12,4 +12,5 @@ type AstVisitor interface {
 	VisitExpressionStatement(e *ExpressionStatement)
 	VisitAssignment(assignment *Assignment)
 	VisitVariableReference(variableReference *VariableReference)
+	VisitReturnStatement(returnStatement *ReturnStatement)
 }

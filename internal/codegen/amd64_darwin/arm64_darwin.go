@@ -63,7 +63,6 @@ func generateFunction(output io.Writer, f ir.IrFunction) error {
 	frameSize = util.Align(frameSize, 16)
 
 	// For now we're going to assume that all variables are 64-bit.
-	fmt.Fprintf(output, "  // prologue\n")
 	fmt.Fprintf(output, "  sub sp, sp, #%d\n", frameSize)
 	// Store x29 and x30 at the top of the frame.
 	fmt.Fprintf(output, "  stp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
@@ -88,49 +87,50 @@ func generateFunction(output io.Writer, f ir.IrFunction) error {
 	}
 
 	for _, op := range f.Ops {
-		err := generateOp(output, op, locals)
+		err := generateOp(output, op, locals, frameSize)
 		if err != nil {
 			return nil
 		}
 	}
 
 	fmt.Fprintf(output, "\n")
-	fmt.Fprintf(output, "  // epilogue\n")
-	// Restore FP and LR.
 	fmt.Fprintf(output, "  ldp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
 	fmt.Fprintf(output, "  add sp, sp, #%d\n", frameSize)
 	fmt.Fprintf(output, "  ret\n")
 	return nil
 }
 
-// generateRegisterLoad generates ARM64 assembly to load an immediate integer value into the specified register
-func generateRegisterLoad(output io.Writer, reg string, val int) {
-	fmt.Fprintf(output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
-	if (val<<16)&0xffff != 0 {
-		fmt.Fprintf(output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
-	}
-	if (val<<32)&0xffff != 0 {
-		fmt.Fprintf(output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
-	}
-	if (val<<48)&0xffff != 0 {
-		fmt.Fprintf(output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
+func generateRegisterLoad(output io.Writer, reg string, arg ir.Arg, locals map[string]int) {
+	// TODO: Support for non-local variables.
+	if arg.Variable != "" {
+		fmt.Fprintf(output, "  ldr %s, [x29, #-%d]\n", reg, locals[arg.Variable])
+	} else if arg.ImmediateInt != nil {
+		val := *arg.ImmediateInt
+		fmt.Fprintf(output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
+		if (val<<16)&0xffff != 0 {
+			fmt.Fprintf(output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
+		}
+		if (val<<32)&0xffff != 0 {
+			fmt.Fprintf(output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
+		}
+		if (val<<48)&0xffff != 0 {
+			fmt.Fprintf(output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
+		}
 	}
 }
 
-func generateOp(output io.Writer, op ir.Op, locals map[string]int) error {
+func generateOp(output io.Writer, op ir.Op, locals map[string]int, frameSize int) error {
 	if assign, ok := op.(ir.Assign); ok {
 		if assign.Value.Variable != "" {
 			// Assign variable to variable.
 			src := assign.Value.Variable
 			dst := assign.Target
-			// TODO: Support for non-local variables.
 			fmt.Fprintf(output, "  ldr x0, [x29, #-%d]  // %s\n", locals[src], op.String())
 			fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[dst])
 		} else if assign.Value.ImmediateInt != nil {
 			// Assign integer constant to variable.
 			name := assign.Target
-			val := *assign.Value.ImmediateInt
-			generateRegisterLoad(output, "x0", val)
+			generateRegisterLoad(output, "x0", assign.Value, locals)
 			fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[name])
 		} else {
 			panic(fmt.Sprintf("Invalid rvalue in assignment: %v", assign.Value))
@@ -141,18 +141,19 @@ func generateOp(output io.Writer, op ir.Op, locals map[string]int) error {
 		}
 
 		for i, arg := range call.Args {
-			if arg.Variable != "" {
-				// TODO: Support for non-local variables.
-				fmt.Fprintf(output, "  str x%d, [x29, #-%d]\n", i, locals[arg.Variable])
-			} else if arg.ImmediateInt != nil {
-				val := *arg.ImmediateInt
-				generateRegisterLoad(output, fmt.Sprintf("x%d", i), val)
-				fmt.Fprintf(output, "  bl _%s\n", call.Function)
-				fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[call.Result])
-			}
+			generateRegisterLoad(output, fmt.Sprintf("x%d", i), arg, locals)
+			fmt.Fprintf(output, "  bl _%s\n", call.Function)
+			fmt.Fprintf(output, "  str x0, [x29, #-%d]\n", locals[call.Result])
 		}
 	} else if _, ok := op.(ir.BinaryOp); ok {
 		fmt.Fprintf(output, "  // %s not implemented yet\n", op.String())
+	} else if ret, ok := op.(ir.Return); ok {
+		if ret.Value != nil {
+			generateRegisterLoad(output, "x0", *ret.Value, locals)
+		}
+		fmt.Fprintf(output, "  ldp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
+		fmt.Fprintf(output, "  add sp, sp, #%d\n", frameSize)
+		fmt.Fprintf(output, "  ret\n")
 	} else {
 		panic(fmt.Sprintf("unknown op type: %v", op))
 	}

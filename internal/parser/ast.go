@@ -44,6 +44,7 @@ func (b *Block) Accept(visitor AstVisitor) {
 type Statement struct {
 	VariableDeclaration *VariableDeclaration
 	ExpressionStatement *ExpressionStatement
+	ReturnStatement     *ReturnStatement
 }
 
 func (s *Statement) Accept(visitor AstVisitor) {
@@ -51,6 +52,8 @@ func (s *Statement) Accept(visitor AstVisitor) {
 		s.VariableDeclaration.Accept(visitor)
 	} else if s.ExpressionStatement != nil {
 		s.ExpressionStatement.Accept(visitor)
+	} else if s.ReturnStatement != nil {
+		s.ReturnStatement.Accept(visitor)
 	}
 }
 
@@ -61,6 +64,10 @@ func NewVariableDeclarationStatement(variableDeclaration *VariableDeclaration) S
 
 func NewExpressionStatement(expressionStatement *ExpressionStatement) Statement {
 	return Statement{ExpressionStatement: expressionStatement}
+}
+
+func NewReturnStatement(returnStatement *ReturnStatement) Statement {
+	return Statement{ReturnStatement: returnStatement}
 }
 
 type Expression struct {
@@ -159,4 +166,12 @@ type VariableReference struct {
 
 func (v *VariableReference) Accept(visitor AstVisitor) {
 	visitor.VisitVariableReference(v)
+}
+
+type ReturnStatement struct {
+	Value *Expression // optional return value
+}
+
+func (r *ReturnStatement) Accept(visitor AstVisitor) {
+	visitor.VisitReturnStatement(r)
 }

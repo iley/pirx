@@ -92,6 +92,20 @@ func (c Call) String() string {
 
 func (c Call) isOp() {}
 
+type Return struct {
+	Op
+	Value *Arg // nil for bare returns
+}
+
+func (r Return) String() string {
+	if r.Value != nil {
+		return fmt.Sprintf("Return(%s)", r.Value)
+	}
+	return "Return()"
+}
+
+func (r Return) isOp() {}
+
 type Arg struct {
 	Variable     string
 	ImmediateInt *int

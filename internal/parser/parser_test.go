@@ -136,6 +136,147 @@ func TestParseProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "function with return without value",
+			src:  `func main() { return; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{ReturnStatement: &ReturnStatement{
+									Value: nil,
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with return with integer value",
+			src:  `func main() { return 42; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{ReturnStatement: &ReturnStatement{
+									Value: &Expression{Literal: &Literal{
+										Type:     LiteralTypeInt,
+										IntValue: 42,
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with return with string value",
+			src:  `func main() { return "hello"; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{ReturnStatement: &ReturnStatement{
+									Value: &Expression{Literal: &Literal{
+										Type:        LiteralTypeString,
+										StringValue: "hello",
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with return with function call",
+			src:  `func main() { return foo(); }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{ReturnStatement: &ReturnStatement{
+									Value: &Expression{FunctionCall: &FunctionCall{
+										FunctionName: "foo",
+										Args:         []Expression{},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with multiple return statements",
+			src:  `func main() { return 1; return "two"; return; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{ReturnStatement: &ReturnStatement{
+									Value: &Expression{Literal: &Literal{
+										Type:     LiteralTypeInt,
+										IntValue: 1,
+									}},
+								}},
+								{ReturnStatement: &ReturnStatement{
+									Value: &Expression{Literal: &Literal{
+										Type:        LiteralTypeString,
+										StringValue: "two",
+									}},
+								}},
+								{ReturnStatement: &ReturnStatement{
+									Value: nil,
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with mixed statements including return",
+			src:  `func main() { var x: int; return x; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{VariableDeclaration: &VariableDeclaration{
+									Name: "x",
+									Type: "int",
+								}},
+								{ReturnStatement: &ReturnStatement{
+									Value: &Expression{VariableReference: &VariableReference{
+										Name: "x",
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

@@ -238,6 +238,13 @@ func (p *Parser) parseStatement() (Statement, error) {
 		}
 		return Statement{VariableDeclaration: varDecl}, nil
 	}
+	if lex.Type == lexer.LEX_KEYWORD && lex.Str == "return" {
+		retStmt, err := p.parseReturnStatement()
+		if err != nil {
+			return Statement{}, err
+		}
+		return Statement{ReturnStatement: retStmt}, nil
+	}
 	expression, err := p.parseExpression()
 	if err != nil {
 		return Statement{}, err
@@ -387,6 +394,33 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 		Name: name,
 		Type: typeStr,
 	}, nil
+}
+
+func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
+	// consume 'return'
+	_, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if there's an expression to return
+	lex, err := p.peek()
+	if err != nil {
+		return nil, err
+	}
+
+	// If the next token is a semicolon, this is a return without a value
+	if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ";" {
+		return &ReturnStatement{Value: nil}, nil
+	}
+
+	// Otherwise, parse the return value expression
+	expr, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReturnStatement{Value: &expr}, nil
 }
 
 func (p *Parser) parseIdentifierExpression() (Expression, error) {

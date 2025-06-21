@@ -40,6 +40,20 @@ func (g *IrGenerator) generateFunction(node *parser.Function) IrFunction {
 			irfunc.Ops = append(irfunc.Ops, ops...)
 		}
 	}
+
+	// Add implicit return if the function doesn't end with a return
+	if len(irfunc.Ops) == 0 {
+		// Empty function - add bare return
+		irfunc.Ops = append(irfunc.Ops, Return{Value: nil})
+	} else {
+		// Check if the last operation is a return
+		lastOp := irfunc.Ops[len(irfunc.Ops)-1]
+		if _, isReturn := lastOp.(Return); !isReturn {
+			// Last operation is not a return - add implicit bare return
+			irfunc.Ops = append(irfunc.Ops, Return{Value: nil})
+		}
+	}
+
 	return irfunc
 }
 
@@ -53,6 +67,16 @@ func (g *IrGenerator) generateStatementOps(node parser.Statement, nextTempIndex 
 		// We ignore the result of the expression.
 		exprOps, _ := g.generateExpressionOps(node.ExpressionStatement.Expression, nextTempIndex)
 		ops = append(ops, exprOps...)
+	} else if node.ReturnStatement != nil {
+		if node.ReturnStatement.Value != nil {
+			// Return with value
+			exprOps, resultArg := g.generateExpressionOps(*node.ReturnStatement.Value, nextTempIndex)
+			ops = append(ops, exprOps...)
+			ops = append(ops, Return{Value: &resultArg})
+		} else {
+			// Bare return
+			ops = append(ops, Return{Value: nil})
+		}
 	} else {
 		panic(fmt.Sprintf("unknown statement type %v", node))
 	}

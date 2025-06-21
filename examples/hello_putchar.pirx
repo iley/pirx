@@ -1,5 +1,7 @@
 func main() {
-    putchar(72);
+    var x: int;
+    x = 72;
+    putchar(x);
     putchar(101);
     putchar(108);
     putchar(108);

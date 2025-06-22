@@ -3,6 +3,7 @@ package ir
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 type BinaryOpType int
@@ -87,7 +88,11 @@ type Call struct {
 }
 
 func (c Call) String() string {
-	return fmt.Sprintf("Call(%s = %s(%v))", c.Result, c.Function, c.Args)
+	args := []string{}
+	for _, arg := range c.Args {
+		args = append(args, arg.String())
+	}
+	return fmt.Sprintf("Call(%s = %s(%s))", c.Result, c.Function, strings.Join(args, ", "))
 }
 
 func (c Call) isOp() {}

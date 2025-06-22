@@ -57,7 +57,7 @@ func Generate(output io.Writer, irp ir.IrProgram) error {
 	}
 	for str, label := range stringLiterals {
 		// TODO: Make sure escaping and various special characters work.
-		fmt.Fprintf(output, "%s: .ascii \"%s\\0\"", label, str)
+		fmt.Fprintf(output, "%s: .string \"%s\"\n", label, str)
 	}
 
 	return nil

@@ -121,8 +121,8 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	// TODO: Support for non-local variables.
 	if arg.Variable != "" {
 		fmt.Fprintf(cc.output, "  ldr %s, [x29, #-%d]\n", reg, cc.locals[arg.Variable])
-	} else if arg.ImmediateInt != nil {
-		val := *arg.ImmediateInt
+	} else if arg.LiteralInt != nil {
+		val := *arg.LiteralInt
 		fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
 		if (val<<16)&0xffff != 0 {
 			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
@@ -144,7 +144,7 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 			dst := assign.Target
 			fmt.Fprintf(cc.output, "  ldr x0, [x29, #-%d]\n", cc.locals[src])
 			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[dst])
-		} else if assign.Value.ImmediateInt != nil {
+		} else if assign.Value.LiteralInt != nil {
 			// Assign integer constant to variable.
 			name := assign.Target
 			generateRegisterLoad(cc, "x0", assign.Value)

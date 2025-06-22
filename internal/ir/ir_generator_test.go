@@ -65,7 +65,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 						Name:   "test",
 						Params: []string{},
 						Ops: []Op{
-							Return{Value: &Arg{ImmediateInt: intPtr(42)}},
+							Return{Value: &Arg{LiteralInt: intPtr(42)}},
 						},
 					},
 				},
@@ -164,7 +164,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 						Name:   "test",
 						Params: []string{},
 						Ops: []Op{
-							Assign{Target: "x", Value: Arg{ImmediateInt: intPtr(0)}},
+							Assign{Target: "x", Value: Arg{LiteralInt: intPtr(0)}},
 							Return{Value: &Arg{Variable: "x"}},
 						},
 					},
@@ -197,7 +197,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 						Name:   "test",
 						Params: []string{},
 						Ops: []Op{
-							Return{Value: &Arg{ImmediateInt: intPtr(1)}},
+							Return{Value: &Arg{LiteralInt: intPtr(1)}},
 							Return{Value: nil},
 						},
 					},
@@ -276,7 +276,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 						Name:   "test",
 						Params: []string{},
 						Ops: []Op{
-							Assign{Target: "x", Value: Arg{ImmediateInt: intPtr(0)}},
+							Assign{Target: "x", Value: Arg{LiteralInt: intPtr(0)}},
 							Return{Value: nil},
 						},
 					},
@@ -343,8 +343,8 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 						Name:   "test",
 						Params: []string{},
 						Ops: []Op{
-							Assign{Target: "x", Value: Arg{ImmediateInt: intPtr(0)}},
-							Return{Value: &Arg{ImmediateInt: intPtr(42)}},
+							Assign{Target: "x", Value: Arg{LiteralInt: intPtr(0)}},
+							Return{Value: &Arg{LiteralInt: intPtr(42)}},
 						},
 					},
 				},
@@ -377,8 +377,8 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 						Name:   "test",
 						Params: []string{},
 						Ops: []Op{
-							Return{Value: &Arg{ImmediateInt: intPtr(1)}},
-							Assign{Target: "x", Value: Arg{ImmediateInt: intPtr(0)}},
+							Return{Value: &Arg{LiteralInt: intPtr(1)}},
+							Assign{Target: "x", Value: Arg{LiteralInt: intPtr(0)}},
 							Return{Value: nil},
 						},
 					},

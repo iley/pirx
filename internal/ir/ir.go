@@ -112,14 +112,14 @@ func (r Return) String() string {
 func (r Return) isOp() {}
 
 type Arg struct {
-	Variable     string
-	ImmediateInt *int
+	Variable   string
+	LiteralInt *int
 	// TODO: Add more types.
 }
 
 func (a Arg) String() string {
-	if a.ImmediateInt != nil {
-		return fmt.Sprintf("%d", *a.ImmediateInt)
+	if a.LiteralInt != nil {
+		return fmt.Sprintf("%d", *a.LiteralInt)
 	}
 	if a.Variable != "" {
 		return a.Variable

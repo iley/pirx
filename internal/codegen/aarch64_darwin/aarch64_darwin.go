@@ -139,6 +139,89 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	return nil
 }
 
+func generateOp(cc *CodegenContext, op ir.Op) error {
+	if assign, ok := op.(ir.Assign); ok {
+		if assign.Value.Variable != "" {
+			// Assign variable to variable.
+			src := assign.Value.Variable
+			dst := assign.Target
+			fmt.Fprintf(cc.output, "  ldr x0, [x29, #-%d]\n", cc.locals[src])
+			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[dst])
+		} else if assign.Value.LiteralInt != nil {
+			// Assign integer constant to variable.
+			name := assign.Target
+			generateRegisterLoad(cc, "x0", assign.Value)
+			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[name])
+		} else {
+			panic(fmt.Sprintf("Invalid rvalue in assignment: %v", assign.Value))
+		}
+	} else if call, ok := op.(ir.Call); ok {
+		return generateFunctionCall(cc, call)
+	} else if binop, ok := op.(ir.BinaryOp); ok {
+		generateRegisterLoad(cc, "x0", binop.Left)
+		generateRegisterLoad(cc, "x1", binop.Right)
+		fmt.Fprintf(cc.output, "  add x0, x0, x1\n")
+		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[binop.Result])
+	} else if ret, ok := op.(ir.Return); ok {
+		if ret.Value != nil {
+			generateRegisterLoad(cc, "x0", *ret.Value)
+		}
+		fmt.Fprintf(cc.output, "  ldp x29, x30, [sp, #%d]\n", cc.frameSize-2*WORD_SIZE)
+		fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", cc.frameSize)
+		fmt.Fprintf(cc.output, "  ret\n")
+	} else {
+		panic(fmt.Sprintf("unknown op type: %v", op))
+	}
+	return nil
+}
+
+func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
+	if len(call.Args) > MAX_FUNC_ARGS {
+		return fmt.Errorf("Too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
+	}
+
+	if call.Variadic {
+		// Darwin deviates from the standard ARM64 ABI for variadic functions.
+		// Arguments go on the stack.
+		// First, move SP to allocate space for the args. Don't forget to align SP by 16.
+		spShift := 0
+		if len(call.Args) > 1 {
+			spShift = util.Align(len(call.Args)-1, 16)
+			fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", spShift)
+		}
+
+		// Then generate stack pushes for the arguments except the first one.
+		for i, arg := range call.Args[1:] {
+			generateRegisterLoad(cc, "x0", arg)
+			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*WORD_SIZE)
+		}
+
+		if len(call.Args) > 0 {
+			// Put the first argument into X0.
+			generateRegisterLoad(cc, "x0", call.Args[0])
+		}
+
+		// Finally, call the function.
+		fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
+		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
+
+		// Don't forget to clean up: move SP back.
+		if spShift > 0 {
+			fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", spShift)
+		}
+	} else {
+		// Non-variadic functions are much easier: put arguments into X0-X7.
+		// We're ignoring functions with more than 8 arguments for now.
+		// Those are supposed to go onto the stack.
+		for i, arg := range call.Args {
+			generateRegisterLoad(cc, fmt.Sprintf("x%d", i), arg)
+		}
+		fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
+		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
+	}
+	return nil
+}
+
 func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	// TODO: Support for non-local variables.
 	if arg.Variable != "" {
@@ -162,82 +245,4 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	} else {
 		panic(fmt.Sprintf("invalid arg in code generation: %v", arg))
 	}
-}
-
-func generateOp(cc *CodegenContext, op ir.Op) error {
-	if assign, ok := op.(ir.Assign); ok {
-		if assign.Value.Variable != "" {
-			// Assign variable to variable.
-			src := assign.Value.Variable
-			dst := assign.Target
-			fmt.Fprintf(cc.output, "  ldr x0, [x29, #-%d]\n", cc.locals[src])
-			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[dst])
-		} else if assign.Value.LiteralInt != nil {
-			// Assign integer constant to variable.
-			name := assign.Target
-			generateRegisterLoad(cc, "x0", assign.Value)
-			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[name])
-		} else {
-			panic(fmt.Sprintf("Invalid rvalue in assignment: %v", assign.Value))
-		}
-	} else if call, ok := op.(ir.Call); ok {
-		if len(call.Args) > MAX_FUNC_ARGS {
-			return fmt.Errorf("Too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
-		}
-
-		if call.Variadic {
-			// Darwin deviates from the standard ARM64 ABI for variadic functions.
-			// Arguments go on the stack.
-			// First, move SP to allocate space for the args. Don't forget to align SP by 16.
-			spShift := 0
-			if len(call.Args) > 1 {
-				spShift = util.Align(len(call.Args)-1, 16)
-				fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", spShift)
-			}
-
-			// Then generate stack pushes for the arguments except the first one.
-			for i, arg := range call.Args[1:] {
-				generateRegisterLoad(cc, "x0", arg)
-				fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*WORD_SIZE)
-			}
-
-			if len(call.Args) > 0 {
-				// Put the first argument into X0.
-				generateRegisterLoad(cc, "x0", call.Args[0])
-			}
-
-			// Finally, call the function.
-			fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
-			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
-
-			// Don't forget to clean up: move SP back.
-			if spShift > 0 {
-				fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", spShift)
-			}
-		} else {
-			// Non-variadic functions are much easier: put arguments into X0-X7.
-			// We're ignoring functions with more than 8 arguments for now.
-			// Those are supposed to go onto the stack.
-			for i, arg := range call.Args {
-				generateRegisterLoad(cc, fmt.Sprintf("x%d", i), arg)
-			}
-			fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
-			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
-		}
-	} else if binop, ok := op.(ir.BinaryOp); ok {
-		generateRegisterLoad(cc, "x0", binop.Left)
-		generateRegisterLoad(cc, "x1", binop.Right)
-		fmt.Fprintf(cc.output, "  add x0, x0, x1\n")
-		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[binop.Result])
-	} else if ret, ok := op.(ir.Return); ok {
-		if ret.Value != nil {
-			generateRegisterLoad(cc, "x0", *ret.Value)
-		}
-		fmt.Fprintf(cc.output, "  ldp x29, x30, [sp, #%d]\n", cc.frameSize-2*WORD_SIZE)
-		fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", cc.frameSize)
-		fmt.Fprintf(cc.output, "  ret\n")
-	} else {
-		panic(fmt.Sprintf("unknown op type: %v", op))
-	}
-	return nil
 }

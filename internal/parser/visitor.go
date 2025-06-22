@@ -13,4 +13,5 @@ type AstVisitor interface {
 	VisitAssignment(assignment *Assignment)
 	VisitVariableReference(variableReference *VariableReference)
 	VisitReturnStatement(returnStatement *ReturnStatement)
+	VisitBinaryOperation(binaryOperation *BinaryOperation)
 }

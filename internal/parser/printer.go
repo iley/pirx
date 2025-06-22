@@ -133,3 +133,11 @@ func (p *Printer) VisitReturnStatement(rs *ReturnStatement) {
 		rs.Value.Accept(p)
 	}
 }
+
+func (p *Printer) VisitBinaryOperation(bo *BinaryOperation) {
+	p.write("(")
+	bo.Left.Accept(p)
+	p.write(" " + bo.Operator + " ")
+	bo.Right.Accept(p)
+	p.write(")")
+}

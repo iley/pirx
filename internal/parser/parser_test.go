@@ -744,3 +744,53 @@ func TestParseExpression_Assignment_Error(t *testing.T) {
 		})
 	}
 }
+
+func TestParseExpression_BinaryOperation(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected Expression
+	}{
+		{
+			name: "simple addition",
+			src:  "1 + 2",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(1)},
+				Operator: "+",
+				Right:    Expression{Literal: NewIntLiteral(2)},
+			}},
+		},
+		{
+			name: "addition with variables",
+			src:  "x + y",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+				Operator: "+",
+				Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
+			}},
+		},
+		{
+			name: "addition with mixed types",
+			src:  "5 + x",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(5)},
+				Operator: "+",
+				Right:    Expression{VariableReference: &VariableReference{Name: "x"}},
+			}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			result, err := parser.parseExpression()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("expected %+v, got %+v", tc.expected, result)
+			}
+		})
+	}
+}

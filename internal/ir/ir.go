@@ -50,6 +50,8 @@ func (b BinaryOpType) String() string {
 
 type Op interface {
 	fmt.Stringer
+	// Returns the target being modified by the Op or empty string.
+	GetTarget() string
 	// GetArgs returns all Arg's used in the op.
 	// Used e.g. when we need to find all string literals used in a program.
 	GetArgs() []Arg
@@ -63,6 +65,10 @@ type Assign struct {
 
 func (a Assign) String() string {
 	return fmt.Sprintf("Assign(%s, %s)", a.Target, a.Value)
+}
+
+func (a Assign) GetTarget() string {
+	return a.Target
 }
 
 func (a Assign) GetArgs() []Arg {
@@ -81,16 +87,20 @@ func (b BinaryOp) String() string {
 	return fmt.Sprintf("BinaryOp(%s = %s %s %s)", b.Result, b.Left, b.Operation, b.Right)
 }
 
+func (b BinaryOp) GetTarget() string {
+	return b.Result
+}
+
 func (b BinaryOp) GetArgs() []Arg {
 	return []Arg{b.Left, b.Right}
 }
 
-// TODO: How to handle return values?
 type Call struct {
 	Op
 	Result   string
 	Function string
 	Args     []Arg
+	Variadic bool
 }
 
 func (c Call) String() string {
@@ -99,6 +109,10 @@ func (c Call) String() string {
 		args = append(args, arg.String())
 	}
 	return fmt.Sprintf("Call(%s = %s(%s))", c.Result, c.Function, strings.Join(args, ", "))
+}
+
+func (c Call) GetTarget() string {
+	return c.Result
 }
 
 func (c Call) GetArgs() []Arg {
@@ -115,6 +129,10 @@ func (r Return) String() string {
 		return fmt.Sprintf("Return(%s)", r.Value)
 	}
 	return "Return()"
+}
+
+func (r Return) GetTarget() string {
+	return ""
 }
 
 func (r Return) GetArgs() []Arg {

@@ -105,10 +105,18 @@ func (g *IrGenerator) generateExpressionOps(node parser.Expression, nextTempInde
 			args = append(args, subArg)
 		}
 		temp := allocTemp(nextTempIndex)
-		ops = append(ops, Call{Result: temp, Function: node.FunctionCall.FunctionName, Args: args})
+		ops = append(ops, Call{Result: temp, Function: node.FunctionCall.FunctionName, Args: args, Variadic: node.FunctionCall.Variadic})
 		return ops, Arg{Variable: temp}
 	} else if node.VariableReference != nil {
 		return []Op{}, Arg{Variable: node.VariableReference.Name}
+	} else if node.BinaryOperation != nil {
+		leftOps, leftArg := g.generateExpressionOps(node.BinaryOperation.Left, nextTempIndex)
+		rightOps, rightArg := g.generateExpressionOps(node.BinaryOperation.Right, nextTempIndex)
+		ops := append(leftOps, rightOps...)
+		temp := allocTemp(nextTempIndex)
+		operation := binaryOpTypeFromString(node.BinaryOperation.Operator)
+		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: operation})
+		return ops, Arg{Variable: temp}
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }
@@ -117,4 +125,13 @@ func allocTemp(nextTempIndex *int) string {
 	idx := *nextTempIndex
 	*nextTempIndex++
 	return fmt.Sprintf("$%d", idx)
+}
+
+func binaryOpTypeFromString(s string) BinaryOpType {
+	if s == "+" {
+		return Plus
+	} else if s == "-" {
+		return Minus
+	}
+	panic(fmt.Sprintf("unknown binary operation: %s", s))
 }

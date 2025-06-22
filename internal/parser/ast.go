@@ -75,6 +75,7 @@ type Expression struct {
 	Assignment        *Assignment
 	FunctionCall      *FunctionCall
 	VariableReference *VariableReference
+	BinaryOperation   *BinaryOperation
 }
 
 func (e *Expression) Accept(visitor AstVisitor) {
@@ -86,6 +87,8 @@ func (e *Expression) Accept(visitor AstVisitor) {
 		e.FunctionCall.Accept(visitor)
 	} else if e.VariableReference != nil {
 		e.VariableReference.Accept(visitor)
+	} else if e.BinaryOperation != nil {
+		e.BinaryOperation.Accept(visitor)
 	} else {
 		panic(fmt.Sprintf("Invalid expression type: %v", e))
 	}
@@ -106,6 +109,10 @@ func NewAssignmentExpression(assignment *Assignment) Expression {
 
 func NewVariableReferenceExpression(variableReference *VariableReference) Expression {
 	return Expression{VariableReference: variableReference}
+}
+
+func NewBinaryOperationExpression(binaryOperation *BinaryOperation) Expression {
+	return Expression{BinaryOperation: binaryOperation}
 }
 
 type Literal struct {
@@ -138,6 +145,7 @@ func (v *VariableDeclaration) Accept(visitor AstVisitor) {
 type FunctionCall struct {
 	FunctionName string
 	Args         []Expression
+	Variadic     bool
 }
 
 func (f *FunctionCall) Accept(visitor AstVisitor) {
@@ -175,4 +183,14 @@ type ReturnStatement struct {
 
 func (r *ReturnStatement) Accept(visitor AstVisitor) {
 	visitor.VisitReturnStatement(r)
+}
+
+type BinaryOperation struct {
+	Left     Expression
+	Operator string
+	Right    Expression
+}
+
+func (b *BinaryOperation) Accept(visitor AstVisitor) {
+	visitor.VisitBinaryOperation(b)
 }

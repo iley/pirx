@@ -54,6 +54,7 @@ func Generate(output io.Writer, irp ir.IrProgram) error {
 
 	if len(stringLiterals) > 0 {
 		fmt.Fprintf(output, "\n// String literals.\n")
+		fmt.Fprintf(output, ".data\n")
 	}
 	for str, label := range stringLiterals {
 		// TODO: Make sure escaping and various special characters work.
@@ -64,8 +65,8 @@ func Generate(output io.Writer, irp ir.IrProgram) error {
 }
 
 func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
-	fmt.Fprintf(cc.output, ".p2align 2\n")
 	fmt.Fprintf(cc.output, ".globl _%s\n", f.Name)
+	fmt.Fprintf(cc.output, ".p2align 2\n")
 	fmt.Fprintf(cc.output, "_%s:\n", f.Name)
 
 	// Map from local variable name to its offset on the stack.
@@ -78,12 +79,12 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 
 	// We need to know how many unique locals we have in total so we can allocate space on the stack below.
 	for _, op := range f.Ops {
-		if assign, ok := op.(ir.Assign); ok {
-			if _, seen := locals[assign.Target]; seen {
+		if target := op.GetTarget(); target != "" {
+			if _, seen := locals[target]; seen {
 				continue
 			}
 			// We'll assign the actual offset below.
-			locals[assign.Target] = -1
+			locals[target] = -1
 		}
 	}
 
@@ -156,7 +157,8 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 		}
 	} else if arg.LiteralString != nil {
 		label := cc.stringLiterals[*arg.LiteralString]
-		fmt.Fprintf(cc.output, "  adr %s, %s\n", reg, label)
+		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
+		fmt.Fprintf(cc.output, "  add %s, %s, %s@PAGEOFF\n", reg, reg, label)
 	} else {
 		panic(fmt.Sprintf("invalid arg in code generation: %v", arg))
 	}
@@ -183,13 +185,50 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 			return fmt.Errorf("Too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
 		}
 
-		for i, arg := range call.Args {
-			generateRegisterLoad(cc, fmt.Sprintf("x%d", i), arg)
+		if call.Variadic {
+			// Darwin deviates from the standard ARM64 ABI for variadic functions.
+			// Arguments go on the stack.
+			// First, move SP to allocate space for the args. Don't forget to align SP by 16.
+			spShift := 0
+			if len(call.Args) > 1 {
+				spShift = util.Align(len(call.Args)-1, 16)
+				fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", spShift)
+			}
+
+			// Then generate stack pushes for the arguments except the first one.
+			for i, arg := range call.Args[1:] {
+				generateRegisterLoad(cc, "x0", arg)
+				fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*WORD_SIZE)
+			}
+
+			if len(call.Args) > 0 {
+				// Put the first argument into X0.
+				generateRegisterLoad(cc, "x0", call.Args[0])
+			}
+
+			// Finally, call the function.
+			fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
+			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
+
+			// Don't forget to clean up: move SP back.
+			if spShift > 0 {
+				fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", spShift)
+			}
+		} else {
+			// Non-variadic functions are much easier: put arguments into X0-X7.
+			// We're ignoring functions with more than 8 arguments for now.
+			// Those are supposed to go onto the stack.
+			for i, arg := range call.Args {
+				generateRegisterLoad(cc, fmt.Sprintf("x%d", i), arg)
+			}
 			fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
 			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
 		}
-	} else if _, ok := op.(ir.BinaryOp); ok {
-		fmt.Fprintf(cc.output, "  // %s not implemented yet\n", op.String())
+	} else if binop, ok := op.(ir.BinaryOp); ok {
+		generateRegisterLoad(cc, "x0", binop.Left)
+		generateRegisterLoad(cc, "x1", binop.Right)
+		fmt.Fprintf(cc.output, "  add x0, x0, x1\n")
+		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[binop.Result])
 	} else if ret, ok := op.(ir.Return); ok {
 		if ret.Value != nil {
 			generateRegisterLoad(cc, "x0", *ret.Value)

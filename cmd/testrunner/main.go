@@ -29,7 +29,7 @@ func getCompilationConfig() (*CompilationConfig, error) {
 		case "arm64":
 			return &CompilationConfig{
 				Assembler:        "as",
-				AssemblerFlags:   []string{"-arch", "arm64"},
+				AssemblerFlags:   []string{"-arch", "arm64", "-g"},
 				Linker:           "ld",
 				LinkerFlags:      []string{"-lSystem", "-syslibroot", getSDKPath(), "-arch", "arm64"},
 				ExecutableSuffix: "",

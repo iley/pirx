@@ -1,0 +1,10 @@
+func main() {
+  var x: int;
+  var y: int;
+  var z: int;
+  x = 3;
+  y = 2;
+  z = x + y;
+  printf("z = %d", z);
+  return 0;
+}

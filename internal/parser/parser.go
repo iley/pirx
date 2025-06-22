@@ -7,6 +7,13 @@ import (
 	"github.com/iley/pirx/internal/lexer"
 )
 
+var (
+	// TODO: Find a better way of figuring out whether a function is variadic.
+	VariadicFuncs = map[string]struct{}{
+		"printf": struct{}{},
+	}
+)
+
 type Parser struct {
 	lexer   *lexer.Lexer
 	lexemes []lexer.Lexeme
@@ -253,6 +260,42 @@ func (p *Parser) parseStatement() (Statement, error) {
 }
 
 func (p *Parser) parseExpression() (Expression, error) {
+	// Parse the left operand
+	left, err := p.parsePrimaryExpression()
+	if err != nil {
+		return Expression{}, err
+	}
+
+	// Check for binary operators
+	lex, err := p.peek()
+	if err != nil {
+		return Expression{}, err
+	}
+
+	// If we find a binary operator, parse the right operand
+	if lex.Type == lexer.LEX_OPERATOR && lex.Str == "+" {
+		_, err := p.consume() // consume the operator
+		if err != nil {
+			return Expression{}, err
+		}
+
+		right, err := p.parseExpression()
+		if err != nil {
+			return Expression{}, err
+		}
+
+		return Expression{BinaryOperation: &BinaryOperation{
+			Left:     left,
+			Operator: "+",
+			Right:    right,
+		}}, nil
+	}
+
+	// No binary operator found, return the left operand
+	return left, nil
+}
+
+func (p *Parser) parsePrimaryExpression() (Expression, error) {
 	lex, err := p.peek()
 	if err != nil {
 		return Expression{}, err
@@ -291,6 +334,8 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	}
 
 	args := []Expression{}
+	_, variadic := VariadicFuncs[name]
+
 	// check for ')'
 	lex, err = p.peek()
 	if err != nil {
@@ -298,7 +343,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	}
 	if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
 		p.consume() // consume ')'
-		return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args}}, nil
+		return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}}, nil
 	}
 
 	for {
@@ -331,7 +376,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 		return Expression{}, err
 	}
 
-	return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args}}, nil
+	return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}}, nil
 }
 
 func (p *Parser) parseIntegerLiteral() (Expression, error) {

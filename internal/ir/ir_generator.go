@@ -132,6 +132,10 @@ func binaryOpTypeFromString(s string) BinaryOpType {
 		return Plus
 	} else if s == "-" {
 		return Minus
+	} else if s == "*" {
+		return Mul
+	} else if s == "/" {
+		return Div
 	}
 	panic(fmt.Sprintf("unknown binary operation: %s", s))
 }

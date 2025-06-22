@@ -260,40 +260,71 @@ func (p *Parser) parseStatement() (Statement, error) {
 }
 
 func (p *Parser) parseExpression() (Expression, error) {
+	return p.parseExpressionWithPrecedence(0)
+}
+
+func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, error) {
 	// Parse the left operand
 	left, err := p.parsePrimaryExpression()
 	if err != nil {
 		return Expression{}, err
 	}
 
-	// Check for binary operators
-	lex, err := p.peek()
-	if err != nil {
-		return Expression{}, err
-	}
+	for {
+		// Check for binary operators
+		lex, err := p.peek()
+		if err != nil {
+			return Expression{}, err
+		}
 
-	// If we find a binary operator, parse the right operand
-	if lex.Type == lexer.LEX_OPERATOR && (lex.Str == "+" || lex.Str == "-") {
+		// Check if this is a binary operator we recognize
+		if lex.Type != lexer.LEX_OPERATOR || !isBinaryOperator(lex.Str) {
+			break
+		}
+
+		precedence := getOperatorPrecedence(lex.Str)
+		if precedence < minPrecedence {
+			break
+		}
+
 		operator := lex.Str
-		_, err := p.consume() // consume the operator
+		_, err = p.consume() // consume the operator
 		if err != nil {
 			return Expression{}, err
 		}
 
-		right, err := p.parseExpression()
+		// For left-associative operators, use precedence + 1
+		// For right-associative operators, use precedence
+		nextMinPrecedence := precedence + 1
+
+		right, err := p.parseExpressionWithPrecedence(nextMinPrecedence)
 		if err != nil {
 			return Expression{}, err
 		}
 
-		return Expression{BinaryOperation: &BinaryOperation{
+		left = Expression{BinaryOperation: &BinaryOperation{
 			Left:     left,
 			Operator: operator,
 			Right:    right,
-		}}, nil
+		}}
 	}
 
-	// No binary operator found, return the left operand
 	return left, nil
+}
+
+func isBinaryOperator(op string) bool {
+	return op == "+" || op == "-" || op == "*" || op == "/"
+}
+
+func getOperatorPrecedence(op string) int {
+	switch op {
+	case "+", "-":
+		return 1
+	case "*", "/":
+		return 2
+	default:
+		return 0
+	}
 }
 
 func (p *Parser) parsePrimaryExpression() (Expression, error) {

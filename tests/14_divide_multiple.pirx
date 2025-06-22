@@ -1,0 +1,10 @@
+func main() {
+  var result: int;
+  result = 24 / 4 / 2;
+  printf("24 / 4 / 2 = %d\n", result);
+  result = 8 * 3 / 2;
+  printf("8 * 3 / 2 = %d\n", result);
+  result = 1 + 12 / 3 - 2;
+  printf("1 + 12 / 3 - 2 = %d\n", result);
+  return 0;
+} 

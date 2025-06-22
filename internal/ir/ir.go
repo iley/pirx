@@ -13,6 +13,8 @@ type BinaryOpType int
 const (
 	Plus BinaryOpType = iota
 	Minus
+	Mul
+	Div
 )
 
 type IrProgram struct {
@@ -45,6 +47,10 @@ func (b BinaryOpType) String() string {
 		return "+"
 	case Minus:
 		return "-"
+	case Mul:
+		return "*"
+	case Div:
+		return "/"
 	default:
 		panic(fmt.Sprintf("unknown binary operation: %d", int(b)))
 	}

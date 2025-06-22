@@ -814,6 +814,229 @@ func TestParseExpression_BinaryOperation(t *testing.T) {
 				Right:    Expression{Literal: NewIntLiteral(5)},
 			}},
 		},
+		{
+			name: "simple multiplication",
+			src:  "3 * 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(3)},
+				Operator: "*",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "multiplication with variables",
+			src:  "x * y",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+				Operator: "*",
+				Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
+			}},
+		},
+		{
+			name: "multiplication with mixed types",
+			src:  "7 * z",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(7)},
+				Operator: "*",
+				Right:    Expression{VariableReference: &VariableReference{Name: "z"}},
+			}},
+		},
+		{
+			name: "variable multiplication with literal",
+			src:  "b * 8",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "b"}},
+				Operator: "*",
+				Right:    Expression{Literal: NewIntLiteral(8)},
+			}},
+		},
+		{
+			name: "mixed addition and multiplication (correct precedence)",
+			src:  "2 + 3 * 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(2)},
+				Operator: "+",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(3)},
+					Operator: "*",
+					Right:    Expression{Literal: NewIntLiteral(4)},
+				}},
+			}},
+		},
+		{
+			name: "mixed multiplication and addition (correct precedence)",
+			src:  "2 * 3 + 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(2)},
+					Operator: "*",
+					Right:    Expression{Literal: NewIntLiteral(3)},
+				}},
+				Operator: "+",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "multiple multiplications (left associative)",
+			src:  "2 * 3 * 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(2)},
+					Operator: "*",
+					Right:    Expression{Literal: NewIntLiteral(3)},
+				}},
+				Operator: "*",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "complex precedence test",
+			src:  "1 + 2 * 3 + 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(1)},
+					Operator: "+",
+					Right: Expression{BinaryOperation: &BinaryOperation{
+						Left:     Expression{Literal: NewIntLiteral(2)},
+						Operator: "*",
+						Right:    Expression{Literal: NewIntLiteral(3)},
+					}},
+				}},
+				Operator: "+",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "subtraction and multiplication precedence",
+			src:  "10 - 2 * 3",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(10)},
+				Operator: "-",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(2)},
+					Operator: "*",
+					Right:    Expression{Literal: NewIntLiteral(3)},
+				}},
+			}},
+		},
+		{
+			name: "simple division",
+			src:  "12 / 3",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(12)},
+				Operator: "/",
+				Right:    Expression{Literal: NewIntLiteral(3)},
+			}},
+		},
+		{
+			name: "division with variables",
+			src:  "x / y",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+				Operator: "/",
+				Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
+			}},
+		},
+		{
+			name: "division with mixed types",
+			src:  "20 / z",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(20)},
+				Operator: "/",
+				Right:    Expression{VariableReference: &VariableReference{Name: "z"}},
+			}},
+		},
+		{
+			name: "variable division with literal",
+			src:  "w / 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "w"}},
+				Operator: "/",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "mixed addition and division (correct precedence)",
+			src:  "2 + 8 / 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(2)},
+				Operator: "+",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(8)},
+					Operator: "/",
+					Right:    Expression{Literal: NewIntLiteral(4)},
+				}},
+			}},
+		},
+		{
+			name: "mixed division and addition (correct precedence)",
+			src:  "12 / 3 + 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(12)},
+					Operator: "/",
+					Right:    Expression{Literal: NewIntLiteral(3)},
+				}},
+				Operator: "+",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "multiplication and division (same precedence, left associative)",
+			src:  "8 * 2 / 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(8)},
+					Operator: "*",
+					Right:    Expression{Literal: NewIntLiteral(2)},
+				}},
+				Operator: "/",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "division and multiplication (same precedence, left associative)",
+			src:  "12 / 3 * 2",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(12)},
+					Operator: "/",
+					Right:    Expression{Literal: NewIntLiteral(3)},
+				}},
+				Operator: "*",
+				Right:    Expression{Literal: NewIntLiteral(2)},
+			}},
+		},
+		{
+			name: "multiple divisions (left associative)",
+			src:  "24 / 4 / 2",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(24)},
+					Operator: "/",
+					Right:    Expression{Literal: NewIntLiteral(4)},
+				}},
+				Operator: "/",
+				Right:    Expression{Literal: NewIntLiteral(2)},
+			}},
+		},
+		{
+			name: "complex expression with division",
+			src:  "1 + 12 / 3 - 2",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(1)},
+					Operator: "+",
+					Right: Expression{BinaryOperation: &BinaryOperation{
+						Left:     Expression{Literal: NewIntLiteral(12)},
+						Operator: "/",
+						Right:    Expression{Literal: NewIntLiteral(3)},
+					}},
+				}},
+				Operator: "-",
+				Right:    Expression{Literal: NewIntLiteral(2)},
+			}},
+		},
 	}
 
 	for _, tc := range testCases {

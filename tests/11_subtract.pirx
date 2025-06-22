@@ -1,0 +1,11 @@
+func main() {
+  var x: int;
+  var y: int;
+  x = 10;
+  y = 3;
+  printf("x - y = %d\n", x - y);
+  printf("x - 1 = %d\n", x - 1);
+  printf("7 - y = %d\n", 7 - y);
+  printf("x + y - 1 = %d\n", x + y - 1);
+  return 0;
+}

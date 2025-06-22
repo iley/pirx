@@ -778,6 +778,42 @@ func TestParseExpression_BinaryOperation(t *testing.T) {
 				Right:    Expression{VariableReference: &VariableReference{Name: "x"}},
 			}},
 		},
+		{
+			name: "simple subtraction",
+			src:  "10 - 3",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(10)},
+				Operator: "-",
+				Right:    Expression{Literal: NewIntLiteral(3)},
+			}},
+		},
+		{
+			name: "subtraction with variables",
+			src:  "x - y",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+				Operator: "-",
+				Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
+			}},
+		},
+		{
+			name: "subtraction with mixed types",
+			src:  "15 - z",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(15)},
+				Operator: "-",
+				Right:    Expression{VariableReference: &VariableReference{Name: "z"}},
+			}},
+		},
+		{
+			name: "variable subtraction from literal",
+			src:  "a - 5",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "a"}},
+				Operator: "-",
+				Right:    Expression{Literal: NewIntLiteral(5)},
+			}},
+		},
 	}
 
 	for _, tc := range testCases {

@@ -273,7 +273,8 @@ func (p *Parser) parseExpression() (Expression, error) {
 	}
 
 	// If we find a binary operator, parse the right operand
-	if lex.Type == lexer.LEX_OPERATOR && lex.Str == "+" {
+	if lex.Type == lexer.LEX_OPERATOR && (lex.Str == "+" || lex.Str == "-") {
+		operator := lex.Str
 		_, err := p.consume() // consume the operator
 		if err != nil {
 			return Expression{}, err
@@ -286,7 +287,7 @@ func (p *Parser) parseExpression() (Expression, error) {
 
 		return Expression{BinaryOperation: &BinaryOperation{
 			Left:     left,
-			Operator: "+",
+			Operator: operator,
 			Right:    right,
 		}}, nil
 	}

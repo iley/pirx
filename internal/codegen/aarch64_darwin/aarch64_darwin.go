@@ -157,10 +157,7 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 	} else if call, ok := op.(ir.Call); ok {
 		return generateFunctionCall(cc, call)
 	} else if binop, ok := op.(ir.BinaryOp); ok {
-		generateRegisterLoad(cc, "x0", binop.Left)
-		generateRegisterLoad(cc, "x1", binop.Right)
-		fmt.Fprintf(cc.output, "  add x0, x0, x1\n")
-		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[binop.Result])
+		return generateBinaryOp(cc, binop)
 	} else if ret, ok := op.(ir.Return); ok {
 		if ret.Value != nil {
 			generateRegisterLoad(cc, "x0", *ret.Value)
@@ -244,4 +241,19 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	} else {
 		panic(fmt.Sprintf("invalid arg in code generation: %v", arg))
 	}
+}
+
+func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
+	generateRegisterLoad(cc, "x0", binop.Left)
+	generateRegisterLoad(cc, "x1", binop.Right)
+	switch binop.Operation {
+	case ir.Plus:
+		fmt.Fprintf(cc.output, "  add x0, x0, x1\n")
+	case ir.Minus:
+		fmt.Fprintf(cc.output, "  sub x0, x0, x1\n")
+	default:
+		panic(fmt.Sprintf("unsupported binary operation in aarch64-darwing codegen: %v", binop.Operation))
+	}
+	fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[binop.Result])
+	return nil
 }

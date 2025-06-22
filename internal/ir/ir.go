@@ -50,7 +50,9 @@ func (b BinaryOpType) String() string {
 
 type Op interface {
 	fmt.Stringer
-	isOp()
+	// GetArgs returns all Arg's used in the op.
+	// Used e.g. when we need to find all string literals used in a program.
+	GetArgs() []Arg
 }
 
 type Assign struct {
@@ -63,7 +65,9 @@ func (a Assign) String() string {
 	return fmt.Sprintf("Assign(%s, %s)", a.Target, a.Value)
 }
 
-func (a Assign) isOp() {}
+func (a Assign) GetArgs() []Arg {
+	return []Arg{a.Value}
+}
 
 type BinaryOp struct {
 	Op
@@ -77,7 +81,9 @@ func (b BinaryOp) String() string {
 	return fmt.Sprintf("BinaryOp(%s = %s %s %s)", b.Result, b.Left, b.Operation, b.Right)
 }
 
-func (b BinaryOp) isOp() {}
+func (b BinaryOp) GetArgs() []Arg {
+	return []Arg{b.Left, b.Right}
+}
 
 // TODO: How to handle return values?
 type Call struct {
@@ -95,7 +101,9 @@ func (c Call) String() string {
 	return fmt.Sprintf("Call(%s = %s(%s))", c.Result, c.Function, strings.Join(args, ", "))
 }
 
-func (c Call) isOp() {}
+func (c Call) GetArgs() []Arg {
+	return c.Args
+}
 
 type Return struct {
 	Op
@@ -109,20 +117,27 @@ func (r Return) String() string {
 	return "Return()"
 }
 
-func (r Return) isOp() {}
+func (r Return) GetArgs() []Arg {
+	if r.Value == nil {
+		return []Arg{}
+	} else {
+		return []Arg{*r.Value}
+	}
+}
 
 type Arg struct {
-	Variable   string
-	LiteralInt *int
-	// TODO: Add more types.
+	Variable      string
+	LiteralInt    *int
+	LiteralString *string
 }
 
 func (a Arg) String() string {
-	if a.LiteralInt != nil {
-		return fmt.Sprintf("%d", *a.LiteralInt)
-	}
 	if a.Variable != "" {
 		return a.Variable
+	} else if a.LiteralInt != nil {
+		return fmt.Sprintf("%d", *a.LiteralInt)
+	} else if a.LiteralString != nil {
+		return fmt.Sprintf("\"%s\"", *a.LiteralString)
 	}
 	return "empty"
 }

@@ -7,6 +7,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/iley/pirx/internal/codegen/common"
 	"github.com/iley/pirx/internal/ir"
 	"github.com/iley/pirx/internal/util"
 )
@@ -17,9 +18,10 @@ const (
 )
 
 type CodegenContext struct {
-	output    io.Writer
-	locals    map[string]int
-	frameSize int
+	output         io.Writer
+	locals         map[string]int
+	frameSize      int
+	stringLiterals map[string]string
 }
 
 //go:embed prologue.txt
@@ -27,8 +29,20 @@ var prologue string
 
 func Generate(output io.Writer, irp ir.IrProgram) error {
 	io.WriteString(output, prologue)
+
+	// Map from string to a label in the data section.
+	stringLiterals := make(map[string]string)
+	for i, s := range common.GatherStrings(irp) {
+		stringLiterals[s] = fmt.Sprintf(".Lstr%d", i)
+	}
+
+	cc := &CodegenContext{
+		output:         output,
+		stringLiterals: stringLiterals,
+	}
+
 	for i, f := range irp.Functions {
-		err := generateFunction(output, f)
+		err := generateFunction(cc, f)
 		if err != nil {
 			return fmt.Errorf("Error when generating code for function %s: %w", f.Name, err)
 		}
@@ -37,13 +51,22 @@ func Generate(output io.Writer, irp ir.IrProgram) error {
 			fmt.Fprintf(output, "\n")
 		}
 	}
+
+	if len(stringLiterals) > 0 {
+		fmt.Fprintf(output, "\n// String literals.\n")
+	}
+	for str, label := range stringLiterals {
+		// TODO: Make sure escaping and various special characters work.
+		fmt.Fprintf(output, "%s: .ascii \"%s\\0\"", label, str)
+	}
+
 	return nil
 }
 
-func generateFunction(output io.Writer, f ir.IrFunction) error {
-	fmt.Fprintf(output, ".p2align 2\n")
-	fmt.Fprintf(output, ".globl _%s\n", f.Name)
-	fmt.Fprintf(output, "_%s:\n", f.Name)
+func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
+	fmt.Fprintf(cc.output, ".p2align 2\n")
+	fmt.Fprintf(cc.output, ".globl _%s\n", f.Name)
+	fmt.Fprintf(cc.output, "_%s:\n", f.Name)
 
 	// Map from local variable name to its offset on the stack.
 	locals := make(map[string]int)
@@ -73,16 +96,16 @@ func generateFunction(output io.Writer, f ir.IrFunction) error {
 	frameSize = util.Align(frameSize, 16)
 
 	// For now we're going to assume that all variables are 64-bit.
-	fmt.Fprintf(output, "  sub sp, sp, #%d\n", frameSize)
+	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", frameSize)
 	// Store x29 and x30 at the top of the frame.
-	fmt.Fprintf(output, "  stp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
-	fmt.Fprintf(output, "  add x29, sp, #%d\n", frameSize-2*WORD_SIZE)
-	fmt.Fprintf(output, "\n")
+	fmt.Fprintf(cc.output, "  stp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
+	fmt.Fprintf(cc.output, "  add x29, sp, #%d\n", frameSize-2*WORD_SIZE)
+	fmt.Fprintf(cc.output, "\n")
 
 	// Offset from x29 for locals.
 	offset := WORD_SIZE
 	for i, param := range f.Params {
-		fmt.Fprintf(output, "  str x%d, [x29, #-%d]\n", i, offset)
+		fmt.Fprintf(cc.output, "  str x%d, [x29, #-%d]\n", i, offset)
 		locals[param] = offset
 		offset += WORD_SIZE
 	}
@@ -96,24 +119,22 @@ func generateFunction(output io.Writer, f ir.IrFunction) error {
 		offset += WORD_SIZE
 	}
 
-	cc := &CodegenContext{
-		output:    output,
-		locals:    locals,
-		frameSize: frameSize,
-	}
+	funcCC := cc
+	cc.locals = locals
+	cc.frameSize = frameSize
 
 	for i, op := range f.Ops {
-		fmt.Fprintf(output, ".L%s_op%d: // %s\n", f.Name, i, op.String())
-		err := generateOp(cc, op)
+		fmt.Fprintf(cc.output, ".L%s_op%d: // %s\n", f.Name, i, op.String())
+		err := generateOp(funcCC, op)
 		if err != nil {
 			return nil
 		}
 	}
 
-	fmt.Fprintf(output, "\n")
-	fmt.Fprintf(output, "  ldp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
-	fmt.Fprintf(output, "  add sp, sp, #%d\n", frameSize)
-	fmt.Fprintf(output, "  ret\n")
+	fmt.Fprintf(cc.output, "\n")
+	fmt.Fprintf(cc.output, "  ldp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
+	fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", frameSize)
+	fmt.Fprintf(cc.output, "  ret\n")
 	return nil
 }
 
@@ -133,6 +154,11 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 		if (val<<48)&0xffff != 0 {
 			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
 		}
+	} else if arg.LiteralString != nil {
+		label := cc.stringLiterals[*arg.LiteralString]
+		fmt.Fprintf(cc.output, "  adr %s, %s\n", reg, label)
+	} else {
+		panic(fmt.Sprintf("invalid arg in code generation: %v", arg))
 	}
 }
 

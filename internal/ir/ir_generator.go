@@ -85,11 +85,12 @@ func (g *IrGenerator) generateStatementOps(node parser.Statement, nextTempIndex 
 
 func (g *IrGenerator) generateExpressionOps(node parser.Expression, nextTempIndex *int) ([]Op, Arg) {
 	if node.Literal != nil {
-		// TODO: Support strings and other types.
 		if node.Literal.IntValue != nil {
 			return []Op{}, Arg{LiteralInt: node.Literal.IntValue}
+		} else if node.Literal.StringValue != nil {
+			return []Op{}, Arg{LiteralString: node.Literal.StringValue}
 		} else {
-			panic("String literals not yet supported in IR generation")
+			panic(fmt.Sprintf("Invalid literal: %v. Only int and string are currently supported", node.Literal))
 		}
 	} else if node.Assignment != nil {
 		ops, rvalueArg := g.generateExpressionOps(node.Assignment.Value, nextTempIndex)

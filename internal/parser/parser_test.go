@@ -1037,6 +1037,105 @@ func TestParseExpression_BinaryOperation(t *testing.T) {
 				Right:    Expression{Literal: NewIntLiteral(2)},
 			}},
 		},
+		{
+			name: "simple parentheses",
+			src:  "(2 + 3)",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(2)},
+				Operator: "+",
+				Right:    Expression{Literal: NewIntLiteral(3)},
+			}},
+		},
+		{
+			name: "parentheses changing precedence",
+			src:  "(2 + 3) * 4",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(2)},
+					Operator: "+",
+					Right:    Expression{Literal: NewIntLiteral(3)},
+				}},
+				Operator: "*",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "parentheses with division",
+			src:  "12 / (2 + 1)",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{Literal: NewIntLiteral(12)},
+				Operator: "/",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(2)},
+					Operator: "+",
+					Right:    Expression{Literal: NewIntLiteral(1)},
+				}},
+			}},
+		},
+		{
+			name: "nested parentheses",
+			src:  "((2 + 3) * 4)",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(2)},
+					Operator: "+",
+					Right:    Expression{Literal: NewIntLiteral(3)},
+				}},
+				Operator: "*",
+				Right:    Expression{Literal: NewIntLiteral(4)},
+			}},
+		},
+		{
+			name: "complex parentheses expression",
+			src:  "(2 + 3) * (4 - 1)",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(2)},
+					Operator: "+",
+					Right:    Expression{Literal: NewIntLiteral(3)},
+				}},
+				Operator: "*",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(4)},
+					Operator: "-",
+					Right:    Expression{Literal: NewIntLiteral(1)},
+				}},
+			}},
+		},
+		{
+			name: "parentheses with variables",
+			src:  "(x + y) * z",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+					Operator: "+",
+					Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
+				}},
+				Operator: "*",
+				Right:    Expression{VariableReference: &VariableReference{Name: "z"}},
+			}},
+		},
+		{
+			name: "multiple operations with parentheses",
+			src:  "1 + (2 * 3) + (8 / 4)",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(1)},
+					Operator: "+",
+					Right: Expression{BinaryOperation: &BinaryOperation{
+						Left:     Expression{Literal: NewIntLiteral(2)},
+						Operator: "*",
+						Right:    Expression{Literal: NewIntLiteral(3)},
+					}},
+				}},
+				Operator: "+",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{Literal: NewIntLiteral(8)},
+					Operator: "/",
+					Right:    Expression{Literal: NewIntLiteral(4)},
+				}},
+			}},
+		},
 	}
 
 	for _, tc := range testCases {

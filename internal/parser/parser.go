@@ -340,6 +340,11 @@ func (p *Parser) parsePrimaryExpression() (Expression, error) {
 		return p.parseIntegerLiteral()
 	case lexer.LEX_STRING:
 		return p.parseStringLiteral()
+	case lexer.LEX_PUNCTUATION:
+		if lex.Str == "(" {
+			return p.parseParenthesizedExpression()
+		}
+		return Expression{}, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	default:
 		return Expression{}, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	}
@@ -429,6 +434,34 @@ func (p *Parser) parseStringLiteral() (Expression, error) {
 		return Expression{}, err
 	}
 	return Expression{Literal: &Literal{StringValue: &lex.Str}}, nil
+}
+
+func (p *Parser) parseParenthesizedExpression() (Expression, error) {
+	// consume '('
+	lex, err := p.consume()
+	if err != nil {
+		return Expression{}, err
+	}
+	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "(" {
+		return Expression{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
+	}
+
+	// parse the expression inside the parentheses
+	expr, err := p.parseExpression()
+	if err != nil {
+		return Expression{}, err
+	}
+
+	// consume ')'
+	lex, err = p.consume()
+	if err != nil {
+		return Expression{}, err
+	}
+	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ")" {
+		return Expression{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
+	}
+
+	return expr, nil
 }
 
 func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {

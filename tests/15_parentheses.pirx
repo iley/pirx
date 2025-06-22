@@ -1,0 +1,17 @@
+func main() {
+  var result: int;
+  
+  result = (2 + 3) * 4;
+  printf("(2 + 3) * 4 = %d\n", result);
+  
+  result = 2 + (3 * 4);
+  printf("2 + (3 * 4) = %d\n", result);
+  
+  result = (8 + 4) / (2 + 1);
+  printf("(8 + 4) / (2 + 1) = %d\n", result);
+  
+  result = ((2 + 3) * 4) - 5;
+  printf("((2 + 3) * 4) - 5 = %d\n", result);
+  
+  return 0;
+} 

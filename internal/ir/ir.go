@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/iley/pirx/internal/util"
 )
 
 type BinaryOpType int
@@ -155,7 +157,7 @@ func (a Arg) String() string {
 	} else if a.LiteralInt != nil {
 		return fmt.Sprintf("%d", *a.LiteralInt)
 	} else if a.LiteralString != nil {
-		return fmt.Sprintf("\"%s\"", *a.LiteralString)
+		return fmt.Sprintf("\"%s\"", util.EscapeString(*a.LiteralString))
 	}
 	return "empty"
 }

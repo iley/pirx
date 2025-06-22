@@ -57,8 +57,7 @@ func Generate(output io.Writer, irp ir.IrProgram) error {
 		fmt.Fprintf(output, ".data\n")
 	}
 	for str, label := range stringLiterals {
-		// TODO: Make sure escaping and various special characters work.
-		fmt.Fprintf(output, "%s: .string \"%s\"\n", label, str)
+		fmt.Fprintf(output, "%s: .string \"%s\"\n", label, util.EscapeString(str))
 	}
 
 	return nil

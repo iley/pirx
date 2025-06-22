@@ -322,7 +322,35 @@ func (l *Lexer) lexString(startLine, startCol int) (Lexeme, error) {
 		}
 
 		if r == '\\' {
-			// Handle escape sequences (to be implemented)
+			// Handle escape sequences
+			nextR, _, err := l.readRune()
+			if err != nil {
+				if err == io.EOF {
+					// Backslash at end of file - treat as literal backslash
+					str += string(r)
+					continue
+				}
+				return Lexeme{}, err
+			}
+
+			// Process escape sequence
+			switch nextR {
+			case 'n':
+				str += "\n"
+			case 't':
+				str += "\t"
+			case 'r':
+				str += "\r"
+			case '\\':
+				str += "\\"
+			case '"':
+				str += "\""
+			case '\'':
+				str += "'"
+			default:
+				// Unknown escape sequence - treat as literal character (remove backslash)
+				str += string(nextR)
+			}
 			continue
 		}
 

@@ -1,0 +1,4 @@
+func main() {
+  printf("\"hello\tworld\"\n");
+  return 0;
+}

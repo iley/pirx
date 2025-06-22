@@ -112,22 +112,22 @@ func compileTest(config *CompilationConfig, testCase TestCase, tempDir string) (
 
 	// Step 1: Compile .pirx to .s using pirx compiler
 	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, testCase.PirxFile)
-	if err := pirxCmd.Run(); err != nil {
-		return "", fmt.Errorf("pirx compilation failed: %w", err)
+	if output, err := pirxCmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("pirx compilation failed: %w\nOutput: %s", err, string(output))
 	}
 
 	// Step 2: Assemble .s to .o
 	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
 	asCmd := exec.Command(config.Assembler, asArgs...)
-	if err := asCmd.Run(); err != nil {
-		return "", fmt.Errorf("assembly failed: %w", err)
+	if output, err := asCmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("assembly failed: %w\nOutput: %s", err, string(output))
 	}
 
 	// Step 3: Link .o to executable
 	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
 	ldCmd := exec.Command(config.Linker, ldArgs...)
-	if err := ldCmd.Run(); err != nil {
-		return "", fmt.Errorf("linking failed: %w", err)
+	if output, err := ldCmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("linking failed: %w\nOutput: %s", err, string(output))
 	}
 
 	return binFile, nil

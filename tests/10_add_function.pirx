@@ -1,0 +1,8 @@
+func add(x: int, y: int) {
+  return x + y;
+}
+
+func main() {
+  printf("%d\n", add(40, 2));
+  return 0;
+}

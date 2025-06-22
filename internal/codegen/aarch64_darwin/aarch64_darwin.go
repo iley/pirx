@@ -27,10 +27,14 @@ var prologue string
 
 func Generate(output io.Writer, irp ir.IrProgram) error {
 	io.WriteString(output, prologue)
-	for _, f := range irp.Functions {
+	for i, f := range irp.Functions {
 		err := generateFunction(output, f)
 		if err != nil {
 			return fmt.Errorf("Error when generating code for function %s: %w", f.Name, err)
+		}
+		if i != len(irp.Functions)-1 {
+			// Separate functions with a newline.
+			fmt.Fprintf(output, "\n")
 		}
 	}
 	return nil
@@ -98,7 +102,8 @@ func generateFunction(output io.Writer, f ir.IrFunction) error {
 		frameSize: frameSize,
 	}
 
-	for _, op := range f.Ops {
+	for i, op := range f.Ops {
+		fmt.Fprintf(output, ".L%s_op%d: // %s\n", f.Name, i, op.String())
 		err := generateOp(cc, op)
 		if err != nil {
 			return nil
@@ -137,7 +142,7 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 			// Assign variable to variable.
 			src := assign.Value.Variable
 			dst := assign.Target
-			fmt.Fprintf(cc.output, "  ldr x0, [x29, #-%d]  // %s\n", cc.locals[src], op.String())
+			fmt.Fprintf(cc.output, "  ldr x0, [x29, #-%d]\n", cc.locals[src])
 			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[dst])
 		} else if assign.Value.ImmediateInt != nil {
 			// Assign integer constant to variable.

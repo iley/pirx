@@ -1,0 +1,6 @@
+func main() {
+  printf("foo");
+  printf("bar");
+  printf("baz");
+  return 0;
+}

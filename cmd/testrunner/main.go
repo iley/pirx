@@ -104,33 +104,36 @@ func discoverTests(testsDir string) ([]TestCase, error) {
 }
 
 // compileTest compiles a pirx file to executable
-func compileTest(config *CompilationConfig, testCase TestCase, tempDir string) (string, error) {
+func compileTest(config *CompilationConfig, testCase TestCase, testsDir string) (string, []string, error) {
 	baseName := filepath.Base(testCase.Name)
-	asmFile := filepath.Join(tempDir, baseName+".s")
-	objFile := filepath.Join(tempDir, baseName+".o")
-	binFile := filepath.Join(tempDir, baseName+config.ExecutableSuffix)
+	asmFile := filepath.Join(testsDir, baseName+".s")
+	objFile := filepath.Join(testsDir, baseName+".o")
+	binFile := filepath.Join(testsDir, baseName+config.ExecutableSuffix)
+
+	// Keep track of generated files for cleanup
+	generatedFiles := []string{asmFile, objFile, binFile}
 
 	// Step 1: Compile .pirx to .s using pirx compiler
 	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, testCase.PirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("pirx compilation failed: %w\nOutput: %s", err, string(output))
+		return "", generatedFiles, fmt.Errorf("pirx compilation failed: %w\nOutput: %s", err, string(output))
 	}
 
 	// Step 2: Assemble .s to .o
 	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
 	asCmd := exec.Command(config.Assembler, asArgs...)
 	if output, err := asCmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("assembly failed: %w\nOutput: %s", err, string(output))
+		return "", generatedFiles, fmt.Errorf("assembly failed: %w\nOutput: %s", err, string(output))
 	}
 
 	// Step 3: Link .o to executable
 	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
 	ldCmd := exec.Command(config.Linker, ldArgs...)
 	if output, err := ldCmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("linking failed: %w\nOutput: %s", err, string(output))
+		return "", generatedFiles, fmt.Errorf("linking failed: %w\nOutput: %s", err, string(output))
 	}
 
-	return binFile, nil
+	return binFile, generatedFiles, nil
 }
 
 // runTest executes a test binary and returns its output
@@ -160,12 +163,19 @@ func readExpectedOutput(expectedFile string) (string, error) {
 	return string(content), nil
 }
 
+// cleanupFiles removes the specified files, ignoring any errors
+func cleanupFiles(files []string) {
+	for _, file := range files {
+		os.Remove(file) // Ignore errors - files might not exist
+	}
+}
+
 // runSingleTest runs a single test case and returns pass/fail status
-func runSingleTest(config *CompilationConfig, testCase TestCase, tempDir string) (bool, string) {
+func runSingleTest(config *CompilationConfig, testCase TestCase, testsDir string) (bool, string) {
 	fmt.Printf("Running test %s... ", testCase.Name)
 
 	// Compile test
-	binaryPath, err := compileTest(config, testCase, tempDir)
+	binaryPath, generatedFiles, err := compileTest(config, testCase, testsDir)
 	if err != nil {
 		return false, fmt.Sprintf("compilation error: %v", err)
 	}
@@ -184,9 +194,12 @@ func runSingleTest(config *CompilationConfig, testCase TestCase, tempDir string)
 
 	// Compare outputs
 	if actualOutput == expectedOutput {
+		// Test passed - clean up generated files
+		cleanupFiles(generatedFiles)
 		return true, ""
 	}
 
+	// Test failed - leave files for inspection
 	return false, fmt.Sprintf("output mismatch:\nExpected: %q\nActual: %q", expectedOutput, actualOutput)
 }
 
@@ -197,14 +210,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-
-	// Create temporary directory for compilation artifacts
-	tempDir, err := os.MkdirTemp("", "pirx-test-*")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating temp directory: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.RemoveAll(tempDir)
 
 	// Discover tests
 	testsDir := "tests"
@@ -235,7 +240,7 @@ func main() {
 	failed := 0
 
 	for _, test := range tests {
-		success, errorMsg := runSingleTest(config, test, tempDir)
+		success, errorMsg := runSingleTest(config, test, testsDir)
 		if success {
 			fmt.Println("PASS")
 			passed++

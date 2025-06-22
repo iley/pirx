@@ -1,4 +1,4 @@
-EXAMPLES=hello.pirx basics.pirx hello_putchar.pirx
+EXAMPLES=hello.pirx basics.pirx math.pirx
 ASSEMBLY_FILES=$(EXAMPLES:.pirx=.s)
 OBJ_FILES=$(EXAMPLES:.pirx=.o)
 BIN_FILES=$(EXAMPLES:.pirx=)

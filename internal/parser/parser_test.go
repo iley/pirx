@@ -77,14 +77,8 @@ func TestParseProgram(t *testing.T) {
 									Expression: Expression{FunctionCall: &FunctionCall{
 										FunctionName: "foo",
 										Args: []Expression{
-											{Literal: &Literal{
-												Type:     LiteralTypeInt,
-												IntValue: 1,
-											}},
-											{Literal: &Literal{
-												Type:        LiteralTypeString,
-												StringValue: "two",
-											}},
+											{Literal: NewIntLiteral(1)},
+											{Literal: NewStringLiteral("two")},
 										},
 									}},
 								}},
@@ -166,10 +160,7 @@ func TestParseProgram(t *testing.T) {
 						Body: &Block{
 							Statements: []Statement{
 								{ReturnStatement: &ReturnStatement{
-									Value: &Expression{Literal: &Literal{
-										Type:     LiteralTypeInt,
-										IntValue: 42,
-									}},
+									Value: &Expression{Literal: NewIntLiteral(42)},
 								}},
 							},
 						},
@@ -188,10 +179,7 @@ func TestParseProgram(t *testing.T) {
 						Body: &Block{
 							Statements: []Statement{
 								{ReturnStatement: &ReturnStatement{
-									Value: &Expression{Literal: &Literal{
-										Type:        LiteralTypeString,
-										StringValue: "hello",
-									}},
+									Value: &Expression{Literal: NewStringLiteral("hello")},
 								}},
 							},
 						},
@@ -232,16 +220,10 @@ func TestParseProgram(t *testing.T) {
 						Body: &Block{
 							Statements: []Statement{
 								{ReturnStatement: &ReturnStatement{
-									Value: &Expression{Literal: &Literal{
-										Type:     LiteralTypeInt,
-										IntValue: 1,
-									}},
+									Value: &Expression{Literal: NewIntLiteral(1)},
 								}},
 								{ReturnStatement: &ReturnStatement{
-									Value: &Expression{Literal: &Literal{
-										Type:        LiteralTypeString,
-										StringValue: "two",
-									}},
+									Value: &Expression{Literal: NewStringLiteral("two")},
 								}},
 								{ReturnStatement: &ReturnStatement{
 									Value: nil,
@@ -377,10 +359,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 			expected: Expression{FunctionCall: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					{Literal: &Literal{
-						Type:     LiteralTypeInt,
-						IntValue: 42,
-					}},
+					{Literal: NewIntLiteral(42)},
 				},
 			}},
 		},
@@ -390,10 +369,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 			expected: Expression{FunctionCall: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					{Literal: &Literal{
-						Type:        LiteralTypeString,
-						StringValue: "hello",
-					}},
+					{Literal: NewStringLiteral("hello")},
 				},
 			}},
 		},
@@ -403,18 +379,9 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 			expected: Expression{FunctionCall: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					{Literal: &Literal{
-						Type:     LiteralTypeInt,
-						IntValue: 1,
-					}},
-					{Literal: &Literal{
-						Type:        LiteralTypeString,
-						StringValue: "two",
-					}},
-					{Literal: &Literal{
-						Type:     LiteralTypeInt,
-						IntValue: 3,
-					}},
+					{Literal: NewIntLiteral(1)},
+					{Literal: NewStringLiteral("two")},
+					{Literal: NewIntLiteral(3)},
 				},
 			}},
 		},
@@ -468,36 +435,24 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 		expected Expression
 	}{
 		{
-			name: "zero",
-			src:  `func main() { 0; }`,
-			expected: Expression{Literal: &Literal{
-				Type:     LiteralTypeInt,
-				IntValue: 0,
-			}},
+			name:     "zero",
+			src:      `func main() { 0; }`,
+			expected: Expression{Literal: NewIntLiteral(0)},
 		},
 		{
-			name: "positive integer",
-			src:  `func main() { 42; }`,
-			expected: Expression{Literal: &Literal{
-				Type:     LiteralTypeInt,
-				IntValue: 42,
-			}},
+			name:     "positive integer",
+			src:      `func main() { 42; }`,
+			expected: Expression{Literal: NewIntLiteral(42)},
 		},
 		{
-			name: "large integer",
-			src:  `func main() { 999999; }`,
-			expected: Expression{Literal: &Literal{
-				Type:     LiteralTypeInt,
-				IntValue: 999999,
-			}},
+			name:     "large integer",
+			src:      `func main() { 999999; }`,
+			expected: Expression{Literal: NewIntLiteral(999999)},
 		},
 		{
-			name: "single digit",
-			src:  `func main() { 7; }`,
-			expected: Expression{Literal: &Literal{
-				Type:     LiteralTypeInt,
-				IntValue: 7,
-			}},
+			name:     "single digit",
+			src:      `func main() { 7; }`,
+			expected: Expression{Literal: NewIntLiteral(7)},
 		},
 	}
 
@@ -536,44 +491,29 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 		expected Expression
 	}{
 		{
-			name: "empty string",
-			src:  `func main() { ""; }`,
-			expected: Expression{Literal: &Literal{
-				Type:        LiteralTypeString,
-				StringValue: "",
-			}},
+			name:     "empty string",
+			src:      `func main() { ""; }`,
+			expected: Expression{Literal: NewStringLiteral("")},
 		},
 		{
-			name: "simple string",
-			src:  `func main() { "hello"; }`,
-			expected: Expression{Literal: &Literal{
-				Type:        LiteralTypeString,
-				StringValue: "hello",
-			}},
+			name:     "simple string",
+			src:      `func main() { "hello"; }`,
+			expected: Expression{Literal: NewStringLiteral("hello")},
 		},
 		{
-			name: "string with spaces",
-			src:  `func main() { "hello world"; }`,
-			expected: Expression{Literal: &Literal{
-				Type:        LiteralTypeString,
-				StringValue: "hello world",
-			}},
+			name:     "string with spaces",
+			src:      `func main() { "hello world"; }`,
+			expected: Expression{Literal: NewStringLiteral("hello world")},
 		},
 		{
-			name: "string with numbers",
-			src:  `func main() { "abc123"; }`,
-			expected: Expression{Literal: &Literal{
-				Type:        LiteralTypeString,
-				StringValue: "abc123",
-			}},
+			name:     "string with numbers",
+			src:      `func main() { "abc123"; }`,
+			expected: Expression{Literal: NewStringLiteral("abc123")},
 		},
 		{
-			name: "string with special characters",
-			src:  `func main() { "hello, world!"; }`,
-			expected: Expression{Literal: &Literal{
-				Type:        LiteralTypeString,
-				StringValue: "hello, world!",
-			}},
+			name:     "string with special characters",
+			src:      `func main() { "hello, world!"; }`,
+			expected: Expression{Literal: NewStringLiteral("hello, world!")},
 		},
 	}
 
@@ -664,10 +604,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 			src:  `func main() { x = 42; }`,
 			expected: Expression{Assignment: &Assignment{
 				VariableName: "x",
-				Value: Expression{Literal: &Literal{
-					Type:     LiteralTypeInt,
-					IntValue: 42,
-				}},
+				Value:        Expression{Literal: NewIntLiteral(42)},
 			}},
 		},
 		{
@@ -675,10 +612,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 			src:  `func main() { name = "hello"; }`,
 			expected: Expression{Assignment: &Assignment{
 				VariableName: "name",
-				Value: Expression{Literal: &Literal{
-					Type:        LiteralTypeString,
-					StringValue: "hello",
-				}},
+				Value:        Expression{Literal: NewStringLiteral("hello")},
 			}},
 		},
 		{
@@ -700,14 +634,8 @@ func TestParseExpression_Assignment(t *testing.T) {
 				Value: Expression{FunctionCall: &FunctionCall{
 					FunctionName: "add",
 					Args: []Expression{
-						{Literal: &Literal{
-							Type:     LiteralTypeInt,
-							IntValue: 1,
-						}},
-						{Literal: &Literal{
-							Type:     LiteralTypeInt,
-							IntValue: 2,
-						}},
+						{Literal: NewIntLiteral(1)},
+						{Literal: NewIntLiteral(2)},
 					},
 				}},
 			}},
@@ -717,10 +645,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 			src:  `func main() { counter = 0; }`,
 			expected: Expression{Assignment: &Assignment{
 				VariableName: "counter",
-				Value: Expression{Literal: &Literal{
-					Type:     LiteralTypeInt,
-					IntValue: 0,
-				}},
+				Value:        Expression{Literal: NewIntLiteral(0)},
 			}},
 		},
 		{
@@ -728,10 +653,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 			src:  `func main() { text = ""; }`,
 			expected: Expression{Assignment: &Assignment{
 				VariableName: "text",
-				Value: Expression{Literal: &Literal{
-					Type:        LiteralTypeString,
-					StringValue: "",
-				}},
+				Value:        Expression{Literal: NewStringLiteral("")},
 			}},
 		},
 		{
@@ -741,10 +663,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 				VariableName: "x",
 				Value: Expression{Assignment: &Assignment{
 					VariableName: "y",
-					Value: Expression{Literal: &Literal{
-						Type:     LiteralTypeInt,
-						IntValue: 1,
-					}},
+					Value:        Expression{Literal: NewIntLiteral(1)},
 				}},
 			}},
 		},

@@ -82,10 +82,7 @@ func TestPrinter(t *testing.T) {
 									Expression: Expression{FunctionCall: &FunctionCall{
 										FunctionName: "print",
 										Args: []Expression{
-											{Literal: &Literal{
-												Type:        LiteralTypeString,
-												StringValue: "Hello, Pirx!",
-											}},
+											{Literal: NewStringLiteral("Hello, Pirx!")},
 										},
 									}},
 								}},
@@ -93,8 +90,8 @@ func TestPrinter(t *testing.T) {
 									Expression: Expression{FunctionCall: &FunctionCall{
 										FunctionName: "add",
 										Args: []Expression{
-											{Literal: &Literal{Type: LiteralTypeInt, IntValue: 42}},
-											{Literal: &Literal{Type: LiteralTypeInt, IntValue: 58}},
+											{Literal: NewIntLiteral(42)},
+											{Literal: NewIntLiteral(58)},
 										},
 									}},
 								}},
@@ -118,10 +115,7 @@ func TestPrinter(t *testing.T) {
 									Expression: Expression{FunctionCall: &FunctionCall{
 										FunctionName: "greet",
 										Args: []Expression{
-											{Literal: &Literal{
-												Type:        LiteralTypeString,
-												StringValue: "World",
-											}},
+											{Literal: NewStringLiteral("World")},
 										},
 									}},
 								}},
@@ -139,10 +133,7 @@ func TestPrinter(t *testing.T) {
 									Expression: Expression{FunctionCall: &FunctionCall{
 										FunctionName: "print",
 										Args: []Expression{
-											{Literal: &Literal{
-												Type:        LiteralTypeString,
-												StringValue: "Hello, ",
-											}},
+											{Literal: NewStringLiteral("Hello, ")},
 										},
 									}},
 								}},

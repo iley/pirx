@@ -81,11 +81,12 @@ func (p *Printer) VisitStatement(statement Statement) {
 }
 
 func (p *Printer) VisitLiteral(literal *Literal) {
-	switch literal.Type {
-	case LiteralTypeString:
-		p.write(fmt.Sprintf("%q", literal.StringValue))
-	case LiteralTypeInt:
-		p.write(fmt.Sprintf("%d", literal.IntValue))
+	if literal.StringValue != nil {
+		p.write(fmt.Sprintf("%q", *literal.StringValue))
+	} else if literal.IntValue != nil {
+		p.write(fmt.Sprintf("%d", *literal.IntValue))
+	} else {
+		panic(fmt.Sprintf("Unsupported literal type: %v", literal))
 	}
 }
 

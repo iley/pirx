@@ -108,21 +108,22 @@ func NewVariableReferenceExpression(variableReference *VariableReference) Expres
 	return Expression{VariableReference: variableReference}
 }
 
-type LiteralType int
-
-const (
-	LiteralTypeString LiteralType = iota
-	LiteralTypeInt
-)
-
 type Literal struct {
-	Type        LiteralType
-	StringValue string
-	IntValue    int
+	StringValue *string
+	IntValue    *int
 }
 
 func (l *Literal) Accept(visitor AstVisitor) {
 	visitor.VisitLiteral(l)
+}
+
+// Helper functions for creating Literal values
+func NewIntLiteral(value int) *Literal {
+	return &Literal{IntValue: &value}
+}
+
+func NewStringLiteral(value string) *Literal {
+	return &Literal{StringValue: &value}
 }
 
 type VariableDeclaration struct {

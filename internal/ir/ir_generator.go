@@ -86,8 +86,11 @@ func (g *IrGenerator) generateStatementOps(node parser.Statement, nextTempIndex 
 func (g *IrGenerator) generateExpressionOps(node parser.Expression, nextTempIndex *int) ([]Op, Arg) {
 	if node.Literal != nil {
 		// TODO: Support strings and other types.
-		val := node.Literal.IntValue
-		return []Op{}, Arg{ImmediateInt: &val}
+		if node.Literal.IntValue != nil {
+			return []Op{}, Arg{ImmediateInt: node.Literal.IntValue}
+		} else {
+			panic("String literals not yet supported in IR generation")
+		}
 	} else if node.Assignment != nil {
 		ops, rvalueArg := g.generateExpressionOps(node.Assignment.Value, nextTempIndex)
 		ops = append(ops, Assign{Target: node.Assignment.VariableName, Value: rvalueArg})

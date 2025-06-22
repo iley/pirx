@@ -343,7 +343,7 @@ func (p *Parser) parseIntegerLiteral() (Expression, error) {
 	if err != nil {
 		return Expression{}, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
 	}
-	return Expression{Literal: &Literal{Type: LiteralTypeInt, IntValue: val}}, nil
+	return Expression{Literal: &Literal{IntValue: &val}}, nil
 }
 
 func (p *Parser) parseStringLiteral() (Expression, error) {
@@ -351,7 +351,7 @@ func (p *Parser) parseStringLiteral() (Expression, error) {
 	if err != nil {
 		return Expression{}, err
 	}
-	return Expression{Literal: &Literal{Type: LiteralTypeString, StringValue: lex.Str}}, nil
+	return Expression{Literal: &Literal{StringValue: &lex.Str}}, nil
 }
 
 func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {

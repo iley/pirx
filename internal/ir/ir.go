@@ -42,7 +42,6 @@ type Op interface {
 }
 
 type Assign struct {
-	Op
 	Target string
 	Value  Arg
 }
@@ -59,28 +58,43 @@ func (a Assign) GetArgs() []Arg {
 	return []Arg{a.Value}
 }
 
+type UnaryOp struct {
+	Result    string
+	Value     Arg
+	Operation string
+}
+
+func (o UnaryOp) String() string {
+	return fmt.Sprintf("UnaryOp(%s = %s %s)", o.Result, o.Operation, o.Value)
+}
+func (o UnaryOp) GetTarget() string {
+	return o.Result
+}
+
+func (o UnaryOp) GetArgs() []Arg {
+	return []Arg{o.Value}
+}
+
 type BinaryOp struct {
-	Op
 	Result    string
 	Left      Arg
 	Right     Arg
 	Operation string
 }
 
-func (b BinaryOp) String() string {
-	return fmt.Sprintf("BinaryOp(%s = %s %s %s)", b.Result, b.Left, b.Operation, b.Right)
+func (o BinaryOp) String() string {
+	return fmt.Sprintf("BinaryOp(%s = %s %s %s)", o.Result, o.Left, o.Operation, o.Right)
 }
 
-func (b BinaryOp) GetTarget() string {
-	return b.Result
+func (o BinaryOp) GetTarget() string {
+	return o.Result
 }
 
-func (b BinaryOp) GetArgs() []Arg {
-	return []Arg{b.Left, b.Right}
+func (o BinaryOp) GetArgs() []Arg {
+	return []Arg{o.Left, o.Right}
 }
 
 type Call struct {
-	Op
 	Result   string
 	Function string
 	Args     []Arg
@@ -104,7 +118,6 @@ func (c Call) GetArgs() []Arg {
 }
 
 type Return struct {
-	Op
 	Value *Arg // nil for bare returns
 }
 

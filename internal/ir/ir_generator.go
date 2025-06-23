@@ -116,6 +116,10 @@ func (g *IrGenerator) generateExpressionOps(node parser.Expression, nextTempInde
 		temp := allocTemp(nextTempIndex)
 		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: node.BinaryOperation.Operator})
 		return ops, Arg{Variable: temp}
+	} else if node.UnaryOperation != nil {
+		ops, arg := g.generateExpressionOps(node.UnaryOperation.Operand, nextTempIndex)
+		temp := allocTemp(nextTempIndex)
+		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: node.UnaryOperation.Operator})
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }

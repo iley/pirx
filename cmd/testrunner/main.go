@@ -200,7 +200,7 @@ func runSingleTest(config *CompilationConfig, testCase TestCase, testsDir string
 	}
 
 	// Test failed - leave files for inspection
-	return false, fmt.Sprintf("output mismatch:\nExpected: %q\nActual: %q", expectedOutput, actualOutput)
+	return false, fmt.Sprintf("output mismatch:\nExpected: %q\nActual:   %q", expectedOutput, actualOutput)
 }
 
 func main() {

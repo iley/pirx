@@ -277,6 +277,14 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	case ">=":
 		fmt.Fprintf(cc.output, "  cmp x0, x1\n")
 		fmt.Fprintf(cc.output, "  cset x0, ge\n") // signed >=
+	case "&&":
+		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
+		fmt.Fprintf(cc.output, "  ccmp x1, #0, #4, ne\n")
+		fmt.Fprintf(cc.output, "  cset x0, ne\n")
+	case "||":
+		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
+		fmt.Fprintf(cc.output, "  ccmp x1, #0, #0, eq\n")
+		fmt.Fprintf(cc.output, "  cset x0, ne\n")
 	default:
 		panic(fmt.Sprintf("unsupported binary operation in aarch64-darwing codegen: %v", binop.Operation))
 	}

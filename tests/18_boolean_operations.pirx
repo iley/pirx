@@ -1,0 +1,26 @@
+func main() {
+  var a: int;
+  var b: int;
+  
+  a = 5;
+  b = 3;
+  
+  // Test logical AND operator with integer values (0=false, 1=true)
+  printf("1 && 1: %d\n", 1 && 1);
+  printf("1 && 0: %d\n", 1 && 0);
+  printf("0 && 1: %d\n", 0 && 1);
+  printf("0 && 0: %d\n", 0 && 0);
+  
+  // Test logical OR operator with integer values
+  printf("1 || 1: %d\n", 1 || 1);
+  printf("1 || 0: %d\n", 1 || 0);
+  printf("0 || 1: %d\n", 0 || 1);
+  printf("0 || 0: %d\n", 0 || 0);
+  
+  // Test complex expressions
+  printf("(5 > 3) && (5 == 5): %d\n", (a > b) && (a == 5));
+  printf("(5 < 3) || (5 == 5): %d\n", (a < b) || (a == 5));
+  printf("!(5 == 3): %d\n", !(a == b));
+  
+  return 0;
+} 

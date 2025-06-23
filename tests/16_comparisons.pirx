@@ -1,0 +1,22 @@
+func main() {
+  var a: int;
+  var b: int;
+  
+  a = 5;
+  b = 3;
+  
+  // Test equality operators
+  printf("5 == 3: %d\n", a == b);
+  printf("5 != 3: %d\n", a != b);
+  printf("5 == 5: %d\n", a == 5);
+  
+  // Test comparison operators
+  printf("5 < 3: %d\n", a < b);
+  printf("5 > 3: %d\n", a > b);
+  printf("5 <= 3: %d\n", a <= b);
+  printf("5 >= 3: %d\n", a >= b);
+  printf("5 <= 5: %d\n", a <= 5);
+  printf("5 >= 5: %d\n", a >= 5);
+  
+  return 0;
+} 

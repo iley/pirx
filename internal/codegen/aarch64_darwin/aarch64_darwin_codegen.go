@@ -158,6 +158,8 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 		return generateFunctionCall(cc, call)
 	} else if binop, ok := op.(ir.BinaryOp); ok {
 		return generateBinaryOp(cc, binop)
+	} else if unaryOp, ok := op.(ir.UnaryOp); ok {
+		return generateUnaryOp(cc, unaryOp)
 	} else if ret, ok := op.(ir.Return); ok {
 		if ret.Value != nil {
 			generateRegisterLoad(cc, "x0", *ret.Value)
@@ -243,6 +245,8 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	}
 }
 
+// TODO: Support unsigned operations.
+// TODO: Test that all operations handle signed/unsigned consistently.
 func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	generateRegisterLoad(cc, "x0", binop.Left)
 	generateRegisterLoad(cc, "x1", binop.Right)
@@ -254,10 +258,39 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	case "*":
 		fmt.Fprintf(cc.output, "  mul x0, x0, x1\n")
 	case "/":
-		fmt.Fprintf(cc.output, "  udiv x0, x0, x1\n")
+		fmt.Fprintf(cc.output, "  sdiv x0, x0, x1\n")
+	case "==":
+		fmt.Fprintf(cc.output, "  cmp x0, x1\n")
+		fmt.Fprintf(cc.output, "  cset x0, eq\n")
+	case "!=":
+		fmt.Fprintf(cc.output, "  cmp x0, x1\n")
+		fmt.Fprintf(cc.output, "  cset x0, ne\n")
+	case "<":
+		fmt.Fprintf(cc.output, "  cmp x0, x1\n")
+		fmt.Fprintf(cc.output, "  cset x0, lt\n") // signed <
+	case ">":
+		fmt.Fprintf(cc.output, "  cmp x0, x1\n")
+		fmt.Fprintf(cc.output, "  cset x0, gt\n") // signed >
+	case "<=":
+		fmt.Fprintf(cc.output, "  cmp x0, x1\n")
+		fmt.Fprintf(cc.output, "  cset x0, le\n") // signed <=
+	case ">=":
+		fmt.Fprintf(cc.output, "  cmp x0, x1\n")
+		fmt.Fprintf(cc.output, "  cset x0, ge\n") // signed >=
 	default:
 		panic(fmt.Sprintf("unsupported binary operation in aarch64-darwing codegen: %v", binop.Operation))
 	}
 	fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[binop.Result])
 	return nil
+}
+
+func generateUnaryOp(cc *CodegenContext, unaryOp ir.UnaryOp) error {
+	if unaryOp.Operation == "!" {
+		generateRegisterLoad(cc, "x0", unaryOp.Value)
+		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
+		fmt.Fprintf(cc.output, "  cset x0, eq\n")
+		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[unaryOp.Result])
+		return nil
+	}
+	panic(fmt.Sprintf("unsupported unary operation %s", unaryOp.Operation))
 }

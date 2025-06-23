@@ -75,7 +75,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lex.Type != lexer.LEX_KEYWORD || lex.Str != "func" {
+	if !lex.IsKeyword("func") {
 		return nil, fmt.Errorf("%d:%d: expected 'func', got %v", lex.Line, lex.Col, lex)
 	}
 	// function name
@@ -92,7 +92,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "(" {
+	if !lex.IsPunctuation("(") {
 		return nil, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
@@ -106,7 +106,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ")" {
+	if !lex.IsPunctuation(")") {
 		return nil, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
 	}
 	// '{'
@@ -114,7 +114,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "{" {
+	if !lex.IsPunctuation("{") {
 		return nil, fmt.Errorf("%d:%d: expected '{', got %v", lex.Line, lex.Col, lex)
 	}
 
@@ -137,7 +137,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
+	if lex.IsPunctuation(")") {
 		return params, nil
 	}
 
@@ -157,7 +157,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 		if err != nil {
 			return nil, err
 		}
-		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ":" {
+		if !lex.IsPunctuation(":") {
 			return nil, fmt.Errorf("%d:%d: expected ':' after parameter name, got %v", lex.Line, lex.Col, lex)
 		}
 
@@ -177,7 +177,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 		if err != nil {
 			return nil, err
 		}
-		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
+		if lex.IsPunctuation(")") {
 			break
 		}
 
@@ -186,7 +186,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 		if err != nil {
 			return nil, err
 		}
-		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "," {
+		if !lex.IsPunctuation(",") {
 			return nil, fmt.Errorf("%d:%d: expected ',' or ')', got %v", lex.Line, lex.Col, lex)
 		}
 	}
@@ -205,7 +205,7 @@ func (p *Parser) parseBlock() (*Block, error) {
 		if lex.Type == lexer.LEX_EOF {
 			return nil, fmt.Errorf("unexpected EOF")
 		}
-		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == "}" {
+		if lex.IsPunctuation("}") {
 			break
 		}
 
@@ -219,7 +219,7 @@ func (p *Parser) parseBlock() (*Block, error) {
 		if err != nil {
 			return nil, err
 		}
-		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ";" {
+		if !lex.IsPunctuation(";") {
 			return nil, fmt.Errorf("%d:%d: expected ';' after statement, got %v", lex.Line, lex.Col, lex)
 		}
 	}
@@ -238,14 +238,14 @@ func (p *Parser) parseStatement() (Statement, error) {
 	if err != nil {
 		return Statement{}, err
 	}
-	if lex.Type == lexer.LEX_KEYWORD && lex.Str == "var" {
+	if lex.IsKeyword("var") {
 		varDecl, err := p.parseVariableDeclaration()
 		if err != nil {
 			return Statement{}, err
 		}
 		return Statement{VariableDeclaration: varDecl}, nil
 	}
-	if lex.Type == lexer.LEX_KEYWORD && lex.Str == "return" {
+	if lex.IsKeyword("return") {
 		retStmt, err := p.parseReturnStatement()
 		if err != nil {
 			return Statement{}, err
@@ -366,7 +366,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	if err != nil {
 		return Expression{}, err
 	}
-	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "(" {
+	if !lex.IsPunctuation("(") {
 		return Expression{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
@@ -378,7 +378,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	if err != nil {
 		return Expression{}, err
 	}
-	if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
+	if lex.IsPunctuation(")") {
 		p.consume() // consume ')'
 		return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}}, nil
 	}
@@ -394,7 +394,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 		if err != nil {
 			return Expression{}, err
 		}
-		if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ")" {
+		if lex.IsPunctuation(")") {
 			break
 		}
 
@@ -402,7 +402,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 		if err != nil {
 			return Expression{}, err
 		}
-		if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "," {
+		if !lex.IsPunctuation(",") {
 			return Expression{}, fmt.Errorf("%d:%d: expected ',' or ')', got %v", lex.Line, lex.Col, lex)
 		}
 	}
@@ -442,7 +442,7 @@ func (p *Parser) parseParenthesizedExpression() (Expression, error) {
 	if err != nil {
 		return Expression{}, err
 	}
-	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != "(" {
+	if !lex.IsPunctuation("(") {
 		return Expression{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
@@ -457,7 +457,7 @@ func (p *Parser) parseParenthesizedExpression() (Expression, error) {
 	if err != nil {
 		return Expression{}, err
 	}
-	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ")" {
+	if !lex.IsPunctuation(")") {
 		return Expression{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
 	}
 
@@ -486,7 +486,7 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lex.Type != lexer.LEX_PUNCTUATION || lex.Str != ":" {
+	if !lex.IsPunctuation(":") {
 		return nil, fmt.Errorf("%d:%d: expected ':' after variable name, got %v", lex.Line, lex.Col, lex)
 	}
 
@@ -520,7 +520,7 @@ func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
 	}
 
 	// If the next token is a semicolon, this is a return without a value
-	if lex.Type == lexer.LEX_PUNCTUATION && lex.Str == ";" {
+	if lex.IsPunctuation(";") {
 		return &ReturnStatement{Value: nil}, nil
 	}
 
@@ -537,10 +537,10 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 	// Look ahead to see what follows the identifier
 	if p.pos+1 < len(p.lexemes) {
 		nextLex := p.lexemes[p.pos+1]
-		if nextLex.Type == lexer.LEX_OPERATOR && nextLex.Str == "=" {
+		if nextLex.IsOperator("=") {
 			return p.parseAssignment()
 		}
-		if nextLex.Type == lexer.LEX_PUNCTUATION && nextLex.Str == "(" {
+		if nextLex.IsPunctuation("(") {
 			return p.parseFunctionCall()
 		}
 	} else {
@@ -556,10 +556,10 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 		}
 		p.pos = currentPos // reset position
 
-		if nextLex.Type == lexer.LEX_OPERATOR && nextLex.Str == "=" {
+		if nextLex.IsOperator("=") {
 			return p.parseAssignment()
 		}
-		if nextLex.Type == lexer.LEX_PUNCTUATION && nextLex.Str == "(" {
+		if nextLex.IsPunctuation("(") {
 			return p.parseFunctionCall()
 		}
 	}
@@ -584,7 +584,7 @@ func (p *Parser) parseAssignment() (Expression, error) {
 	if err != nil {
 		return Expression{}, err
 	}
-	if lex.Type != lexer.LEX_OPERATOR || lex.Str != "=" {
+	if !lex.IsOperator("=") {
 		return Expression{}, fmt.Errorf("%d:%d: expected '=', got %v", lex.Line, lex.Col, lex)
 	}
 

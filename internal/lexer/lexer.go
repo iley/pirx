@@ -91,6 +91,18 @@ func (l Lexeme) String() string {
 	return fmt.Sprintf("<%s %q>", l.Type, l.Str)
 }
 
+func (l Lexeme) IsKeyword(kv string) bool {
+	return l.Type == LEX_KEYWORD && l.Str == kv
+}
+
+func (l Lexeme) IsPunctuation(pv string) bool {
+	return l.Type == LEX_PUNCTUATION && l.Str == pv
+}
+
+func (l Lexeme) IsOperator(op string) bool {
+	return l.Type == LEX_OPERATOR && l.Str == op
+}
+
 type Lexer struct {
 	input     *bufio.Reader
 	line      int

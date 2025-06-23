@@ -57,19 +57,6 @@ func (s *Statement) Accept(visitor AstVisitor) {
 	}
 }
 
-// Helper functions for creating Statement unions
-func NewVariableDeclarationStatement(variableDeclaration *VariableDeclaration) Statement {
-	return Statement{VariableDeclaration: variableDeclaration}
-}
-
-func NewExpressionStatement(expressionStatement *ExpressionStatement) Statement {
-	return Statement{ExpressionStatement: expressionStatement}
-}
-
-func NewReturnStatement(returnStatement *ReturnStatement) Statement {
-	return Statement{ReturnStatement: returnStatement}
-}
-
 type Expression struct {
 	Literal           *Literal
 	Assignment        *Assignment
@@ -95,32 +82,6 @@ func (e *Expression) Accept(visitor AstVisitor) {
 	} else {
 		panic(fmt.Sprintf("Invalid expression type: %v", e))
 	}
-}
-
-// Helper functions for creating Expression unions
-// TODO: Get rid of those, they don't add any value.
-func NewLiteralExpression(literal *Literal) Expression {
-	return Expression{Literal: literal}
-}
-
-func NewFunctionCallExpression(functionCall *FunctionCall) Expression {
-	return Expression{FunctionCall: functionCall}
-}
-
-func NewAssignmentExpression(assignment *Assignment) Expression {
-	return Expression{Assignment: assignment}
-}
-
-func NewVariableReferenceExpression(variableReference *VariableReference) Expression {
-	return Expression{VariableReference: variableReference}
-}
-
-func NewBinaryOperationExpression(binaryOperation *BinaryOperation) Expression {
-	return Expression{BinaryOperation: binaryOperation}
-}
-
-func NewUnaryOperationExpression(unaryOperation *UnaryOperation) Expression {
-	return Expression{UnaryOperation: unaryOperation}
 }
 
 type Literal struct {

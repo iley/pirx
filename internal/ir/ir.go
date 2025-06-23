@@ -8,15 +8,6 @@ import (
 	"github.com/iley/pirx/internal/util"
 )
 
-type BinaryOpType int
-
-const (
-	Plus BinaryOpType = iota
-	Minus
-	Mul
-	Div
-)
-
 type IrProgram struct {
 	Functions []IrFunction
 }
@@ -38,21 +29,6 @@ func (irf IrFunction) Print(writer io.Writer) {
 	fmt.Fprintf(writer, "Function %s:\n", irf.Name)
 	for _, op := range irf.Ops {
 		fmt.Fprintf(writer, "  %s\n", op)
-	}
-}
-
-func (b BinaryOpType) String() string {
-	switch b {
-	case Plus:
-		return "+"
-	case Minus:
-		return "-"
-	case Mul:
-		return "*"
-	case Div:
-		return "/"
-	default:
-		panic(fmt.Sprintf("unknown binary operation: %d", int(b)))
 	}
 }
 
@@ -88,7 +64,7 @@ type BinaryOp struct {
 	Result    string
 	Left      Arg
 	Right     Arg
-	Operation BinaryOpType
+	Operation string
 }
 
 func (b BinaryOp) String() string {

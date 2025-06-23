@@ -247,13 +247,13 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	generateRegisterLoad(cc, "x0", binop.Left)
 	generateRegisterLoad(cc, "x1", binop.Right)
 	switch binop.Operation {
-	case ir.Plus:
+	case "+":
 		fmt.Fprintf(cc.output, "  add x0, x0, x1\n")
-	case ir.Minus:
+	case "-":
 		fmt.Fprintf(cc.output, "  sub x0, x0, x1\n")
-	case ir.Mul:
+	case "*":
 		fmt.Fprintf(cc.output, "  mul x0, x0, x1\n")
-	case ir.Div:
+	case "/":
 		fmt.Fprintf(cc.output, "  udiv x0, x0, x1\n")
 	default:
 		panic(fmt.Sprintf("unsupported binary operation in aarch64-darwing codegen: %v", binop.Operation))

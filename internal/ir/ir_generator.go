@@ -114,8 +114,7 @@ func (g *IrGenerator) generateExpressionOps(node parser.Expression, nextTempInde
 		rightOps, rightArg := g.generateExpressionOps(node.BinaryOperation.Right, nextTempIndex)
 		ops := append(leftOps, rightOps...)
 		temp := allocTemp(nextTempIndex)
-		operation := binaryOpTypeFromString(node.BinaryOperation.Operator)
-		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: operation})
+		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: node.BinaryOperation.Operator})
 		return ops, Arg{Variable: temp}
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
@@ -125,17 +124,4 @@ func allocTemp(nextTempIndex *int) string {
 	idx := *nextTempIndex
 	*nextTempIndex++
 	return fmt.Sprintf("$%d", idx)
-}
-
-func binaryOpTypeFromString(s string) BinaryOpType {
-	if s == "+" {
-		return Plus
-	} else if s == "-" {
-		return Minus
-	} else if s == "*" {
-		return Mul
-	} else if s == "/" {
-		return Div
-	}
-	panic(fmt.Sprintf("unknown binary operation: %s", s))
 }

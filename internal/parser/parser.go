@@ -313,15 +313,23 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, e
 }
 
 func isBinaryOperator(op string) bool {
-	return op == "+" || op == "-" || op == "*" || op == "/"
+	return op == "+" || op == "-" || op == "*" || op == "/" ||
+		op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=" ||
+		op == "&&" || op == "||"
 }
 
 func getOperatorPrecedence(op string) int {
 	switch op {
-	case "+", "-":
+	case "||":
 		return 1
-	case "*", "/":
+	case "&&":
 		return 2
+	case "==", "!=", "<", ">", "<=", ">=":
+		return 3
+	case "+", "-":
+		return 4
+	case "*", "/":
+		return 5
 	default:
 		return 0
 	}
@@ -340,6 +348,12 @@ func (p *Parser) parsePrimaryExpression() (Expression, error) {
 		return p.parseIntegerLiteral()
 	case lexer.LEX_STRING:
 		return p.parseStringLiteral()
+	case lexer.LEX_OPERATOR:
+		// TODO: Add support for unary minus.
+		if lex.Str == "!" {
+			return p.parseUnaryExpression()
+		}
+		return Expression{}, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	case lexer.LEX_PUNCTUATION:
 		if lex.Str == "(" {
 			return p.parseParenthesizedExpression()
@@ -462,6 +476,28 @@ func (p *Parser) parseParenthesizedExpression() (Expression, error) {
 	}
 
 	return expr, nil
+}
+
+func (p *Parser) parseUnaryExpression() (Expression, error) {
+	// consume the operator
+	lex, err := p.consume()
+	if err != nil {
+		return Expression{}, err
+	}
+	if !lex.IsOperator("!") {
+		return Expression{}, fmt.Errorf("%d:%d: expected '!', got %v", lex.Line, lex.Col, lex)
+	}
+
+	// parse the operand
+	operand, err := p.parsePrimaryExpression()
+	if err != nil {
+		return Expression{}, err
+	}
+
+	return Expression{UnaryOperation: &UnaryOperation{
+		Operator: lex.Str,
+		Operand:  operand,
+	}}, nil
 }
 
 func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {

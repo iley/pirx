@@ -1152,3 +1152,205 @@ func TestParseExpression_BinaryOperation(t *testing.T) {
 		})
 	}
 }
+
+func TestParseExpression_BooleanOperators(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected Expression
+	}{
+		// Comparison operators
+		{
+			name: "equality comparison",
+			src:  "x == 42",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+				Operator: "==",
+				Right:    Expression{Literal: NewIntLiteral(42)},
+			}},
+		},
+		{
+			name: "inequality comparison",
+			src:  "y != 0",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+				Operator: "!=",
+				Right:    Expression{Literal: NewIntLiteral(0)},
+			}},
+		},
+		{
+			name: "less than comparison",
+			src:  "a < b",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "a"}},
+				Operator: "<",
+				Right:    Expression{VariableReference: &VariableReference{Name: "b"}},
+			}},
+		},
+		{
+			name: "greater than comparison",
+			src:  "x > 10",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+				Operator: ">",
+				Right:    Expression{Literal: NewIntLiteral(10)},
+			}},
+		},
+		{
+			name: "less than or equal comparison",
+			src:  "score <= max",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "score"}},
+				Operator: "<=",
+				Right:    Expression{VariableReference: &VariableReference{Name: "max"}},
+			}},
+		},
+		{
+			name: "greater than or equal comparison",
+			src:  "age >= 18",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "age"}},
+				Operator: ">=",
+				Right:    Expression{Literal: NewIntLiteral(18)},
+			}},
+		},
+		// Logical operators
+		{
+			name: "logical AND",
+			src:  "x > 0 && y > 0",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+					Operator: ">",
+					Right:    Expression{Literal: NewIntLiteral(0)},
+				}},
+				Operator: "&&",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+					Operator: ">",
+					Right:    Expression{Literal: NewIntLiteral(0)},
+				}},
+			}},
+		},
+		{
+			name: "logical OR",
+			src:  "x == 0 || y == 0",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+					Operator: "==",
+					Right:    Expression{Literal: NewIntLiteral(0)},
+				}},
+				Operator: "||",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+					Operator: "==",
+					Right:    Expression{Literal: NewIntLiteral(0)},
+				}},
+			}},
+		},
+		// Unary negation operator
+		{
+			name: "logical NOT",
+			src:  "!found",
+			expected: Expression{UnaryOperation: &UnaryOperation{
+				Operator: "!",
+				Operand:  Expression{VariableReference: &VariableReference{Name: "found"}},
+			}},
+		},
+		{
+			name: "logical NOT with parentheses",
+			src:  "!(x > 0)",
+			expected: Expression{UnaryOperation: &UnaryOperation{
+				Operator: "!",
+				Operand: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+					Operator: ">",
+					Right:    Expression{Literal: NewIntLiteral(0)},
+				}},
+			}},
+		},
+		// Complex expressions with mixed precedence
+		{
+			name: "comparison with arithmetic (correct precedence)",
+			src:  "x + 1 == y * 2",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+					Operator: "+",
+					Right:    Expression{Literal: NewIntLiteral(1)},
+				}},
+				Operator: "==",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+					Operator: "*",
+					Right:    Expression{Literal: NewIntLiteral(2)},
+				}},
+			}},
+		},
+		{
+			name: "logical AND with higher precedence than OR",
+			src:  "a || b && c",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left:     Expression{VariableReference: &VariableReference{Name: "a"}},
+				Operator: "||",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "b"}},
+					Operator: "&&",
+					Right:    Expression{VariableReference: &VariableReference{Name: "c"}},
+				}},
+			}},
+		},
+		{
+			name: "negation with comparison",
+			src:  "!x == 0",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{UnaryOperation: &UnaryOperation{
+					Operator: "!",
+					Operand:  Expression{VariableReference: &VariableReference{Name: "x"}},
+				}},
+				Operator: "==",
+				Right:    Expression{Literal: NewIntLiteral(0)},
+			}},
+		},
+		{
+			name: "complex boolean expression",
+			src:  "x > 0 && y < 10 || z == 42",
+			expected: Expression{BinaryOperation: &BinaryOperation{
+				Left: Expression{BinaryOperation: &BinaryOperation{
+					Left: Expression{BinaryOperation: &BinaryOperation{
+						Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+						Operator: ">",
+						Right:    Expression{Literal: NewIntLiteral(0)},
+					}},
+					Operator: "&&",
+					Right: Expression{BinaryOperation: &BinaryOperation{
+						Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+						Operator: "<",
+						Right:    Expression{Literal: NewIntLiteral(10)},
+					}},
+				}},
+				Operator: "||",
+				Right: Expression{BinaryOperation: &BinaryOperation{
+					Left:     Expression{VariableReference: &VariableReference{Name: "z"}},
+					Operator: "==",
+					Right:    Expression{Literal: NewIntLiteral(42)},
+				}},
+			}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			result, err := parser.parseExpression()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("expected %+v, got %+v", tc.expected, result)
+			}
+		})
+	}
+}

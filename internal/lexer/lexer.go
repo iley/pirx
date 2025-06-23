@@ -66,15 +66,10 @@ var singleCharTokens = map[rune]TokenType{
 	';': LEX_PUNCTUATION,
 	',': LEX_PUNCTUATION,
 	':': LEX_PUNCTUATION,
-	'=': LEX_OPERATOR,
 	'+': LEX_OPERATOR,
 	'-': LEX_OPERATOR,
 	'*': LEX_OPERATOR,
-	'/': LEX_OPERATOR,
 	'%': LEX_OPERATOR,
-	'<': LEX_OPERATOR,
-	'>': LEX_OPERATOR,
-	'!': LEX_OPERATOR,
 }
 
 type Lexeme struct {
@@ -256,6 +251,184 @@ func (l *Lexer) Next() (Lexeme, error) {
 				Line: startLine,
 				Col:  startCol,
 			}, nil
+		}
+	case r == '=':
+		// Check for equality operator
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				// Just a single '=' at EOF
+				return Lexeme{
+					Type: LEX_OPERATOR,
+					Str:  "=",
+					Line: startLine,
+					Col:  startCol,
+				}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		if nextR == '=' {
+			// It's an equality operator
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "==",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		} else {
+			// It's just an assignment operator, put back the second character
+			l.unreadRune()
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "=",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		}
+	case r == '!':
+		// Check for not-equal operator
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				// Just a single '!' at EOF
+				return Lexeme{
+					Type: LEX_OPERATOR,
+					Str:  "!",
+					Line: startLine,
+					Col:  startCol,
+				}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		if nextR == '=' {
+			// It's a not-equal operator
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "!=",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		} else {
+			// It's just a negation operator, put back the second character
+			l.unreadRune()
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "!",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		}
+	case r == '<':
+		// Check for less-than-or-equal operator
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				// Just a single '<' at EOF
+				return Lexeme{
+					Type: LEX_OPERATOR,
+					Str:  "<",
+					Line: startLine,
+					Col:  startCol,
+				}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		if nextR == '=' {
+			// It's a less-than-or-equal operator
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "<=",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		} else {
+			// It's just a less-than operator, put back the second character
+			l.unreadRune()
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "<",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		}
+	case r == '>':
+		// Check for greater-than-or-equal operator
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				// Just a single '>' at EOF
+				return Lexeme{
+					Type: LEX_OPERATOR,
+					Str:  ">",
+					Line: startLine,
+					Col:  startCol,
+				}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		if nextR == '=' {
+			// It's a greater-than-or-equal operator
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  ">=",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		} else {
+			// It's just a greater-than operator, put back the second character
+			l.unreadRune()
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  ">",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		}
+	case r == '&':
+		// Check for logical AND operator
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				// Single '&' at EOF - not a valid operator, return EOF
+				return Lexeme{Type: LEX_EOF}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		if nextR == '&' {
+			// It's a logical AND operator
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "&&",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		} else {
+			// Single '&' is not supported, return EOF for unknown character
+			l.unreadRune()
+			return Lexeme{Type: LEX_EOF}, nil
+		}
+	case r == '|':
+		// Check for logical OR operator
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				// Single '|' at EOF - not a valid operator, return EOF
+				return Lexeme{Type: LEX_EOF}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		if nextR == '|' {
+			// It's a logical OR operator
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "||",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
+		} else {
+			// Single '|' is not supported, return EOF for unknown character
+			l.unreadRune()
+			return Lexeme{Type: LEX_EOF}, nil
 		}
 	default:
 		// Check for single-character tokens

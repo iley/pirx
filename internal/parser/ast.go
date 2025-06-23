@@ -76,6 +76,7 @@ type Expression struct {
 	FunctionCall      *FunctionCall
 	VariableReference *VariableReference
 	BinaryOperation   *BinaryOperation
+	UnaryOperation    *UnaryOperation
 }
 
 func (e *Expression) Accept(visitor AstVisitor) {
@@ -89,12 +90,15 @@ func (e *Expression) Accept(visitor AstVisitor) {
 		e.VariableReference.Accept(visitor)
 	} else if e.BinaryOperation != nil {
 		e.BinaryOperation.Accept(visitor)
+	} else if e.UnaryOperation != nil {
+		e.UnaryOperation.Accept(visitor)
 	} else {
 		panic(fmt.Sprintf("Invalid expression type: %v", e))
 	}
 }
 
 // Helper functions for creating Expression unions
+// TODO: Get rid of those, they don't add any value.
 func NewLiteralExpression(literal *Literal) Expression {
 	return Expression{Literal: literal}
 }
@@ -113,6 +117,10 @@ func NewVariableReferenceExpression(variableReference *VariableReference) Expres
 
 func NewBinaryOperationExpression(binaryOperation *BinaryOperation) Expression {
 	return Expression{BinaryOperation: binaryOperation}
+}
+
+func NewUnaryOperationExpression(unaryOperation *UnaryOperation) Expression {
+	return Expression{UnaryOperation: unaryOperation}
 }
 
 type Literal struct {
@@ -193,4 +201,13 @@ type BinaryOperation struct {
 
 func (b *BinaryOperation) Accept(visitor AstVisitor) {
 	visitor.VisitBinaryOperation(b)
+}
+
+type UnaryOperation struct {
+	Operator string
+	Operand  Expression
+}
+
+func (u *UnaryOperation) Accept(visitor AstVisitor) {
+	visitor.VisitUnaryOperation(u)
 }

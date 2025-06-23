@@ -141,3 +141,9 @@ func (p *Printer) VisitBinaryOperation(bo *BinaryOperation) {
 	bo.Right.Accept(p)
 	p.write(")")
 }
+
+func (p *Printer) VisitUnaryOperation(uo *UnaryOperation) {
+	p.write("(" + uo.Operator)
+	uo.Operand.Accept(p)
+	p.write(")")
+}

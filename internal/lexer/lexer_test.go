@@ -561,3 +561,137 @@ func TestLexerInvalidEscapeSequenceErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestLexerBooleanOperators(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []Lexeme
+	}{
+		{
+			name:  "equality operators",
+			input: "== !=",
+			expected: []Lexeme{
+				{Type: LEX_OPERATOR, Str: "==", Line: 1, Col: 1},
+				{Type: LEX_OPERATOR, Str: "!=", Line: 1, Col: 4},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "comparison operators",
+			input: "< > <= >=",
+			expected: []Lexeme{
+				{Type: LEX_OPERATOR, Str: "<", Line: 1, Col: 1},
+				{Type: LEX_OPERATOR, Str: ">", Line: 1, Col: 3},
+				{Type: LEX_OPERATOR, Str: "<=", Line: 1, Col: 5},
+				{Type: LEX_OPERATOR, Str: ">=", Line: 1, Col: 8},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "logical operators",
+			input: "&& || !",
+			expected: []Lexeme{
+				{Type: LEX_OPERATOR, Str: "&&", Line: 1, Col: 1},
+				{Type: LEX_OPERATOR, Str: "||", Line: 1, Col: 4},
+				{Type: LEX_OPERATOR, Str: "!", Line: 1, Col: 7},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "mixed boolean operations",
+			input: "x == 42 && y != 0",
+			expected: []Lexeme{
+				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 1},
+				{Type: LEX_OPERATOR, Str: "==", Line: 1, Col: 3},
+				{Type: LEX_NUMBER, Str: "42", Line: 1, Col: 6},
+				{Type: LEX_OPERATOR, Str: "&&", Line: 1, Col: 9},
+				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 12},
+				{Type: LEX_OPERATOR, Str: "!=", Line: 1, Col: 14},
+				{Type: LEX_NUMBER, Str: "0", Line: 1, Col: 17},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "negation and comparisons",
+			input: "!found || x >= limit",
+			expected: []Lexeme{
+				{Type: LEX_OPERATOR, Str: "!", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "found", Line: 1, Col: 2},
+				{Type: LEX_OPERATOR, Str: "||", Line: 1, Col: 8},
+				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 11},
+				{Type: LEX_OPERATOR, Str: ">=", Line: 1, Col: 13},
+				{Type: LEX_IDENT, Str: "limit", Line: 1, Col: 16},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name: "boolean operators in function",
+			input: `func compare(a: int, b: int) {
+    if a <= b && a != 0 {
+        return a < b || a == b
+    }
+}`,
+			expected: []Lexeme{
+				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "compare", Line: 1, Col: 6},
+				{Type: LEX_PUNCTUATION, Str: "(", Line: 1, Col: 13},
+				{Type: LEX_IDENT, Str: "a", Line: 1, Col: 14},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 15},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 17},
+				{Type: LEX_PUNCTUATION, Str: ",", Line: 1, Col: 20},
+				{Type: LEX_IDENT, Str: "b", Line: 1, Col: 22},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 23},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 25},
+				{Type: LEX_PUNCTUATION, Str: ")", Line: 1, Col: 28},
+				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 30},
+				{Type: LEX_KEYWORD, Str: "if", Line: 2, Col: 5},
+				{Type: LEX_IDENT, Str: "a", Line: 2, Col: 8},
+				{Type: LEX_OPERATOR, Str: "<=", Line: 2, Col: 10},
+				{Type: LEX_IDENT, Str: "b", Line: 2, Col: 13},
+				{Type: LEX_OPERATOR, Str: "&&", Line: 2, Col: 15},
+				{Type: LEX_IDENT, Str: "a", Line: 2, Col: 18},
+				{Type: LEX_OPERATOR, Str: "!=", Line: 2, Col: 20},
+				{Type: LEX_NUMBER, Str: "0", Line: 2, Col: 23},
+				{Type: LEX_PUNCTUATION, Str: "{", Line: 2, Col: 25},
+				{Type: LEX_KEYWORD, Str: "return", Line: 3, Col: 9},
+				{Type: LEX_IDENT, Str: "a", Line: 3, Col: 16},
+				{Type: LEX_OPERATOR, Str: "<", Line: 3, Col: 18},
+				{Type: LEX_IDENT, Str: "b", Line: 3, Col: 20},
+				{Type: LEX_OPERATOR, Str: "||", Line: 3, Col: 22},
+				{Type: LEX_IDENT, Str: "a", Line: 3, Col: 25},
+				{Type: LEX_OPERATOR, Str: "==", Line: 3, Col: 27},
+				{Type: LEX_IDENT, Str: "b", Line: 3, Col: 30},
+				{Type: LEX_PUNCTUATION, Str: "}", Line: 4, Col: 5},
+				{Type: LEX_PUNCTUATION, Str: "}", Line: 5, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(strings.NewReader(tt.input))
+			for i, expected := range tt.expected {
+				got, err := l.Next()
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+					return
+				}
+
+				if got.Type != expected.Type {
+					t.Errorf("token %d: expected type %s, got %s", i, expected.Type, got.Type)
+				}
+				if got.Str != expected.Str {
+					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
+				}
+				if got.Line != expected.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				}
+				if got.Col != expected.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				}
+			}
+		})
+	}
+}

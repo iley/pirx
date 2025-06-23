@@ -1,0 +1,8 @@
+func main() {
+  // Test logical NOT operator
+  printf("!1: %d\n", !1);
+  printf("!0: %d\n", !0);
+  printf("!42: %d\n", !42);
+  
+  return 0;
+} 

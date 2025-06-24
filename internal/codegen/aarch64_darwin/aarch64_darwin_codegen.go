@@ -15,6 +15,8 @@ import (
 const (
 	WORD_SIZE     = 8
 	MAX_FUNC_ARGS = 8
+	// TODO: Generate code for indirect loading to work around the max. offset.
+	MAX_SP_OFFSET = 504 // maximum offset from SP supproted in load/store instructions.
 )
 
 type CodegenContext struct {
@@ -91,7 +93,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// * 2 words for FP and LR
 	// * Local variables including function arguments.
 	reservedWords := int64(2)
-	frameSize := (reservedWords + int64(len(locals)) * WORD_SIZE)
+	frameSize := (reservedWords + int64(len(locals))*WORD_SIZE)
 	// SP must always be aligned by 16 bytes.
 	frameSize = util.Align(frameSize, 16)
 
@@ -105,6 +107,9 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// Offset from SP for locals.
 	offset := 0
 	for i, param := range f.Params {
+		if offset > MAX_SP_OFFSET {
+			panic(fmt.Sprintf("too many locals: maximum offset supported is %d", MAX_SP_OFFSET))
+		}
 		fmt.Fprintf(cc.output, "  str x%d, [sp, #%d]\n", i, offset)
 		locals[param] = offset
 		offset += WORD_SIZE

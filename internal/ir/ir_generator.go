@@ -61,7 +61,7 @@ func (g *IrGenerator) generateStatementOps(node parser.Statement, nextTempIndex 
 	ops := []Op{}
 	if node.VariableDeclaration != nil {
 		// TODO: types.
-		zero := 0
+		zero := int64(0)
 		ops = append(ops, Assign{Target: node.VariableDeclaration.Name, Value: Arg{LiteralInt: &zero}})
 	} else if node.ExpressionStatement != nil {
 		// We ignore the result of the expression.

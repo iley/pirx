@@ -142,7 +142,7 @@ func (r Return) GetArgs() []Arg {
 
 type Arg struct {
 	Variable      string
-	LiteralInt    *int
+	LiteralInt    *int64
 	LiteralString *string
 }
 

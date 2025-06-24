@@ -86,7 +86,7 @@ func (e *Expression) Accept(visitor AstVisitor) {
 
 type Literal struct {
 	StringValue *string
-	IntValue    *int
+	IntValue    *int64
 }
 
 func (l *Literal) Accept(visitor AstVisitor) {
@@ -94,7 +94,7 @@ func (l *Literal) Accept(visitor AstVisitor) {
 }
 
 // Helper functions for creating Literal values
-func NewIntLiteral(value int) *Literal {
+func NewIntLiteral(value int64) *Literal {
 	return &Literal{IntValue: &value}
 }
 

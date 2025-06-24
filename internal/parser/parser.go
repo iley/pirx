@@ -439,7 +439,7 @@ func (p *Parser) parseIntegerLiteral() (Expression, error) {
 	if err != nil {
 		return Expression{}, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
 	}
-	return Expression{Literal: &Literal{IntValue: &val}}, nil
+	return Expression{Literal: NewIntLiteral(int64(val))}, nil
 }
 
 func (p *Parser) parseStringLiteral() (Expression, error) {

@@ -20,7 +20,7 @@ const (
 type CodegenContext struct {
 	output         io.Writer
 	locals         map[string]int
-	frameSize      int
+	frameSize      int64
 	stringLiterals map[string]string
 }
 
@@ -91,7 +91,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// * 2 words for FP and LR
 	// * Local variables including function arguments.
 	reservedWords := 2
-	frameSize := (reservedWords + len(locals)) * WORD_SIZE
+	frameSize := int64((reservedWords + len(locals)) * WORD_SIZE)
 	// SP must always be aligned by 16 bytes.
 	frameSize = util.Align(frameSize, 16)
 
@@ -182,9 +182,9 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 		// Darwin deviates from the standard ARM64 ABI for variadic functions.
 		// Arguments go on the stack.
 		// First, move SP to allocate space for the args. Don't forget to align SP by 16.
-		spShift := 0
+		var spShift int64
 		if len(call.Args) > 1 {
-			spShift = util.Align(len(call.Args)-1, 16)
+			spShift = util.Align(int64(len(call.Args)-1), 16)
 			fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", spShift)
 		}
 
@@ -227,13 +227,13 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	} else if arg.LiteralInt != nil {
 		val := *arg.LiteralInt
 		fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
-		if (val<<16)&0xffff != 0 {
+		if (val>>16)&0xffff != 0 {
 			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
 		}
-		if (val<<32)&0xffff != 0 {
+		if (val>>32)&0xffff != 0 {
 			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
 		}
-		if (val<<48)&0xffff != 0 {
+		if (val>>48)&0xffff != 0 {
 			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
 		}
 	} else if arg.LiteralString != nil {

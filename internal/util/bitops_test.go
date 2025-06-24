@@ -5,7 +5,7 @@ import "testing"
 func TestSlice16bits(t *testing.T) {
 	tests := []struct {
 		name       string
-		val        int
+		val        int64
 		offsetBits int
 		expected   string
 	}{
@@ -16,34 +16,22 @@ func TestSlice16bits(t *testing.T) {
 			expected:   "#0x0000",
 		},
 		{
-			name:       "simple value with no offset",
-			val:        0x1234,
+			name:       "no offset",
+			val:        0x123456789,
 			offsetBits: 0,
-			expected:   "#0x1234",
+			expected:   "#0x6789",
 		},
 		{
-			name:       "value with left shift",
-			val:        0x1234,
-			offsetBits: 4,
-			expected:   "#0x2340",
-		},
-		{
-			name:       "value that overflows 16 bits",
-			val:        0x12345,
-			offsetBits: 0,
-			expected:   "#0x2345",
-		},
-		{
-			name:       "value with shift that causes overflow",
-			val:        0x1234,
+			name:       "offset 8",
+			val:        0x12345678,
 			offsetBits: 8,
-			expected:   "#0x3400",
+			expected:   "#0x3456",
 		},
 		{
-			name:       "maximum 16-bit value",
-			val:        0x0001,
-			offsetBits: 15,
-			expected:   "#0x8000",
+			name:       "offset 16",
+			val:        0x12345678,
+			offsetBits: 16,
+			expected:   "#0x1234",
 		},
 	}
 
@@ -60,9 +48,9 @@ func TestSlice16bits(t *testing.T) {
 func TestAlign(t *testing.T) {
 	tests := []struct {
 		name      string
-		addr      int
+		addr      int64
 		alignment int
-		expected  int
+		expected  int64
 	}{
 		{
 			name:      "already aligned address",

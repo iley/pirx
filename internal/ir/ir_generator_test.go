@@ -219,7 +219,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 }
 
 // Helper function to create int pointers
-func intPtr(i int) *int {
+func intPtr(i int64) *int64 {
 	return &i
 }
 

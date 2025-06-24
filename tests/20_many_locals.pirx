@@ -1,0 +1,58 @@
+func main() {
+  var x0: int;
+  var x1: int;
+  var x2: int;
+  var x3: int;
+  var x4: int;
+  var x5: int;
+  var x6: int;
+  var x7: int;
+  var x8: int;
+  var x9: int;
+  var x10: int;
+  var x11: int;
+  var x12: int;
+  var x13: int;
+  var x14: int;
+  var x15: int;
+  var x16: int;
+  var x17: int;
+  var x18: int;
+  var x19: int;
+  var x20: int;
+  var x21: int;
+  var x22: int;
+  var x23: int;
+  var x24: int;
+  var x25: int;
+  var x26: int;
+  var x27: int;
+  var x28: int;
+  var x29: int;
+  var x30: int;
+  var x31: int;
+  var x32: int;
+  var x33: int;
+  var x34: int;
+  var x35: int;
+  var x36: int;
+  var x37: int;
+  var x38: int;
+  var x39: int;
+  var x40: int;
+  var x41: int;
+  var x42: int;
+  var x43: int;
+  var x44: int;
+  var x45: int;
+  var x46: int;
+  var x47: int;
+  var x48: int;
+  var x49: int;
+  var x50: int;
+
+  x257 = 42;
+  printf("%d\n", x257);
+
+  return 0;
+}

@@ -90,22 +90,22 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// Allocate space on the stack:
 	// * 2 words for FP and LR
 	// * Local variables including function arguments.
-	reservedWords := 2
-	frameSize := int64((reservedWords + len(locals)) * WORD_SIZE)
+	reservedWords := int64(2)
+	frameSize := (reservedWords + int64(len(locals)) * WORD_SIZE)
 	// SP must always be aligned by 16 bytes.
 	frameSize = util.Align(frameSize, 16)
 
 	// For now we're going to assume that all variables are 64-bit.
 	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", frameSize)
 	// Store x29 and x30 at the top of the frame.
-	fmt.Fprintf(cc.output, "  stp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
-	fmt.Fprintf(cc.output, "  add x29, sp, #%d\n", frameSize-2*WORD_SIZE)
+	fmt.Fprintf(cc.output, "  stp x29, x30, [sp, #%d]\n", frameSize-reservedWords*WORD_SIZE)
+	fmt.Fprintf(cc.output, "  add x29, sp, #%d\n", frameSize-reservedWords*WORD_SIZE)
 	fmt.Fprintf(cc.output, "\n")
 
-	// Offset from x29 for locals.
-	offset := WORD_SIZE
+	// Offset from SP for locals.
+	offset := 0
 	for i, param := range f.Params {
-		fmt.Fprintf(cc.output, "  str x%d, [x29, #-%d]\n", i, offset)
+		fmt.Fprintf(cc.output, "  str x%d, [sp, #%d]\n", i, offset)
 		locals[param] = offset
 		offset += WORD_SIZE
 	}
@@ -144,13 +144,13 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 			// Assign variable to variable.
 			src := assign.Value.Variable
 			dst := assign.Target
-			fmt.Fprintf(cc.output, "  ldr x0, [x29, #-%d]\n", cc.locals[src])
-			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[dst])
+			fmt.Fprintf(cc.output, "  ldr x0, [sp, #%d]\n", cc.locals[src])
+			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[dst])
 		} else if assign.Value.LiteralInt != nil {
 			// Assign integer constant to variable.
 			name := assign.Target
 			generateRegisterLoad(cc, "x0", assign.Value)
-			fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[name])
+			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[name])
 		} else {
 			panic(fmt.Sprintf("Invalid rvalue in assignment: %v", assign.Value))
 		}
@@ -184,14 +184,15 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 		// First, move SP to allocate space for the args. Don't forget to align SP by 16.
 		var spShift int64
 		if len(call.Args) > 1 {
+			// Calculate the base for storing arguments in X9 first, because we need SP for referencing locals.
 			spShift = util.Align(int64(len(call.Args)-1), 16)
-			fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", spShift)
+			fmt.Fprintf(cc.output, "  sub x9, sp, #%d\n", spShift)
 		}
 
 		// Then generate stack pushes for the arguments except the first one.
 		for i, arg := range call.Args[1:] {
 			generateRegisterLoad(cc, "x0", arg)
-			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*WORD_SIZE)
+			fmt.Fprintf(cc.output, "  str x0, [x9, #%d]\n", i*WORD_SIZE)
 		}
 
 		if len(call.Args) > 0 {
@@ -199,14 +200,21 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 			generateRegisterLoad(cc, "x0", call.Args[0])
 		}
 
+		if spShift > 0 {
+			// Adjust SP just before making the call.
+			fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", spShift)
+		}
+
 		// Finally, call the function.
 		fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
-		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
 
 		// Don't forget to clean up: move SP back.
 		if spShift > 0 {
 			fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", spShift)
 		}
+
+		// Store the result.
+		fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[call.Result])
 	} else {
 		// Non-variadic functions are much easier: put arguments into X0-X7.
 		// We're ignoring functions with more than 8 arguments for now.
@@ -215,7 +223,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 			generateRegisterLoad(cc, fmt.Sprintf("x%d", i), arg)
 		}
 		fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
-		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[call.Result])
+		fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[call.Result])
 	}
 	return nil
 }
@@ -223,7 +231,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	// TODO: Support for non-local variables.
 	if arg.Variable != "" {
-		fmt.Fprintf(cc.output, "  ldr %s, [x29, #-%d]\n", reg, cc.locals[arg.Variable])
+		fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, cc.locals[arg.Variable])
 	} else if arg.LiteralInt != nil {
 		val := *arg.LiteralInt
 		fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
@@ -288,7 +296,7 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	default:
 		panic(fmt.Sprintf("unsupported binary operation in aarch64-darwing codegen: %v", binop.Operation))
 	}
-	fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[binop.Result])
+	fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[binop.Result])
 	return nil
 }
 
@@ -297,7 +305,7 @@ func generateUnaryOp(cc *CodegenContext, unaryOp ir.UnaryOp) error {
 		generateRegisterLoad(cc, "x0", unaryOp.Value)
 		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
 		fmt.Fprintf(cc.output, "  cset x0, eq\n")
-		fmt.Fprintf(cc.output, "  str x0, [x29, #-%d]\n", cc.locals[unaryOp.Result])
+		fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[unaryOp.Result])
 		return nil
 	}
 	panic(fmt.Sprintf("unsupported unary operation %s", unaryOp.Operation))

@@ -203,6 +203,37 @@ func runSingleTest(config *CompilationConfig, testCase TestCase, testsDir string
 	return false, fmt.Sprintf("output mismatch:\nExpected: %q\nActual:   %q", expectedOutput, actualOutput)
 }
 
+// findTestCase finds a test case by number or path
+func findTestCase(tests []TestCase, identifier string) (*TestCase, error) {
+	// If identifier is a path, try to match it directly
+	if strings.Contains(identifier, "/") || strings.HasSuffix(identifier, ".pirx") {
+		// Remove .pirx extension if present
+		if strings.HasSuffix(identifier, ".pirx") {
+			identifier = strings.TrimSuffix(identifier, ".pirx")
+		}
+		// Remove leading tests/ if present
+		if strings.HasPrefix(identifier, "tests/") {
+			identifier = strings.TrimPrefix(identifier, "tests/")
+		}
+
+		for _, test := range tests {
+			if test.Name == identifier {
+				return &test, nil
+			}
+		}
+		return nil, fmt.Errorf("test not found: %s", identifier)
+	}
+
+	// If identifier is just a number, find test that starts with that number
+	for _, test := range tests {
+		if strings.HasPrefix(test.Name, identifier+"_") || test.Name == identifier {
+			return &test, nil
+		}
+	}
+
+	return nil, fmt.Errorf("test not found: %s", identifier)
+}
+
 func main() {
 	// Get compilation configuration for current platform
 	config, err := getCompilationConfig()
@@ -229,17 +260,33 @@ func main() {
 		return tests[i].Name < tests[j].Name
 	})
 
-	if len(tests) == 1 {
-		fmt.Printf("Found 1 test\n")
+	// Check for command line arguments
+	var testsToRun []TestCase
+	if len(os.Args) > 1 {
+		// Run specific test
+		testIdentifier := os.Args[1]
+		testCase, err := findTestCase(tests, testIdentifier)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		testsToRun = []TestCase{*testCase}
+		fmt.Printf("Running specific test: %s\n", testCase.Name)
 	} else {
-		fmt.Printf("Found %d tests\n", len(tests))
+		// Run all tests
+		testsToRun = tests
+		if len(tests) == 1 {
+			fmt.Printf("Found 1 test\n")
+		} else {
+			fmt.Printf("Found %d tests\n", len(tests))
+		}
 	}
 
-	// Run all tests
+	// Run tests
 	passed := 0
 	failed := 0
 
-	for _, test := range tests {
+	for _, test := range testsToRun {
 		success, errorMsg := runSingleTest(config, test, testsDir)
 		if success {
 			fmt.Println("PASS")

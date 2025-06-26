@@ -322,7 +322,7 @@ func generateRegisterStore(cc *CodegenContext, reg, target string) {
 	} else {
 		generateLiteralLoad(cc, "x9", offset)
 		fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
-		fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
+		fmt.Fprintf(cc.output, "  str %s, [x9]\n", reg)
 	}
 }
 

@@ -146,16 +146,13 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 func generateOp(cc *CodegenContext, op ir.Op) error {
 	if assign, ok := op.(ir.Assign); ok {
 		if assign.Value.Variable != "" {
-			// Assign variable to variable.
-			src := assign.Value.Variable
-			dst := assign.Target
-			fmt.Fprintf(cc.output, "  ldr x0, [sp, #%d]\n", cc.locals[src])
-			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[dst])
+			// Assign value to variable.
+			generateRegisterLoad(cc, "x0", assign.Value)
+			generateRegisterStore(cc, "x0", assign.Target)
 		} else if assign.Value.LiteralInt != nil {
 			// Assign integer constant to variable.
-			name := assign.Target
 			generateRegisterLoad(cc, "x0", assign.Value)
-			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[name])
+			generateRegisterStore(cc, "x0", assign.Target)
 		} else {
 			panic(fmt.Sprintf("Invalid rvalue in assignment: %v", assign.Value))
 		}
@@ -219,7 +216,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 		}
 
 		// Store the result.
-		fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[call.Result])
+		generateRegisterStore(cc, "x0", call.Result)
 	} else {
 		// Non-variadic functions are much easier: put arguments into X0-X7.
 		// We're ignoring functions with more than 8 arguments for now.
@@ -228,34 +225,9 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 			generateRegisterLoad(cc, fmt.Sprintf("x%d", i), arg)
 		}
 		fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
-		fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[call.Result])
+		generateRegisterStore(cc, "x0", call.Result)
 	}
 	return nil
-}
-
-func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
-	// TODO: Support for non-local variables.
-	if arg.Variable != "" {
-		fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, cc.locals[arg.Variable])
-	} else if arg.LiteralInt != nil {
-		val := *arg.LiteralInt
-		fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
-		if (val>>16)&0xffff != 0 {
-			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
-		}
-		if (val>>32)&0xffff != 0 {
-			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
-		}
-		if (val>>48)&0xffff != 0 {
-			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
-		}
-	} else if arg.LiteralString != nil {
-		label := cc.stringLiterals[*arg.LiteralString]
-		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
-		fmt.Fprintf(cc.output, "  add %s, %s, %s@PAGEOFF\n", reg, reg, label)
-	} else {
-		panic(fmt.Sprintf("invalid arg in code generation: %v", arg))
-	}
 }
 
 // TODO: Support unsigned operations.
@@ -301,7 +273,7 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	default:
 		panic(fmt.Sprintf("unsupported binary operation in aarch64-darwing codegen: %v", binop.Operation))
 	}
-	fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[binop.Result])
+	generateRegisterStore(cc, "x0", binop.Result)
 	return nil
 }
 
@@ -310,8 +282,37 @@ func generateUnaryOp(cc *CodegenContext, unaryOp ir.UnaryOp) error {
 		generateRegisterLoad(cc, "x0", unaryOp.Value)
 		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
 		fmt.Fprintf(cc.output, "  cset x0, eq\n")
-		fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[unaryOp.Result])
+		generateRegisterStore(cc, "x0", unaryOp.Result)
 		return nil
 	}
 	panic(fmt.Sprintf("unsupported unary operation %s", unaryOp.Operation))
+}
+
+func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
+	// TODO: Support for non-local variables.
+	if arg.Variable != "" {
+		fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, cc.locals[arg.Variable])
+	} else if arg.LiteralInt != nil {
+		val := *arg.LiteralInt
+		fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
+		if (val>>16)&0xffff != 0 {
+			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
+		}
+		if (val>>32)&0xffff != 0 {
+			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
+		}
+		if (val>>48)&0xffff != 0 {
+			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
+		}
+	} else if arg.LiteralString != nil {
+		label := cc.stringLiterals[*arg.LiteralString]
+		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
+		fmt.Fprintf(cc.output, "  add %s, %s, %s@PAGEOFF\n", reg, reg, label)
+	} else {
+		panic(fmt.Sprintf("invalid arg in code generation: %v", arg))
+	}
+}
+
+func generateRegisterStore(cc *CodegenContext, reg, target string) {
+	fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[target])
 }

@@ -100,7 +100,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// For now we're going to assume that all variables are 64-bit.
 	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", frameSize)
 	// Store x29 and x30 at the top of the frame.
-	fmt.Fprintf(cc.output, "  stp x29, x30, [sp, #%d]\n", frameSize-reservedWords*WORD_SIZE)
+	generateStorePair(cc, "x29", "x30", frameSize-reservedWords*WORD_SIZE)
 	fmt.Fprintf(cc.output, "  add x29, sp, #%d\n", frameSize-reservedWords*WORD_SIZE)
 	fmt.Fprintf(cc.output, "\n")
 
@@ -136,10 +136,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		}
 	}
 
-	fmt.Fprintf(cc.output, "\n")
-	fmt.Fprintf(cc.output, "  ldp x29, x30, [sp, #%d]\n", frameSize-2*WORD_SIZE)
-	fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", frameSize)
-	fmt.Fprintf(cc.output, "  ret\n")
+	// We assume that there's always a return op at the end of a function, so there's no need to explicitly generate an epilogue.
 	return nil
 }
 
@@ -166,7 +163,7 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 		if ret.Value != nil {
 			generateRegisterLoad(cc, "x0", *ret.Value)
 		}
-		fmt.Fprintf(cc.output, "  ldp x29, x30, [sp, #%d]\n", cc.frameSize-2*WORD_SIZE)
+		generateLoadPair(cc, "x29", "x30", cc.frameSize-2*WORD_SIZE)
 		fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", cc.frameSize)
 		fmt.Fprintf(cc.output, "  ret\n")
 	} else {
@@ -291,19 +288,18 @@ func generateUnaryOp(cc *CodegenContext, unaryOp ir.UnaryOp) error {
 func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 	// TODO: Support for non-local variables.
 	if arg.Variable != "" {
-		fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, cc.locals[arg.Variable])
+		offset := int64(cc.locals[arg.Variable])
+		if offset <= MAX_SP_OFFSET {
+			// Easy case: offset from SP.
+			fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, offset)
+		} else {
+			// Calculate the address in an intermediary register.
+			generateLiteralLoad(cc, "x9", offset)
+			fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
+			fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
+		}
 	} else if arg.LiteralInt != nil {
-		val := *arg.LiteralInt
-		fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
-		if (val>>16)&0xffff != 0 {
-			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
-		}
-		if (val>>32)&0xffff != 0 {
-			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
-		}
-		if (val>>48)&0xffff != 0 {
-			fmt.Fprintf(cc.output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
-		}
+		generateLiteralLoad(cc, reg, *arg.LiteralInt)
 	} else if arg.LiteralString != nil {
 		label := cc.stringLiterals[*arg.LiteralString]
 		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
@@ -314,5 +310,46 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 }
 
 func generateRegisterStore(cc *CodegenContext, reg, target string) {
-	fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", cc.locals[target])
+	offset := int64(cc.locals[target])
+	if offset <= MAX_SP_OFFSET {
+		// Easy case: offset from SP.
+		fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", offset)
+	} else {
+		generateLiteralLoad(cc, "x9", offset)
+		fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
+		fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
+	}
+}
+
+func generateLiteralLoad(cc *CodegenContext, reg string, val int64) {
+	fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
+	if (val>>16)&0xffff != 0 {
+		fmt.Fprintf(cc.output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
+	}
+	if (val>>32)&0xffff != 0 {
+		fmt.Fprintf(cc.output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
+	}
+	if (val>>48)&0xffff != 0 {
+		fmt.Fprintf(cc.output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
+	}
+}
+
+func generateLoadPair(cc *CodegenContext, firstReg, secondReg string, offset int64) {
+	if offset <= MAX_SP_OFFSET {
+		fmt.Fprintf(cc.output, "  ldp %s, %s, [sp, #%d]\n", firstReg, secondReg, offset)
+	} else {
+		generateLiteralLoad(cc, "x9", offset)
+		fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
+		fmt.Fprintf(cc.output, "  ldp %s, %s, [x9]\n", firstReg, secondReg)
+	}
+}
+
+func generateStorePair(cc *CodegenContext, firstReg, secondReg string, offset int64) {
+	if offset <= MAX_SP_OFFSET {
+		fmt.Fprintf(cc.output, "  stp %s, %s, [sp, #%d]\n", firstReg, secondReg, offset)
+	} else {
+		generateLiteralLoad(cc, "x9", offset)
+		fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
+		fmt.Fprintf(cc.output, "  stp %s, %s, [x9]\n", firstReg, secondReg)
+	}
 }

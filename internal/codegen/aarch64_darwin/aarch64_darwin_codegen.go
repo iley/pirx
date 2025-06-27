@@ -327,14 +327,14 @@ func generateRegisterStore(cc *CodegenContext, reg, target string) {
 }
 
 func generateLiteralLoad(cc *CodegenContext, reg string, val int64) {
-	fmt.Fprintf(cc.output, "  mov %s, %s\n", reg, util.Slice16bits(val, 0))
+	fmt.Fprintf(cc.output, "  mov %s, #%d\n", reg, val&0xffff)
 	if (val>>16)&0xffff != 0 {
-		fmt.Fprintf(cc.output, "  movk %s, %s, lsl #16\n", reg, util.Slice16bits(val, 16))
+		fmt.Fprintf(cc.output, "  movk %s, #%d, lsl #16\n", reg, (val>>16)&0xffff)
 	}
 	if (val>>32)&0xffff != 0 {
-		fmt.Fprintf(cc.output, "  movk %s, %s, lsl #32\n", reg, util.Slice16bits(val, 32))
+		fmt.Fprintf(cc.output, "  movk %s, #%d, lsl #32\n", reg, (val>>32)&0xffff)
 	}
 	if (val>>48)&0xffff != 0 {
-		fmt.Fprintf(cc.output, "  movk %s, %s, lsl #48\n", reg, util.Slice16bits(val, 48))
+		fmt.Fprintf(cc.output, "  movk %s, #%d, lsl #48\n", reg, (val>>48)&0xffff)
 	}
 }

@@ -2,49 +2,6 @@ package util
 
 import "testing"
 
-func TestSlice16bits(t *testing.T) {
-	tests := []struct {
-		name       string
-		val        int64
-		offsetBits int
-		expected   string
-	}{
-		{
-			name:       "zero value",
-			val:        0,
-			offsetBits: 0,
-			expected:   "#0x0000",
-		},
-		{
-			name:       "no offset",
-			val:        0x123456789,
-			offsetBits: 0,
-			expected:   "#0x6789",
-		},
-		{
-			name:       "offset 8",
-			val:        0x12345678,
-			offsetBits: 8,
-			expected:   "#0x3456",
-		},
-		{
-			name:       "offset 16",
-			val:        0x12345678,
-			offsetBits: 16,
-			expected:   "#0x1234",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := Slice16bits(tt.val, tt.offsetBits)
-			if got != tt.expected {
-				t.Errorf("Slice16bits(%d, %d) = %s, want %s", tt.val, tt.offsetBits, got, tt.expected)
-			}
-		})
-	}
-}
-
 func TestAlign(t *testing.T) {
 	tests := []struct {
 		name      string

@@ -181,7 +181,7 @@ func (u *UnaryOperation) Accept(visitor AstVisitor) {
 
 type IfStatement struct {
 	Condition Expression
-	ThenBlock *Block
+	ThenBlock Block
 	ElseBlock *Block // optional
 }
 
@@ -191,7 +191,7 @@ func (i *IfStatement) Accept(visitor AstVisitor) {
 
 type WhileStatement struct {
 	Condition Expression
-	Body      *Block
+	Body      Block
 }
 
 func (w *WhileStatement) Accept(visitor AstVisitor) {

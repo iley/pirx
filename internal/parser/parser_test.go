@@ -1377,7 +1377,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 										Operator: "==",
 										Right:    Expression{Literal: NewIntLiteral(5)},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{ReturnStatement: &ReturnStatement{Value: nil}},
 										},
@@ -1406,7 +1406,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 										Operator: ">",
 										Right:    Expression{Literal: NewIntLiteral(0)},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{ExpressionStatement: &ExpressionStatement{
 												Expression: Expression{Assignment: &Assignment{
@@ -1457,7 +1457,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 											Right:    Expression{Literal: NewIntLiteral(10)},
 										}},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{ReturnStatement: &ReturnStatement{
 												Value: &Expression{VariableReference: &VariableReference{Name: "x"}},
@@ -1487,7 +1487,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 										Operator: "!",
 										Operand:  Expression{VariableReference: &VariableReference{Name: "flag"}},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{ReturnStatement: &ReturnStatement{Value: nil}},
 										},
@@ -1516,7 +1516,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 										Operator: ">",
 										Right:    Expression{Literal: NewIntLiteral(0)},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{IfStatement: &IfStatement{
 												Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1524,7 +1524,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 													Operator: ">",
 													Right:    Expression{Literal: NewIntLiteral(0)},
 												}},
-												ThenBlock: &Block{
+												ThenBlock: Block{
 													Statements: []Statement{
 														{ReturnStatement: &ReturnStatement{
 															Value: &Expression{Literal: NewIntLiteral(1)},
@@ -1621,7 +1621,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 										Operator: "==",
 										Right:    Expression{Literal: NewIntLiteral(1)},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{ReturnStatement: &ReturnStatement{
 												Value: &Expression{Literal: NewIntLiteral(1)},
@@ -1636,7 +1636,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 													Operator: "==",
 													Right:    Expression{Literal: NewIntLiteral(2)},
 												}},
-												ThenBlock: &Block{
+												ThenBlock: Block{
 													Statements: []Statement{
 														{ReturnStatement: &ReturnStatement{
 															Value: &Expression{Literal: NewIntLiteral(2)},
@@ -1670,7 +1670,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 										Operator: "==",
 										Right:    Expression{Literal: NewIntLiteral(1)},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{ReturnStatement: &ReturnStatement{
 												Value: &Expression{Literal: NewIntLiteral(1)},
@@ -1685,7 +1685,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 													Operator: "==",
 													Right:    Expression{Literal: NewIntLiteral(2)},
 												}},
-												ThenBlock: &Block{
+												ThenBlock: Block{
 													Statements: []Statement{
 														{ReturnStatement: &ReturnStatement{
 															Value: &Expression{Literal: NewIntLiteral(2)},
@@ -1725,7 +1725,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 										Operator: "==",
 										Right:    Expression{Literal: NewIntLiteral(1)},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{ReturnStatement: &ReturnStatement{
 												Value: &Expression{Literal: NewIntLiteral(1)},
@@ -1740,7 +1740,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 													Operator: "==",
 													Right:    Expression{Literal: NewIntLiteral(2)},
 												}},
-												ThenBlock: &Block{
+												ThenBlock: Block{
 													Statements: []Statement{
 														{ReturnStatement: &ReturnStatement{
 															Value: &Expression{Literal: NewIntLiteral(2)},
@@ -1755,7 +1755,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 																Operator: "==",
 																Right:    Expression{Literal: NewIntLiteral(3)},
 															}},
-															ThenBlock: &Block{
+															ThenBlock: Block{
 																Statements: []Statement{
 																	{ReturnStatement: &ReturnStatement{
 																		Value: &Expression{Literal: NewIntLiteral(3)},
@@ -1798,7 +1798,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 										Operator: ">",
 										Right:    Expression{Literal: NewIntLiteral(10)},
 									}},
-									ThenBlock: &Block{
+									ThenBlock: Block{
 										Statements: []Statement{
 											{ReturnStatement: &ReturnStatement{
 												Value: &Expression{Literal: NewIntLiteral(1)},
@@ -1821,7 +1821,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 														Right:    Expression{Literal: NewIntLiteral(10)},
 													}},
 												}},
-												ThenBlock: &Block{
+												ThenBlock: Block{
 													Statements: []Statement{
 														{ReturnStatement: &ReturnStatement{
 															Value: &Expression{Literal: NewIntLiteral(2)},
@@ -1884,7 +1884,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 										Operator: ">",
 										Right:    Expression{Literal: NewIntLiteral(0)},
 									}},
-									Body: &Block{
+									Body: Block{
 										Statements: []Statement{
 											{ExpressionStatement: &ExpressionStatement{
 												Expression: Expression{Assignment: &Assignment{
@@ -1929,7 +1929,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 											Right:    Expression{Literal: NewIntLiteral(10)},
 										}},
 									}},
-									Body: &Block{
+									Body: Block{
 										Statements: []Statement{
 											{ExpressionStatement: &ExpressionStatement{
 												Expression: Expression{FunctionCall: &FunctionCall{
@@ -1964,7 +1964,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 										Operator: "!",
 										Operand:  Expression{VariableReference: &VariableReference{Name: "done"}},
 									}},
-									Body: &Block{
+									Body: Block{
 										Statements: []Statement{
 											{ExpressionStatement: &ExpressionStatement{
 												Expression: Expression{Assignment: &Assignment{
@@ -2000,7 +2000,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 										Operator: ">",
 										Right:    Expression{Literal: NewIntLiteral(0)},
 									}},
-									Body: &Block{
+									Body: Block{
 										Statements: []Statement{
 											{WhileStatement: &WhileStatement{
 												Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2008,7 +2008,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 													Operator: ">",
 													Right:    Expression{Literal: NewIntLiteral(0)},
 												}},
-												Body: &Block{
+												Body: Block{
 													Statements: []Statement{
 														{ExpressionStatement: &ExpressionStatement{
 															Expression: Expression{Assignment: &Assignment{
@@ -2058,7 +2058,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 										Operator: "<",
 										Right:    Expression{Literal: NewIntLiteral(10)},
 									}},
-									Body: &Block{
+									Body: Block{
 										Statements: []Statement{
 											{ExpressionStatement: &ExpressionStatement{
 												Expression: Expression{FunctionCall: &FunctionCall{

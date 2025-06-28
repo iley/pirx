@@ -150,10 +150,6 @@ func generateExpressionOps(ic *IrContext, node parser.Expression) ([]Op, Arg) {
 }
 
 func generateIfOps(ic *IrContext, stmt parser.IfStatement) []Op {
-	if stmt.ThenBlock == nil {
-		panic(fmt.Sprintf("if statement must include a then block: %v", stmt))
-	}
-
 	ops := []Op{}
 
 	if stmt.ElseBlock == nil {
@@ -161,7 +157,7 @@ func generateIfOps(ic *IrContext, stmt parser.IfStatement) []Op {
 		condOps, condArg := generateExpressionOps(ic, stmt.Condition)
 		ops = append(ops, condOps...)
 		ops = append(ops, JumpUnless{Condition: condArg, Goto: endLabel})
-		blockOps := generateBlockOps(ic, *stmt.ThenBlock)
+		blockOps := generateBlockOps(ic, stmt.ThenBlock)
 		ops = append(ops, blockOps...)
 		ops = append(ops, Anchor{Label: endLabel})
 	} else {
@@ -170,7 +166,7 @@ func generateIfOps(ic *IrContext, stmt parser.IfStatement) []Op {
 		condOps, condArg := generateExpressionOps(ic, stmt.Condition)
 		ops = append(ops, condOps...)
 		ops = append(ops, JumpUnless{Condition: condArg, Goto: elseLabel})
-		thenOps := generateBlockOps(ic, *stmt.ThenBlock)
+		thenOps := generateBlockOps(ic, stmt.ThenBlock)
 		ops = append(ops, thenOps...)
 		ops = append(ops, Jump{Goto: endLabel})
 		ops = append(ops, Anchor{Label: elseLabel})
@@ -183,10 +179,6 @@ func generateIfOps(ic *IrContext, stmt parser.IfStatement) []Op {
 }
 
 func generateWhileOps(ic *IrContext, stmt parser.WhileStatement) []Op {
-	if stmt.Body == nil {
-		panic(fmt.Sprintf("while statement must include a block: %v", stmt))
-	}
-
 	ops := []Op{}
 	continueLabel := ic.allocLabel()
 	breakLabel := ic.allocLabel()
@@ -195,7 +187,7 @@ func generateWhileOps(ic *IrContext, stmt parser.WhileStatement) []Op {
 	condOps, condArg := generateExpressionOps(ic, stmt.Condition)
 	ops = append(ops, condOps...)
 	ops = append(ops, JumpUnless{Condition: condArg, Goto: breakLabel})
-	blockOps := generateBlockOps(ic, *stmt.Body)
+	blockOps := generateBlockOps(ic, stmt.Body)
 	ops = append(ops, blockOps...)
 	ops = append(ops, Jump{Goto: continueLabel})
 	ops = append(ops, Anchor{Label: breakLabel})

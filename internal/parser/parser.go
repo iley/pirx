@@ -758,7 +758,7 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 
 	return &IfStatement{
 		Condition: condition,
-		ThenBlock: thenBlock,
+		ThenBlock: *thenBlock,
 		ElseBlock: elseBlock,
 	}, nil
 }
@@ -792,6 +792,6 @@ func (p *Parser) parseWhileStatement() (*WhileStatement, error) {
 
 	return &WhileStatement{
 		Condition: condition,
-		Body:      body,
+		Body:      *body,
 	}, nil
 }

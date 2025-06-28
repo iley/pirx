@@ -27,8 +27,8 @@ type IrFunction struct {
 
 func (irf IrFunction) Print(writer io.Writer) {
 	fmt.Fprintf(writer, "Function %s:\n", irf.Name)
-	for _, op := range irf.Ops {
-		fmt.Fprintf(writer, "  %s\n", op)
+	for i, op := range irf.Ops {
+		fmt.Fprintf(writer, "%4d  %s\n", i, op)
 	}
 }
 
@@ -138,6 +138,39 @@ func (r Return) GetArgs() []Arg {
 	} else {
 		return []Arg{*r.Value}
 	}
+}
+
+type JumpUnless struct {
+	Condition Arg
+	Goto      int
+}
+
+func (j JumpUnless) String() string {
+	return fmt.Sprintf("JumpUnless(%s, %d)", j.Condition.String(), j.Goto)
+}
+
+func (j JumpUnless) GetTarget() string {
+	return ""
+}
+
+func (j JumpUnless) GetArgs() []Arg {
+	return []Arg{j.Condition}
+}
+
+type Anchor struct {
+	Label string
+}
+
+func (a Anchor) String() string {
+	return fmt.Sprintf("Anchor(%s)", a.Label)
+}
+
+func (a Anchor) GetTarget() string {
+	return ""
+}
+
+func (a Anchor) GetArgs() []Arg {
+	return []Arg{}
 }
 
 type Arg struct {

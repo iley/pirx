@@ -131,7 +131,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	fcc.functionName = f.Name
 
 	for i, op := range f.Ops {
-		fmt.Fprintf(fcc.output, ".L%s_op%d: // %s\n", f.Name, i, op.String())
+		fmt.Fprintf(fcc.output, "// Op %d: %s\n", i, op.String())
 		err := generateOp(fcc, op)
 		if err != nil {
 			return nil

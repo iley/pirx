@@ -47,6 +47,8 @@ type Statement struct {
 	ReturnStatement     *ReturnStatement
 	IfStatement         *IfStatement
 	WhileStatement      *WhileStatement
+	BreakStatement      *BreakStatement
+	ContinueStatement   *ContinueStatement
 }
 
 func (s *Statement) Accept(visitor AstVisitor) {
@@ -60,6 +62,12 @@ func (s *Statement) Accept(visitor AstVisitor) {
 		s.IfStatement.Accept(visitor)
 	} else if s.WhileStatement != nil {
 		s.WhileStatement.Accept(visitor)
+	} else if s.BreakStatement != nil {
+		s.BreakStatement.Accept(visitor)
+	} else if s.ContinueStatement != nil {
+		s.ContinueStatement.Accept(visitor)
+	} else {
+		panic(fmt.Sprintf("unsupported statement type: %v", *s))
 	}
 }
 
@@ -196,4 +204,18 @@ type WhileStatement struct {
 
 func (w *WhileStatement) Accept(visitor AstVisitor) {
 	visitor.VisitWhileStatement(w)
+}
+
+type BreakStatement struct {
+}
+
+func (b *BreakStatement) Accept(visitor AstVisitor) {
+	visitor.VisitBreakStatement(b)
+}
+
+type ContinueStatement struct {
+}
+
+func (c *ContinueStatement) Accept(visitor AstVisitor) {
+	visitor.VisitContinueStatement(c)
 }

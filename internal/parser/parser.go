@@ -10,7 +10,7 @@ import (
 var (
 	// TODO: Find a better way of figuring out whether a function is variadic.
 	VariadicFuncs = map[string]struct{}{
-		"printf": struct{}{},
+		"printf": {},
 	}
 )
 
@@ -268,6 +268,22 @@ func (p *Parser) parseStatement() (Statement, error) {
 			return Statement{}, err
 		}
 		return Statement{ReturnStatement: retStmt}, nil
+	}
+	// TODO: Validate that break is only used inside a loop (likely a separate AST pass).
+	if lex.IsKeyword("break") {
+		_, err := p.consume() // consume the "break" keyword
+		if err != nil {
+			return Statement{}, err
+		}
+		return Statement{BreakStatement: &BreakStatement{}}, nil
+	}
+	// TODO: Validate that continue is only used inside a loop (likely a separate AST pass).
+	if lex.IsKeyword("continue") {
+		_, err := p.consume() // consume the "continue" keyword
+		if err != nil {
+			return Statement{}, err
+		}
+		return Statement{ContinueStatement: &ContinueStatement{}}, nil
 	}
 	if lex.IsKeyword("if") {
 		ifStmt, err := p.parseIfStatement()

@@ -259,6 +259,92 @@ func TestParseProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "function with break statement",
+			src:  `func main() { break; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{BreakStatement: &BreakStatement{}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with multiple statements including break",
+			src:  `func main() { var x: int; break; return x; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{VariableDeclaration: &VariableDeclaration{
+									Name: "x",
+									Type: "int",
+								}},
+								{BreakStatement: &BreakStatement{}},
+								{ReturnStatement: &ReturnStatement{
+									Value: &Expression{VariableReference: &VariableReference{
+										Name: "x",
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with continue statement",
+			src:  `func main() { continue; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{ContinueStatement: &ContinueStatement{}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function with multiple statements including continue",
+			src:  `func main() { var x: int; continue; return x; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{VariableDeclaration: &VariableDeclaration{
+									Name: "x",
+									Type: "int",
+								}},
+								{ContinueStatement: &ContinueStatement{}},
+								{ReturnStatement: &ReturnStatement{
+									Value: &Expression{VariableReference: &VariableReference{
+										Name: "x",
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -2132,6 +2218,316 @@ func TestParseStatement_WhileStatement_Error(t *testing.T) {
 			_, err := parser.ParseProgram()
 			if err == nil {
 				t.Error("Expected error but got none")
+			}
+		})
+	}
+}
+
+func TestParseStatement_BreakStatement(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected *Program
+	}{
+		{
+			name: "simple break statement",
+			src:  `func main() { break; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{BreakStatement: &BreakStatement{}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "break statement in while loop",
+			src:  `func main() { while x > 0 { break; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									Body: Block{
+										Statements: []Statement{
+											{BreakStatement: &BreakStatement{}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "break statement with other statements",
+			src:  `func main() { while x > 0 { printf("before break\n"); break; printf("after break\n"); } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									Body: Block{
+										Statements: []Statement{
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{FunctionCall: &FunctionCall{
+													FunctionName: "printf",
+													Args: []Expression{
+														{Literal: NewStringLiteral("before break\n")},
+													},
+													Variadic: true,
+												}},
+											}},
+											{BreakStatement: &BreakStatement{}},
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{FunctionCall: &FunctionCall{
+													FunctionName: "printf",
+													Args: []Expression{
+														{Literal: NewStringLiteral("after break\n")},
+													},
+													Variadic: true,
+												}},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple break statements",
+			src:  `func main() { while x > 0 { if x == 5 { break; } break; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									Body: Block{
+										Statements: []Statement{
+											{IfStatement: &IfStatement{
+												Condition: Expression{BinaryOperation: &BinaryOperation{
+													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+													Operator: "==",
+													Right:    Expression{Literal: NewIntLiteral(5)},
+												}},
+												ThenBlock: Block{
+													Statements: []Statement{
+														{BreakStatement: &BreakStatement{}},
+													},
+												},
+												ElseBlock: nil,
+											}},
+											{BreakStatement: &BreakStatement{}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			program, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("Error parsing program: %v", err)
+			}
+			if !reflect.DeepEqual(program, tc.expected) {
+				t.Errorf("Expected %+v, got %+v", tc.expected, program)
+			}
+		})
+	}
+}
+
+func TestParseStatement_ContinueStatement(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected *Program
+	}{
+		{
+			name: "simple continue statement",
+			src:  `func main() { continue; }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{ContinueStatement: &ContinueStatement{}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "continue statement in while loop",
+			src:  `func main() { while x > 0 { continue; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									Body: Block{
+										Statements: []Statement{
+											{ContinueStatement: &ContinueStatement{}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "continue statement with other statements",
+			src:  `func main() { while x > 0 { printf("before continue\n"); continue; printf("after continue\n"); } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									Body: Block{
+										Statements: []Statement{
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{FunctionCall: &FunctionCall{
+													FunctionName: "printf",
+													Args: []Expression{
+														{Literal: NewStringLiteral("before continue\n")},
+													},
+													Variadic: true,
+												}},
+											}},
+											{ContinueStatement: &ContinueStatement{}},
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{FunctionCall: &FunctionCall{
+													FunctionName: "printf",
+													Args: []Expression{
+														{Literal: NewStringLiteral("after continue\n")},
+													},
+													Variadic: true,
+												}},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "continue and break statements together",
+			src:  `func main() { while x > 0 { if x == 5 { continue; } break; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									Body: Block{
+										Statements: []Statement{
+											{IfStatement: &IfStatement{
+												Condition: Expression{BinaryOperation: &BinaryOperation{
+													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+													Operator: "==",
+													Right:    Expression{Literal: NewIntLiteral(5)},
+												}},
+												ThenBlock: Block{
+													Statements: []Statement{
+														{ContinueStatement: &ContinueStatement{}},
+													},
+												},
+												ElseBlock: nil,
+											}},
+											{BreakStatement: &BreakStatement{}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			program, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("Error parsing program: %v", err)
+			}
+			if !reflect.DeepEqual(program, tc.expected) {
+				t.Errorf("Expected %+v, got %+v", tc.expected, program)
 			}
 		})
 	}

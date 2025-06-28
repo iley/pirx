@@ -183,3 +183,11 @@ func (p *Printer) VisitWhileStatement(whileStmt *WhileStatement) {
 	p.writeIndent()
 	p.write("}")
 }
+
+func (p *Printer) VisitBreakStatement(breakStmt *BreakStatement) {
+	p.write("break")
+}
+
+func (p *Printer) VisitContinueStatement(stmt *ContinueStatement) {
+	p.write("continue")
+}

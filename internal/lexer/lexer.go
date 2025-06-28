@@ -43,16 +43,18 @@ func (t TokenType) String() string {
 
 // Keywords in Pirx
 var keywords = map[string]bool{
-	"func":   true,
-	"var":    true,
-	"val":    true,
-	"if":     true,
-	"else":   true,
-	"for":    true,
-	"while":  true,
-	"return": true,
-	"true":   true,
-	"false":  true,
+	"func":     true,
+	"var":      true,
+	"val":      true,
+	"if":       true,
+	"else":     true,
+	"for":      true,
+	"while":    true,
+	"return":   true,
+	"break":    true,
+	"continue": true,
+	"true":     true,
+	"false":    true,
 }
 
 // Single-character operators and punctuation

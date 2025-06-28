@@ -17,4 +17,6 @@ type AstVisitor interface {
 	VisitUnaryOperation(unaryOperation *UnaryOperation)
 	VisitIfStatement(ifStatement *IfStatement)
 	VisitWhileStatement(whileStatement *WhileStatement)
+	VisitBreakStatement(breakStatement *BreakStatement)
+	VisitContinueStatement(continueStatement *ContinueStatement)
 }

@@ -68,9 +68,11 @@ func getSDKPath() string {
 
 // TestCase represents a single test case
 type TestCase struct {
-	Name         string
-	PirxFile     string
-	ExpectedFile string
+	Name              string
+	PirxFile          string
+	ExpectedFile      string // .out file for success tests
+	ExpectedErrorFile string // .err file for error tests
+	IsErrorTest       bool   // true if this test expects compilation to fail
 }
 
 // discoverTests finds all test cases in the tests directory
@@ -85,14 +87,28 @@ func discoverTests(testsDir string) ([]TestCase, error) {
 		if !d.IsDir() && strings.HasSuffix(path, ".pirx") {
 			// Extract base name without extension
 			baseName := strings.TrimSuffix(filepath.Base(path), ".pirx")
-			expectedFile := filepath.Join(testsDir, baseName+".out")
+			expectedOutFile := filepath.Join(testsDir, baseName+".out")
+			expectedErrFile := filepath.Join(testsDir, baseName+".err")
 
-			// Check if expected output file exists
-			if _, err := os.Stat(expectedFile); err == nil {
+			// Check if expected output file exists (success test)
+			if _, err := os.Stat(expectedOutFile); err == nil {
 				tests = append(tests, TestCase{
-					Name:         baseName,
-					PirxFile:     path,
-					ExpectedFile: expectedFile,
+					Name:              baseName,
+					PirxFile:          path,
+					ExpectedFile:      expectedOutFile,
+					ExpectedErrorFile: "",
+					IsErrorTest:       false,
+				})
+			}
+
+			// Check if expected error file exists (error test)
+			if _, err := os.Stat(expectedErrFile); err == nil {
+				tests = append(tests, TestCase{
+					Name:              baseName,
+					PirxFile:          path,
+					ExpectedFile:      "",
+					ExpectedErrorFile: expectedErrFile,
+					IsErrorTest:       true,
 				})
 			}
 		}
@@ -104,6 +120,7 @@ func discoverTests(testsDir string) ([]TestCase, error) {
 }
 
 // compileTest compiles a pirx file to executable
+// For error tests, it returns the compilation error message in the first return value
 func compileTest(config *CompilationConfig, testCase TestCase, testsDir string) (string, []string, error) {
 	baseName := filepath.Base(testCase.Name)
 	asmFile := filepath.Join(testsDir, baseName+".s")
@@ -116,7 +133,16 @@ func compileTest(config *CompilationConfig, testCase TestCase, testsDir string) 
 	// Step 1: Compile .pirx to .s using pirx compiler
 	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, testCase.PirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
+		if testCase.IsErrorTest {
+			// For error tests, return the compilation error output
+			return string(output), generatedFiles, nil
+		}
 		return "", generatedFiles, fmt.Errorf("pirx compilation failed: %w\nOutput: %s", err, string(output))
+	}
+
+	// If this is an error test but compilation succeeded, that's a failure
+	if testCase.IsErrorTest {
+		return "", generatedFiles, fmt.Errorf("expected compilation to fail, but it succeeded")
 	}
 
 	// Step 2: Assemble .s to .o
@@ -163,6 +189,15 @@ func readExpectedOutput(expectedFile string) (string, error) {
 	return string(content), nil
 }
 
+// readExpectedError reads the expected error message from file
+func readExpectedError(expectedErrorFile string) (string, error) {
+	content, err := os.ReadFile(expectedErrorFile)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
+}
+
 // cleanupFiles removes the specified files, ignoring any errors
 func cleanupFiles(files []string) {
 	for _, file := range files {
@@ -174,33 +209,57 @@ func cleanupFiles(files []string) {
 func runSingleTest(config *CompilationConfig, testCase TestCase, testsDir string) (bool, string) {
 	fmt.Printf("Running test %s... ", testCase.Name)
 
-	// Compile test
-	binaryPath, generatedFiles, err := compileTest(config, testCase, testsDir)
-	if err != nil {
-		return false, fmt.Sprintf("compilation error: %v", err)
-	}
+	if testCase.IsErrorTest {
+		// Handle error tests
+		actualError, generatedFiles, err := compileTest(config, testCase, testsDir)
+		if err != nil {
+			return false, fmt.Sprintf("error during compilation test: %v", err)
+		}
 
-	// Run test
-	actualOutput, err := runTest(binaryPath)
-	if err != nil {
-		return false, fmt.Sprintf("runtime error: %v", err)
-	}
+		// Read expected error
+		expectedError, err := readExpectedError(testCase.ExpectedErrorFile)
+		if err != nil {
+			return false, fmt.Sprintf("error reading expected error: %v", err)
+		}
 
-	// Read expected output
-	expectedOutput, err := readExpectedOutput(testCase.ExpectedFile)
-	if err != nil {
-		return false, fmt.Sprintf("error reading expected output: %v", err)
-	}
+		// Compare error messages
+		if actualError == expectedError {
+			// Test passed - clean up generated files
+			cleanupFiles(generatedFiles)
+			return true, ""
+		}
 
-	// Compare outputs
-	if actualOutput == expectedOutput {
-		// Test passed - clean up generated files
-		cleanupFiles(generatedFiles)
-		return true, ""
-	}
+		// Test failed - leave files for inspection
+		return false, fmt.Sprintf("error mismatch:\nExpected: %q\nActual:   %q", expectedError, actualError)
+	} else {
+		// Handle success tests
+		binaryPath, generatedFiles, err := compileTest(config, testCase, testsDir)
+		if err != nil {
+			return false, fmt.Sprintf("compilation error: %v", err)
+		}
 
-	// Test failed - leave files for inspection
-	return false, fmt.Sprintf("output mismatch:\nExpected: %q\nActual:   %q", expectedOutput, actualOutput)
+		// Run test
+		actualOutput, err := runTest(binaryPath)
+		if err != nil {
+			return false, fmt.Sprintf("runtime error: %v", err)
+		}
+
+		// Read expected output
+		expectedOutput, err := readExpectedOutput(testCase.ExpectedFile)
+		if err != nil {
+			return false, fmt.Sprintf("error reading expected output: %v", err)
+		}
+
+		// Compare outputs
+		if actualOutput == expectedOutput {
+			// Test passed - clean up generated files
+			cleanupFiles(generatedFiles)
+			return true, ""
+		}
+
+		// Test failed - leave files for inspection
+		return false, fmt.Sprintf("output mismatch:\nExpected: %q\nActual:   %q", expectedOutput, actualOutput)
+	}
 }
 
 // findTestCase finds a test case by number or path

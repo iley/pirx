@@ -1,0 +1,4 @@
+func main() {
+    putchar(65)
+    return 0;
+} 

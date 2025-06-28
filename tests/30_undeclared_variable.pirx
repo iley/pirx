@@ -1,0 +1,4 @@
+func main() {
+    printf("%d\n", unknown_var);
+    return 0;
+} 

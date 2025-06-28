@@ -69,6 +69,12 @@ func main() {
 		defer outputFile.Close()
 		output = outputFile
 	}
+
+	if *targetString == "ast" {
+		fmt.Printf("%s\n", ast.String())
+		return
+	}
+
 	programIr := ir.Generate(ast)
 
 	if !*noOptimize {
@@ -77,13 +83,14 @@ func main() {
 
 	if *targetString == "ir" {
 		programIr.Print(output)
-	} else {
-		target, err := codegen.TargetFromName(*targetString)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error parsing target: %v\n", err)
-			os.Exit(1)
-		}
-
-		codegen.Generate(output, target, programIr)
+		return
 	}
+
+	target, err := codegen.TargetFromName(*targetString)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error parsing target: %v\n", err)
+		os.Exit(1)
+	}
+
+	codegen.Generate(output, target, programIr)
 }

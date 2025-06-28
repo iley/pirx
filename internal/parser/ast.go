@@ -1,13 +1,30 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/iley/pirx/internal/util"
+)
 
 type AstNode interface {
+	fmt.Stringer
 	Accept(visitor AstVisitor)
 }
 
 type Program struct {
 	Functions []*Function
+}
+
+func (p *Program) String() string {
+	var sb strings.Builder
+	sb.WriteString("(program")
+	for _, fn := range p.Functions {
+		sb.WriteString(" ")
+		sb.WriteString(fn.String())
+	}
+	sb.WriteString(")")
+	return sb.String()
 }
 
 func (p *Program) Accept(visitor AstVisitor) {
@@ -17,7 +34,23 @@ func (p *Program) Accept(visitor AstVisitor) {
 type Function struct {
 	Name   string
 	Params []*Param
-	Body   *Block
+	// TODO: Make Body non-optional.
+	Body *Block
+}
+
+func (f *Function) String() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("(func %s (", f.Name))
+	for i, param := range f.Params {
+		sb.WriteString(param.String())
+		if i != len(f.Params)-1 {
+			sb.WriteString(" ")
+		}
+	}
+	sb.WriteString(") ")
+	sb.WriteString(f.Body.String())
+	sb.WriteString(")")
+	return sb.String()
 }
 
 func (f *Function) Accept(visitor AstVisitor) {
@@ -29,12 +62,27 @@ type Param struct {
 	Type string
 }
 
+func (p Param) String() string {
+	return fmt.Sprintf("(%s %s)", p.Name, p.Type)
+}
+
 func (p *Param) Accept(visitor AstVisitor) {
 	visitor.VisitParam(p)
 }
 
 type Block struct {
 	Statements []Statement
+}
+
+func (b *Block) String() string {
+	var sb strings.Builder
+	sb.WriteString("(block")
+	for _, stmt := range b.Statements {
+		sb.WriteString(" ")
+		sb.WriteString(stmt.String())
+	}
+	sb.WriteString(")")
+	return sb.String()
 }
 
 func (b *Block) Accept(visitor AstVisitor) {
@@ -49,6 +97,25 @@ type Statement struct {
 	WhileStatement      *WhileStatement
 	BreakStatement      *BreakStatement
 	ContinueStatement   *ContinueStatement
+}
+
+func (s *Statement) String() string {
+	if s.VariableDeclaration != nil {
+		return s.VariableDeclaration.String()
+	} else if s.ExpressionStatement != nil {
+		return s.ExpressionStatement.String()
+	} else if s.ReturnStatement != nil {
+		return s.ReturnStatement.String()
+	} else if s.IfStatement != nil {
+		return s.IfStatement.String()
+	} else if s.WhileStatement != nil {
+		return s.WhileStatement.String()
+	} else if s.BreakStatement != nil {
+		return s.BreakStatement.String()
+	} else if s.ContinueStatement != nil {
+		return s.ContinueStatement.String()
+	}
+	panic(fmt.Sprintf("unsupported statement type: %v", *s))
 }
 
 func (s *Statement) Accept(visitor AstVisitor) {
@@ -80,6 +147,23 @@ type Expression struct {
 	UnaryOperation    *UnaryOperation
 }
 
+func (e *Expression) String() string {
+	if e.Literal != nil {
+		return e.Literal.String()
+	} else if e.Assignment != nil {
+		return e.Assignment.String()
+	} else if e.FunctionCall != nil {
+		return e.FunctionCall.String()
+	} else if e.VariableReference != nil {
+		return e.VariableReference.String()
+	} else if e.BinaryOperation != nil {
+		return e.BinaryOperation.String()
+	} else if e.UnaryOperation != nil {
+		return e.UnaryOperation.String()
+	}
+	panic("Invalid expression type")
+}
+
 func (e *Expression) Accept(visitor AstVisitor) {
 	if e.Literal != nil {
 		e.Literal.Accept(visitor)
@@ -103,6 +187,15 @@ type Literal struct {
 	IntValue    *int64
 }
 
+func (l *Literal) String() string {
+	if l.StringValue != nil {
+		return fmt.Sprintf("\"%s\"", util.EscapeString(*l.StringValue))
+	} else if l.IntValue != nil {
+		return fmt.Sprintf("%d", *l.IntValue)
+	}
+	panic(fmt.Sprintf("unknown literal type: %v", *l))
+}
+
 func (l *Literal) Accept(visitor AstVisitor) {
 	visitor.VisitLiteral(l)
 }
@@ -121,8 +214,12 @@ type VariableDeclaration struct {
 	Type string
 }
 
-func (v *VariableDeclaration) Accept(visitor AstVisitor) {
-	visitor.VisitVariableDeclaration(v)
+func (d *VariableDeclaration) String() string {
+	return fmt.Sprintf("(decl %s %s)", d.Name, d.Type)
+}
+
+func (d *VariableDeclaration) Accept(visitor AstVisitor) {
+	visitor.VisitVariableDeclaration(d)
 }
 
 type FunctionCall struct {
@@ -131,12 +228,27 @@ type FunctionCall struct {
 	Variadic     bool
 }
 
+func (f *FunctionCall) String() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("(%s", f.FunctionName))
+	for _, arg := range f.Args {
+		sb.WriteString(" ")
+		sb.WriteString(arg.String())
+	}
+	sb.WriteString(")")
+	return sb.String()
+}
+
 func (f *FunctionCall) Accept(visitor AstVisitor) {
 	visitor.VisitFunctionCall(f)
 }
 
 type ExpressionStatement struct {
 	Expression Expression
+}
+
+func (s *ExpressionStatement) String() string {
+	return s.Expression.String()
 }
 
 func (s *ExpressionStatement) Accept(visitor AstVisitor) {
@@ -148,6 +260,10 @@ type Assignment struct {
 	Value        Expression
 }
 
+func (a *Assignment) String() string {
+	return fmt.Sprintf("(= %s %s)", a.VariableName, a.Value.String())
+}
+
 func (a *Assignment) Accept(visitor AstVisitor) {
 	visitor.VisitAssignment(a)
 }
@@ -156,12 +272,24 @@ type VariableReference struct {
 	Name string
 }
 
+func (v *VariableReference) String() string {
+	return v.Name
+}
+
 func (v *VariableReference) Accept(visitor AstVisitor) {
 	visitor.VisitVariableReference(v)
 }
 
 type ReturnStatement struct {
 	Value *Expression // optional return value
+}
+
+func (r *ReturnStatement) String() string {
+	if r.Value == nil {
+		return "(return)"
+	} else {
+		return fmt.Sprintf("(return %s)", r.Value.String())
+	}
 }
 
 func (r *ReturnStatement) Accept(visitor AstVisitor) {
@@ -174,6 +302,10 @@ type BinaryOperation struct {
 	Right    Expression
 }
 
+func (b *BinaryOperation) String() string {
+	return fmt.Sprintf("(%s %s %s)", b.Operator, b.Left.String(), b.Right.String())
+}
+
 func (b *BinaryOperation) Accept(visitor AstVisitor) {
 	visitor.VisitBinaryOperation(b)
 }
@@ -181,6 +313,10 @@ func (b *BinaryOperation) Accept(visitor AstVisitor) {
 type UnaryOperation struct {
 	Operator string
 	Operand  Expression
+}
+
+func (u *UnaryOperation) String() string {
+	return fmt.Sprintf("(%s %s)", u.Operator, u.Operand.String())
 }
 
 func (u *UnaryOperation) Accept(visitor AstVisitor) {
@@ -193,6 +329,14 @@ type IfStatement struct {
 	ElseBlock *Block // optional
 }
 
+func (i *IfStatement) String() string {
+	if i.ElseBlock == nil {
+		return fmt.Sprintf("(if %s %s)", i.Condition.String(), i.ThenBlock.String())
+	} else {
+		return fmt.Sprintf("(if %s %s %s)", i.Condition.String(), i.ThenBlock.String(), i.ElseBlock.String())
+	}
+}
+
 func (i *IfStatement) Accept(visitor AstVisitor) {
 	visitor.VisitIfStatement(i)
 }
@@ -202,6 +346,10 @@ type WhileStatement struct {
 	Body      Block
 }
 
+func (w *WhileStatement) String() string {
+	return fmt.Sprintf("(while %s %s)", w.Condition.String(), w.Body.String())
+}
+
 func (w *WhileStatement) Accept(visitor AstVisitor) {
 	visitor.VisitWhileStatement(w)
 }
@@ -209,11 +357,19 @@ func (w *WhileStatement) Accept(visitor AstVisitor) {
 type BreakStatement struct {
 }
 
+func (b *BreakStatement) String() string {
+	return "(break)"
+}
+
 func (b *BreakStatement) Accept(visitor AstVisitor) {
 	visitor.VisitBreakStatement(b)
 }
 
 type ContinueStatement struct {
+}
+
+func (c *ContinueStatement) String() string {
+	return "(continue)"
 }
 
 func (c *ContinueStatement) Accept(visitor AstVisitor) {

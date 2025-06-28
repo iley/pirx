@@ -24,6 +24,7 @@ type CodegenContext struct {
 	locals         map[string]int
 	frameSize      int64
 	stringLiterals map[string]string
+	functionName   string
 }
 
 //go:embed prologue.txt
@@ -124,19 +125,24 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		offset += WORD_SIZE
 	}
 
-	funcCC := cc
-	cc.locals = locals
-	cc.frameSize = frameSize
+	fcc := cc
+	fcc.locals = locals
+	fcc.frameSize = frameSize
+	fcc.functionName = f.Name
 
 	for i, op := range f.Ops {
-		fmt.Fprintf(cc.output, ".L%s_op%d: // %s\n", f.Name, i, op.String())
-		err := generateOp(funcCC, op)
+		fmt.Fprintf(fcc.output, ".L%s_op%d: // %s\n", f.Name, i, op.String())
+		err := generateOp(fcc, op)
 		if err != nil {
 			return nil
 		}
 	}
 
-	// We assume that there's always a return op at the end of a function, so there's no need to explicitly generate an epilogue.
+	fmt.Fprintf(fcc.output, ".L%s_exit:\n", f.Name)
+	fmt.Fprintf(fcc.output, "  add sp, sp, #%d\n", cc.frameSize)
+	fmt.Fprintf(fcc.output, "  ldp x29, x30, [sp]\n")
+	fmt.Fprintf(fcc.output, "  add sp, sp, #16\n")
+	fmt.Fprintf(fcc.output, "  ret\n")
 	return nil
 }
 
@@ -163,10 +169,7 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 		if ret.Value != nil {
 			generateRegisterLoad(cc, "x0", *ret.Value)
 		}
-		fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", cc.frameSize)
-		fmt.Fprintf(cc.output, "  ldp x29, x30, [sp]\n")
-		fmt.Fprintf(cc.output, "  add sp, sp, #16\n")
-		fmt.Fprintf(cc.output, "  ret\n")
+		fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
 	} else {
 		panic(fmt.Sprintf("unknown op type: %v", op))
 	}

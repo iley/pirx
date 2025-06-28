@@ -1,0 +1,6 @@
+func main() {
+  printf("first\n");
+  return 0;
+  printf("second\n");
+  return 0;
+}

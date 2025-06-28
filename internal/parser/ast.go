@@ -46,6 +46,7 @@ type Statement struct {
 	ExpressionStatement *ExpressionStatement
 	ReturnStatement     *ReturnStatement
 	IfStatement         *IfStatement
+	WhileStatement      *WhileStatement
 }
 
 func (s *Statement) Accept(visitor AstVisitor) {
@@ -57,6 +58,8 @@ func (s *Statement) Accept(visitor AstVisitor) {
 		s.ReturnStatement.Accept(visitor)
 	} else if s.IfStatement != nil {
 		s.IfStatement.Accept(visitor)
+	} else if s.WhileStatement != nil {
+		s.WhileStatement.Accept(visitor)
 	}
 }
 
@@ -184,4 +187,13 @@ type IfStatement struct {
 
 func (i *IfStatement) Accept(visitor AstVisitor) {
 	visitor.VisitIfStatement(i)
+}
+
+type WhileStatement struct {
+	Condition Expression
+	Body      *Block
+}
+
+func (w *WhileStatement) Accept(visitor AstVisitor) {
+	visitor.VisitWhileStatement(w)
 }

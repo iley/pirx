@@ -99,6 +99,8 @@ func generateStatementOps(ic *IrContext, node parser.Statement) []Op {
 		}
 	} else if node.IfStatement != nil {
 		ops = generateIfOps(ic, *node.IfStatement)
+	} else if node.WhileStatement != nil {
+		ops = generateWhileOps(ic, *node.WhileStatement)
 	} else {
 		panic(fmt.Sprintf("unknown statement type %v", node))
 	}
@@ -176,6 +178,27 @@ func generateIfOps(ic *IrContext, stmt parser.IfStatement) []Op {
 		ops = append(ops, elseOps...)
 		ops = append(ops, Anchor{Label: endLabel})
 	}
+
+	return ops
+}
+
+func generateWhileOps(ic *IrContext, stmt parser.WhileStatement) []Op {
+	if stmt.Body == nil {
+		panic(fmt.Sprintf("while statement must include a block: %v", stmt))
+	}
+
+	ops := []Op{}
+	continueLabel := ic.allocLabel()
+	breakLabel := ic.allocLabel()
+
+	ops = append(ops, Anchor{Label: continueLabel})
+	condOps, condArg := generateExpressionOps(ic, stmt.Condition)
+	ops = append(ops, condOps...)
+	ops = append(ops, JumpUnless{Condition: condArg, Goto: breakLabel})
+	blockOps := generateBlockOps(ic, *stmt.Body)
+	ops = append(ops, blockOps...)
+	ops = append(ops, Jump{Goto: continueLabel})
+	ops = append(ops, Anchor{Label: breakLabel})
 
 	return ops
 }

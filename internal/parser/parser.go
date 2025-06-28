@@ -242,6 +242,10 @@ func statementRequiresSemicolon(stmt Statement) bool {
 	if stmt.IfStatement != nil {
 		return false
 	}
+	// While statements don't require semicolons since they end with a block
+	if stmt.WhileStatement != nil {
+		return false
+	}
 	// All other statements require semicolons
 	return true
 }
@@ -271,6 +275,13 @@ func (p *Parser) parseStatement() (Statement, error) {
 			return Statement{}, err
 		}
 		return Statement{IfStatement: ifStmt}, nil
+	}
+	if lex.IsKeyword("while") {
+		whileStmt, err := p.parseWhileStatement()
+		if err != nil {
+			return Statement{}, err
+		}
+		return Statement{WhileStatement: whileStmt}, nil
 	}
 	expression, err := p.parseExpression()
 	if err != nil {
@@ -749,5 +760,38 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 		Condition: condition,
 		ThenBlock: thenBlock,
 		ElseBlock: elseBlock,
+	}, nil
+}
+
+func (p *Parser) parseWhileStatement() (*WhileStatement, error) {
+	// consume 'while'
+	_, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+
+	// parse condition expression
+	condition, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	// parse body block
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation("{") {
+		return nil, fmt.Errorf("%d:%d: expected '{' after while condition, got %v", lex.Line, lex.Col, lex)
+	}
+
+	body, err := p.parseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return &WhileStatement{
+		Condition: condition,
+		Body:      body,
 	}, nil
 }

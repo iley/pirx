@@ -1861,3 +1861,278 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 		})
 	}
 }
+
+func TestParseStatement_WhileStatement(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected *Program
+	}{
+		{
+			name: "simple while loop",
+			src:  `func main() { while x > 0 { x = x - 1; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									Body: &Block{
+										Statements: []Statement{
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{Assignment: &Assignment{
+													VariableName: "x",
+													Value: Expression{BinaryOperation: &BinaryOperation{
+														Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+														Operator: "-",
+														Right:    Expression{Literal: NewIntLiteral(1)},
+													}},
+												}},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "while loop with complex condition",
+			src:  `func main() { while (x > 0) && (y < 10) { printf("loop\n"); } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left: Expression{BinaryOperation: &BinaryOperation{
+											Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+											Operator: ">",
+											Right:    Expression{Literal: NewIntLiteral(0)},
+										}},
+										Operator: "&&",
+										Right: Expression{BinaryOperation: &BinaryOperation{
+											Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+											Operator: "<",
+											Right:    Expression{Literal: NewIntLiteral(10)},
+										}},
+									}},
+									Body: &Block{
+										Statements: []Statement{
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{FunctionCall: &FunctionCall{
+													FunctionName: "printf",
+													Args: []Expression{
+														{Literal: NewStringLiteral("loop\n")},
+													},
+													Variadic: true,
+												}},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "while loop with unary not condition",
+			src:  `func main() { while !done { done = check(); } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{UnaryOperation: &UnaryOperation{
+										Operator: "!",
+										Operand:  Expression{VariableReference: &VariableReference{Name: "done"}},
+									}},
+									Body: &Block{
+										Statements: []Statement{
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{Assignment: &Assignment{
+													VariableName: "done",
+													Value: Expression{FunctionCall: &FunctionCall{
+														FunctionName: "check",
+														Args:         []Expression{},
+													}},
+												}},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "nested while loops",
+			src:  `func main() { while x > 0 { while y > 0 { y = y - 1; } x = x - 1; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									Body: &Block{
+										Statements: []Statement{
+											{WhileStatement: &WhileStatement{
+												Condition: Expression{BinaryOperation: &BinaryOperation{
+													Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+													Operator: ">",
+													Right:    Expression{Literal: NewIntLiteral(0)},
+												}},
+												Body: &Block{
+													Statements: []Statement{
+														{ExpressionStatement: &ExpressionStatement{
+															Expression: Expression{Assignment: &Assignment{
+																VariableName: "y",
+																Value: Expression{BinaryOperation: &BinaryOperation{
+																	Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+																	Operator: "-",
+																	Right:    Expression{Literal: NewIntLiteral(1)},
+																}},
+															}},
+														}},
+													},
+												},
+											}},
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{Assignment: &Assignment{
+													VariableName: "x",
+													Value: Expression{BinaryOperation: &BinaryOperation{
+														Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+														Operator: "-",
+														Right:    Expression{Literal: NewIntLiteral(1)},
+													}},
+												}},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "while loop with multiple statements in body",
+			src:  `func main() { while i < 10 { printf("i = %d\n", i); i = i + 1; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{WhileStatement: &WhileStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "i"}},
+										Operator: "<",
+										Right:    Expression{Literal: NewIntLiteral(10)},
+									}},
+									Body: &Block{
+										Statements: []Statement{
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{FunctionCall: &FunctionCall{
+													FunctionName: "printf",
+													Args: []Expression{
+														{Literal: NewStringLiteral("i = %d\n")},
+														{VariableReference: &VariableReference{Name: "i"}},
+													},
+													Variadic: true,
+												}},
+											}},
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{Assignment: &Assignment{
+													VariableName: "i",
+													Value: Expression{BinaryOperation: &BinaryOperation{
+														Left:     Expression{VariableReference: &VariableReference{Name: "i"}},
+														Operator: "+",
+														Right:    Expression{Literal: NewIntLiteral(1)},
+													}},
+												}},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			program, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("Error parsing program: %v", err)
+			}
+			if !reflect.DeepEqual(program, tc.expected) {
+				t.Errorf("Expected %+v, got %+v", tc.expected, program)
+			}
+		})
+	}
+}
+
+func TestParseStatement_WhileStatement_Error(t *testing.T) {
+	testCases := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "while without condition",
+			src:  `func main() { while { printf("loop\n"); } }`,
+		},
+		{
+			name: "while without opening brace",
+			src:  `func main() { while x > 0  printf("loop\n"); } }`,
+		},
+		{
+			name: "while without closing brace",
+			src:  `func main() { while x > 0 { printf("loop\n"); }`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			_, err := parser.ParseProgram()
+			if err == nil {
+				t.Error("Expected error but got none")
+			}
+		})
+	}
+}

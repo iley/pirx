@@ -16,4 +16,5 @@ type AstVisitor interface {
 	VisitBinaryOperation(binaryOperation *BinaryOperation)
 	VisitUnaryOperation(unaryOperation *UnaryOperation)
 	VisitIfStatement(ifStatement *IfStatement)
+	VisitWhileStatement(whileStatement *WhileStatement)
 }

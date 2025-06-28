@@ -170,3 +170,16 @@ func (p *Printer) VisitIfStatement(ifStmt *IfStatement) {
 		p.write("}")
 	}
 }
+
+func (p *Printer) VisitWhileStatement(whileStmt *WhileStatement) {
+	p.write("while ")
+	whileStmt.Condition.Accept(p)
+	p.writeln(" {")
+
+	p.indent()
+	whileStmt.Body.Accept(p)
+	p.dedent()
+
+	p.writeIndent()
+	p.write("}")
+}

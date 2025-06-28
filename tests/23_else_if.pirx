@@ -1,0 +1,12 @@
+func main() {
+  var x: int;
+  x = 15;
+  if x < 10 {
+    printf("less than 10\n");
+  } else if x < 20 {
+    printf("between 10 and 20\n");
+  } else {
+    printf("over 20\n");
+  }
+  return 0;
+}

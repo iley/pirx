@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/iley/pirx/internal/checks"
 	"github.com/iley/pirx/internal/codegen"
 	"github.com/iley/pirx/internal/ir"
 	"github.com/iley/pirx/internal/lexer"
@@ -38,6 +39,14 @@ func main() {
 	ast, err := p.ParseProgram()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error parsing program: %v\n", err)
+		os.Exit(1)
+	}
+
+	programErrors := checks.Run(ast)
+	if len(programErrors) > 0 {
+		for _, err := range programErrors {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+		}
 		os.Exit(1)
 	}
 

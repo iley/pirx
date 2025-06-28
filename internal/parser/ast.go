@@ -9,7 +9,6 @@ import (
 
 type AstNode interface {
 	fmt.Stringer
-	Accept(visitor AstVisitor)
 }
 
 type Program struct {
@@ -25,10 +24,6 @@ func (p *Program) String() string {
 	}
 	sb.WriteString(")")
 	return sb.String()
-}
-
-func (p *Program) Accept(visitor AstVisitor) {
-	visitor.VisitProgram(p)
 }
 
 type Function struct {
@@ -53,10 +48,6 @@ func (f *Function) String() string {
 	return sb.String()
 }
 
-func (f *Function) Accept(visitor AstVisitor) {
-	visitor.VisitFunction(f)
-}
-
 type Param struct {
 	Name string
 	Type string
@@ -64,10 +55,6 @@ type Param struct {
 
 func (p Param) String() string {
 	return fmt.Sprintf("(%s %s)", p.Name, p.Type)
-}
-
-func (p *Param) Accept(visitor AstVisitor) {
-	visitor.VisitParam(p)
 }
 
 type Block struct {
@@ -83,10 +70,6 @@ func (b *Block) String() string {
 	}
 	sb.WriteString(")")
 	return sb.String()
-}
-
-func (b *Block) Accept(visitor AstVisitor) {
-	visitor.VisitBlock(b)
 }
 
 type Statement struct {
@@ -118,26 +101,6 @@ func (s *Statement) String() string {
 	panic(fmt.Sprintf("unsupported statement type: %v", *s))
 }
 
-func (s *Statement) Accept(visitor AstVisitor) {
-	if s.VariableDeclaration != nil {
-		s.VariableDeclaration.Accept(visitor)
-	} else if s.ExpressionStatement != nil {
-		s.ExpressionStatement.Accept(visitor)
-	} else if s.ReturnStatement != nil {
-		s.ReturnStatement.Accept(visitor)
-	} else if s.IfStatement != nil {
-		s.IfStatement.Accept(visitor)
-	} else if s.WhileStatement != nil {
-		s.WhileStatement.Accept(visitor)
-	} else if s.BreakStatement != nil {
-		s.BreakStatement.Accept(visitor)
-	} else if s.ContinueStatement != nil {
-		s.ContinueStatement.Accept(visitor)
-	} else {
-		panic(fmt.Sprintf("unsupported statement type: %v", *s))
-	}
-}
-
 type Expression struct {
 	Literal           *Literal
 	Assignment        *Assignment
@@ -164,24 +127,6 @@ func (e *Expression) String() string {
 	panic("Invalid expression type")
 }
 
-func (e *Expression) Accept(visitor AstVisitor) {
-	if e.Literal != nil {
-		e.Literal.Accept(visitor)
-	} else if e.Assignment != nil {
-		e.Assignment.Accept(visitor)
-	} else if e.FunctionCall != nil {
-		e.FunctionCall.Accept(visitor)
-	} else if e.VariableReference != nil {
-		e.VariableReference.Accept(visitor)
-	} else if e.BinaryOperation != nil {
-		e.BinaryOperation.Accept(visitor)
-	} else if e.UnaryOperation != nil {
-		e.UnaryOperation.Accept(visitor)
-	} else {
-		panic(fmt.Sprintf("Invalid expression type: %v", e))
-	}
-}
-
 type Literal struct {
 	StringValue *string
 	IntValue    *int64
@@ -194,10 +139,6 @@ func (l *Literal) String() string {
 		return fmt.Sprintf("%d", *l.IntValue)
 	}
 	panic(fmt.Sprintf("unknown literal type: %v", *l))
-}
-
-func (l *Literal) Accept(visitor AstVisitor) {
-	visitor.VisitLiteral(l)
 }
 
 // Helper functions for creating Literal values
@@ -218,10 +159,6 @@ func (d *VariableDeclaration) String() string {
 	return fmt.Sprintf("(decl %s %s)", d.Name, d.Type)
 }
 
-func (d *VariableDeclaration) Accept(visitor AstVisitor) {
-	visitor.VisitVariableDeclaration(d)
-}
-
 type FunctionCall struct {
 	FunctionName string
 	Args         []Expression
@@ -239,20 +176,12 @@ func (f *FunctionCall) String() string {
 	return sb.String()
 }
 
-func (f *FunctionCall) Accept(visitor AstVisitor) {
-	visitor.VisitFunctionCall(f)
-}
-
 type ExpressionStatement struct {
 	Expression Expression
 }
 
 func (s *ExpressionStatement) String() string {
 	return s.Expression.String()
-}
-
-func (s *ExpressionStatement) Accept(visitor AstVisitor) {
-	visitor.VisitExpressionStatement(s)
 }
 
 type Assignment struct {
@@ -264,20 +193,12 @@ func (a *Assignment) String() string {
 	return fmt.Sprintf("(= %s %s)", a.VariableName, a.Value.String())
 }
 
-func (a *Assignment) Accept(visitor AstVisitor) {
-	visitor.VisitAssignment(a)
-}
-
 type VariableReference struct {
 	Name string
 }
 
 func (v *VariableReference) String() string {
 	return v.Name
-}
-
-func (v *VariableReference) Accept(visitor AstVisitor) {
-	visitor.VisitVariableReference(v)
 }
 
 type ReturnStatement struct {
@@ -292,10 +213,6 @@ func (r *ReturnStatement) String() string {
 	}
 }
 
-func (r *ReturnStatement) Accept(visitor AstVisitor) {
-	visitor.VisitReturnStatement(r)
-}
-
 type BinaryOperation struct {
 	Left     Expression
 	Operator string
@@ -306,10 +223,6 @@ func (b *BinaryOperation) String() string {
 	return fmt.Sprintf("(%s %s %s)", b.Operator, b.Left.String(), b.Right.String())
 }
 
-func (b *BinaryOperation) Accept(visitor AstVisitor) {
-	visitor.VisitBinaryOperation(b)
-}
-
 type UnaryOperation struct {
 	Operator string
 	Operand  Expression
@@ -317,10 +230,6 @@ type UnaryOperation struct {
 
 func (u *UnaryOperation) String() string {
 	return fmt.Sprintf("(%s %s)", u.Operator, u.Operand.String())
-}
-
-func (u *UnaryOperation) Accept(visitor AstVisitor) {
-	visitor.VisitUnaryOperation(u)
 }
 
 type IfStatement struct {
@@ -337,10 +246,6 @@ func (i *IfStatement) String() string {
 	}
 }
 
-func (i *IfStatement) Accept(visitor AstVisitor) {
-	visitor.VisitIfStatement(i)
-}
-
 type WhileStatement struct {
 	Condition Expression
 	Body      Block
@@ -350,10 +255,6 @@ func (w *WhileStatement) String() string {
 	return fmt.Sprintf("(while %s %s)", w.Condition.String(), w.Body.String())
 }
 
-func (w *WhileStatement) Accept(visitor AstVisitor) {
-	visitor.VisitWhileStatement(w)
-}
-
 type BreakStatement struct {
 }
 
@@ -361,17 +262,9 @@ func (b *BreakStatement) String() string {
 	return "(break)"
 }
 
-func (b *BreakStatement) Accept(visitor AstVisitor) {
-	visitor.VisitBreakStatement(b)
-}
-
 type ContinueStatement struct {
 }
 
 func (c *ContinueStatement) String() string {
 	return "(continue)"
-}
-
-func (c *ContinueStatement) Accept(visitor AstVisitor) {
-	visitor.VisitContinueStatement(c)
 }

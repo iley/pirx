@@ -4,6 +4,6 @@ import "github.com/iley/pirx/internal/parser"
 
 func Run(program *parser.Program) []error {
 	varChecker := NewVariableChecker()
-	program.Accept(varChecker)
+	varChecker.CheckProgram(program)
 	return varChecker.Errors()
 }

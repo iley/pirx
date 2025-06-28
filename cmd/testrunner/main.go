@@ -208,13 +208,9 @@ func findTestCase(tests []TestCase, identifier string) (*TestCase, error) {
 	// If identifier is a path, try to match it directly
 	if strings.Contains(identifier, "/") || strings.HasSuffix(identifier, ".pirx") {
 		// Remove .pirx extension if present
-		if strings.HasSuffix(identifier, ".pirx") {
-			identifier = strings.TrimSuffix(identifier, ".pirx")
-		}
+		identifier = strings.TrimSuffix(identifier, ".pirx")
 		// Remove leading tests/ if present
-		if strings.HasPrefix(identifier, "tests/") {
-			identifier = strings.TrimPrefix(identifier, "tests/")
-		}
+		identifier = strings.TrimPrefix(identifier, "tests/")
 
 		for _, test := range tests {
 			if test.Name == identifier {

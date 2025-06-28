@@ -1,0 +1,28 @@
+func main() {
+  var x: int;
+  var y: int;
+  x = 1;
+  y = 10;
+
+  if x < 10 {
+    printf("x is less than 10\n");
+  }
+
+  if y < 10 {
+    printf("y is less than 10\n");
+  }
+
+  if x < y {
+    printf("x is less than y\n");
+  } else {
+    printf("x is not less than y\n");
+  }
+
+  if x > y {
+    printf("x is greater than y\n");
+  } else {
+    printf("x is not greater than y\n");
+  }
+
+  return 0;
+}

@@ -7,19 +7,33 @@ import (
 )
 
 type IrContext struct {
-	nextTempIndex int
+	nextTempIndex  int
+	nextLabelIndex int
+}
+
+func (ic *IrContext) allocTemp() string {
+	idx := ic.nextTempIndex
+	ic.nextTempIndex++
+	return fmt.Sprintf("$%d", idx)
+}
+
+func (ic *IrContext) allocLabel() string {
+	idx := ic.nextLabelIndex
+	ic.nextLabelIndex++
+	return fmt.Sprintf("anchor%d", idx)
 }
 
 func Generate(node *parser.Program) IrProgram {
 	irp := IrProgram{}
+	ic := IrContext{nextLabelIndex: 1}
 	for _, function := range node.Functions {
-		irFunc := generateFunction(function)
+		irFunc := generateFunction(&ic, function)
 		irp.Functions = append(irp.Functions, irFunc)
 	}
 	return irp
 }
 
-func generateFunction(node *parser.Function) IrFunction {
+func generateFunction(ic *IrContext, node *parser.Function) IrFunction {
 	irfunc := IrFunction{
 		Name:   node.Name,
 		Params: []string{},
@@ -31,12 +45,11 @@ func generateFunction(node *parser.Function) IrFunction {
 	}
 
 	// Create a new context for this function
-	ic := &IrContext{nextTempIndex: 1}
+	fic := *ic
+	fic.nextTempIndex = 1
+
 	if node.Body != nil {
-		for _, stmt := range node.Body.Statements {
-			ops := generateStatementOps(ic, stmt)
-			irfunc.Ops = append(irfunc.Ops, ops...)
-		}
+		irfunc.Ops = generateBlockOps(&fic, *node.Body)
 	}
 
 	// Add implicit return if the function doesn't end with a return
@@ -53,6 +66,15 @@ func generateFunction(node *parser.Function) IrFunction {
 	}
 
 	return irfunc
+}
+
+func generateBlockOps(ic *IrContext, block parser.Block) []Op {
+	ops := []Op{}
+	for _, stmt := range block.Statements {
+		stmtOps := generateStatementOps(ic, stmt)
+		ops = append(ops, stmtOps...)
+	}
+	return ops
 }
 
 func generateStatementOps(ic *IrContext, node parser.Statement) []Op {
@@ -76,7 +98,7 @@ func generateStatementOps(ic *IrContext, node parser.Statement) []Op {
 			ops = append(ops, Return{Value: nil})
 		}
 	} else if node.IfStatement != nil {
-		// TODO
+		ops = generateIfOps(ic, *node.IfStatement)
 	} else {
 		panic(fmt.Sprintf("unknown statement type %v", node))
 	}
@@ -104,7 +126,7 @@ func generateExpressionOps(ic *IrContext, node parser.Expression) ([]Op, Arg) {
 			ops = append(ops, subOps...)
 			args = append(args, subArg)
 		}
-		temp := allocTemp(ic)
+		temp := ic.allocTemp()
 		ops = append(ops, Call{Result: temp, Function: node.FunctionCall.FunctionName, Args: args, Variadic: node.FunctionCall.Variadic})
 		return ops, Arg{Variable: temp}
 	} else if node.VariableReference != nil {
@@ -113,20 +135,47 @@ func generateExpressionOps(ic *IrContext, node parser.Expression) ([]Op, Arg) {
 		leftOps, leftArg := generateExpressionOps(ic, node.BinaryOperation.Left)
 		rightOps, rightArg := generateExpressionOps(ic, node.BinaryOperation.Right)
 		ops := append(leftOps, rightOps...)
-		temp := allocTemp(ic)
+		temp := ic.allocTemp()
 		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: node.BinaryOperation.Operator})
 		return ops, Arg{Variable: temp}
 	} else if node.UnaryOperation != nil {
 		ops, arg := generateExpressionOps(ic, node.UnaryOperation.Operand)
-		temp := allocTemp(ic)
+		temp := ic.allocTemp()
 		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: node.UnaryOperation.Operator})
 		return ops, Arg{Variable: temp}
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }
 
-func allocTemp(ic *IrContext) string {
-	idx := ic.nextTempIndex
-	ic.nextTempIndex++
-	return fmt.Sprintf("$%d", idx)
+func generateIfOps(ic *IrContext, stmt parser.IfStatement) []Op {
+	if stmt.ThenBlock == nil {
+		panic(fmt.Sprintf("if statement must include a then block: %v", stmt))
+	}
+
+	ops := []Op{}
+
+	if stmt.ElseBlock == nil {
+		endLabel := ic.allocLabel()
+		condOps, condArg := generateExpressionOps(ic, stmt.Condition)
+		ops = append(ops, condOps...)
+		ops = append(ops, JumpUnless{Condition: condArg, Goto: endLabel})
+		blockOps := generateBlockOps(ic, *stmt.ThenBlock)
+		ops = append(ops, blockOps...)
+		ops = append(ops, Anchor{Label: endLabel})
+	} else {
+		elseLabel := ic.allocLabel()
+		endLabel := ic.allocLabel()
+		condOps, condArg := generateExpressionOps(ic, stmt.Condition)
+		ops = append(ops, condOps...)
+		ops = append(ops, JumpUnless{Condition: condArg, Goto: elseLabel})
+		thenOps := generateBlockOps(ic, *stmt.ThenBlock)
+		ops = append(ops, thenOps...)
+		ops = append(ops, Jump{Goto: endLabel})
+		ops = append(ops, Anchor{Label: elseLabel})
+		elseOps := generateBlockOps(ic, *stmt.ElseBlock)
+		ops = append(ops, elseOps...)
+		ops = append(ops, Anchor{Label: endLabel})
+	}
+
+	return ops
 }

@@ -21,10 +21,12 @@ const (
 
 type CodegenContext struct {
 	output         io.Writer
-	locals         map[string]int
-	frameSize      int64
 	stringLiterals map[string]string
-	functionName   string
+
+	// Function-specific.
+	locals       map[string]int
+	frameSize    int64
+	functionName string
 }
 
 //go:embed prologue.txt
@@ -125,24 +127,23 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		offset += WORD_SIZE
 	}
 
-	fcc := cc
-	fcc.locals = locals
-	fcc.frameSize = frameSize
-	fcc.functionName = f.Name
+	cc.locals = locals
+	cc.frameSize = frameSize
+	cc.functionName = f.Name
 
 	for i, op := range f.Ops {
-		fmt.Fprintf(fcc.output, "// Op %d: %s\n", i, op.String())
-		err := generateOp(fcc, op)
+		fmt.Fprintf(cc.output, "// Op %d: %s\n", i, op.String())
+		err := generateOp(cc, op)
 		if err != nil {
 			return nil
 		}
 	}
 
-	fmt.Fprintf(fcc.output, ".L%s_exit:\n", f.Name)
-	fmt.Fprintf(fcc.output, "  add sp, sp, #%d\n", cc.frameSize)
-	fmt.Fprintf(fcc.output, "  ldp x29, x30, [sp]\n")
-	fmt.Fprintf(fcc.output, "  add sp, sp, #16\n")
-	fmt.Fprintf(fcc.output, "  ret\n")
+	fmt.Fprintf(cc.output, ".L%s_exit:\n", f.Name)
+	fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", cc.frameSize)
+	fmt.Fprintf(cc.output, "  ldp x29, x30, [sp]\n")
+	fmt.Fprintf(cc.output, "  add sp, sp, #16\n")
+	fmt.Fprintf(cc.output, "  ret\n")
 	return nil
 }
 
@@ -170,6 +171,14 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 			generateRegisterLoad(cc, "x0", *ret.Value)
 		}
 		fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
+	} else if jump, ok := op.(ir.Jump); ok {
+		fmt.Fprintf(cc.output, "  b .L%s\n", jump.Goto)
+	} else if jumpUnless, ok := op.(ir.JumpUnless); ok {
+		generateRegisterLoad(cc, "x0", jumpUnless.Condition)
+		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
+		fmt.Fprintf(cc.output, "  beq .L%s\n", jumpUnless.Goto)
+	} else if anchor, ok := op.(ir.Anchor); ok {
+		fmt.Fprintf(cc.output, ".L%s:\n", anchor.Label)
 	} else {
 		panic(fmt.Sprintf("unknown op type: %v", op))
 	}

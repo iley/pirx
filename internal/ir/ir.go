@@ -140,13 +140,29 @@ func (r Return) GetArgs() []Arg {
 	}
 }
 
+type Jump struct {
+	Goto string
+}
+
+func (j Jump) String() string {
+	return fmt.Sprintf("Jump(%s)", j.Goto)
+}
+
+func (j Jump) GetTarget() string {
+	return ""
+}
+
+func (j Jump) GetArgs() []Arg {
+	return []Arg{}
+}
+
 type JumpUnless struct {
 	Condition Arg
-	Goto      int
+	Goto      string
 }
 
 func (j JumpUnless) String() string {
-	return fmt.Sprintf("JumpUnless(%s, %d)", j.Condition.String(), j.Goto)
+	return fmt.Sprintf("JumpUnless(%s, %s)", j.Condition.String(), j.Goto)
 }
 
 func (j JumpUnless) GetTarget() string {

@@ -208,8 +208,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			generator := NewIrGenerator()
-			result := generator.Generate(tc.program)
+			result := Generate(tc.program)
 
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("Generate() got = %+v, want %+v", result, tc.expected)
@@ -389,8 +388,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			generator := NewIrGenerator()
-			result := generator.Generate(tc.program)
+			result := Generate(tc.program)
 
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("Generate() got = %+v, want %+v", result, tc.expected)

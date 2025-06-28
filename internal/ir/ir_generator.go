@@ -6,24 +6,20 @@ import (
 	"github.com/iley/pirx/internal/parser"
 )
 
-type IrGenerator struct {
+type IrContext struct {
 	nextTempIndex int
 }
 
-func NewIrGenerator() *IrGenerator {
-	return &IrGenerator{}
-}
-
-func (g *IrGenerator) Generate(node *parser.Program) IrProgram {
+func Generate(node *parser.Program) IrProgram {
 	irp := IrProgram{}
 	for _, function := range node.Functions {
-		irFunc := g.generateFunction(function)
+		irFunc := generateFunction(function)
 		irp.Functions = append(irp.Functions, irFunc)
 	}
 	return irp
 }
 
-func (g *IrGenerator) generateFunction(node *parser.Function) IrFunction {
+func generateFunction(node *parser.Function) IrFunction {
 	irfunc := IrFunction{
 		Name:   node.Name,
 		Params: []string{},
@@ -34,10 +30,11 @@ func (g *IrGenerator) generateFunction(node *parser.Function) IrFunction {
 		irfunc.Params = append(irfunc.Params, param.Name)
 	}
 
-	g.nextTempIndex = 1
+	// Create a new context for this function
+	ic := &IrContext{nextTempIndex: 1}
 	if node.Body != nil {
 		for _, stmt := range node.Body.Statements {
-			ops := g.generateStatementOps(stmt)
+			ops := generateStatementOps(ic, stmt)
 			irfunc.Ops = append(irfunc.Ops, ops...)
 		}
 	}
@@ -58,7 +55,7 @@ func (g *IrGenerator) generateFunction(node *parser.Function) IrFunction {
 	return irfunc
 }
 
-func (g *IrGenerator) generateStatementOps(node parser.Statement) []Op {
+func generateStatementOps(ic *IrContext, node parser.Statement) []Op {
 	ops := []Op{}
 	if node.VariableDeclaration != nil {
 		// TODO: types.
@@ -66,12 +63,12 @@ func (g *IrGenerator) generateStatementOps(node parser.Statement) []Op {
 		ops = append(ops, Assign{Target: node.VariableDeclaration.Name, Value: Arg{LiteralInt: &zero}})
 	} else if node.ExpressionStatement != nil {
 		// We ignore the result of the expression.
-		exprOps, _ := g.generateExpressionOps(node.ExpressionStatement.Expression)
+		exprOps, _ := generateExpressionOps(ic, node.ExpressionStatement.Expression)
 		ops = append(ops, exprOps...)
 	} else if node.ReturnStatement != nil {
 		if node.ReturnStatement.Value != nil {
 			// Return with value
-			exprOps, resultArg := g.generateExpressionOps(*node.ReturnStatement.Value)
+			exprOps, resultArg := generateExpressionOps(ic, *node.ReturnStatement.Value)
 			ops = append(ops, exprOps...)
 			ops = append(ops, Return{Value: &resultArg})
 		} else {
@@ -86,7 +83,7 @@ func (g *IrGenerator) generateStatementOps(node parser.Statement) []Op {
 	return ops
 }
 
-func (g *IrGenerator) generateExpressionOps(node parser.Expression) ([]Op, Arg) {
+func generateExpressionOps(ic *IrContext, node parser.Expression) ([]Op, Arg) {
 	if node.Literal != nil {
 		if node.Literal.IntValue != nil {
 			return []Op{}, Arg{LiteralInt: node.Literal.IntValue}
@@ -96,40 +93,40 @@ func (g *IrGenerator) generateExpressionOps(node parser.Expression) ([]Op, Arg) 
 			panic(fmt.Sprintf("Invalid literal: %v. Only int and string are currently supported", node.Literal))
 		}
 	} else if node.Assignment != nil {
-		ops, rvalueArg := g.generateExpressionOps(node.Assignment.Value)
+		ops, rvalueArg := generateExpressionOps(ic, node.Assignment.Value)
 		ops = append(ops, Assign{Target: node.Assignment.VariableName, Value: rvalueArg})
 		return ops, rvalueArg
 	} else if node.FunctionCall != nil {
 		ops := []Op{}
 		args := []Arg{}
 		for _, argNode := range node.FunctionCall.Args {
-			subOps, subArg := g.generateExpressionOps(argNode)
+			subOps, subArg := generateExpressionOps(ic, argNode)
 			ops = append(ops, subOps...)
 			args = append(args, subArg)
 		}
-		temp := g.allocTemp()
+		temp := allocTemp(ic)
 		ops = append(ops, Call{Result: temp, Function: node.FunctionCall.FunctionName, Args: args, Variadic: node.FunctionCall.Variadic})
 		return ops, Arg{Variable: temp}
 	} else if node.VariableReference != nil {
 		return []Op{}, Arg{Variable: node.VariableReference.Name}
 	} else if node.BinaryOperation != nil {
-		leftOps, leftArg := g.generateExpressionOps(node.BinaryOperation.Left)
-		rightOps, rightArg := g.generateExpressionOps(node.BinaryOperation.Right)
+		leftOps, leftArg := generateExpressionOps(ic, node.BinaryOperation.Left)
+		rightOps, rightArg := generateExpressionOps(ic, node.BinaryOperation.Right)
 		ops := append(leftOps, rightOps...)
-		temp := g.allocTemp()
+		temp := allocTemp(ic)
 		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: node.BinaryOperation.Operator})
 		return ops, Arg{Variable: temp}
 	} else if node.UnaryOperation != nil {
-		ops, arg := g.generateExpressionOps(node.UnaryOperation.Operand)
-		temp := g.allocTemp()
+		ops, arg := generateExpressionOps(ic, node.UnaryOperation.Operand)
+		temp := allocTemp(ic)
 		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: node.UnaryOperation.Operator})
 		return ops, Arg{Variable: temp}
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }
 
-func (g *IrGenerator) allocTemp() string {
-	idx := g.nextTempIndex
-	g.nextTempIndex++
+func allocTemp(ic *IrContext) string {
+	idx := ic.nextTempIndex
+	ic.nextTempIndex++
 	return fmt.Sprintf("$%d", idx)
 }

@@ -58,8 +58,7 @@ func main() {
 		defer outputFile.Close()
 		output = outputFile
 	}
-	irgen := ir.NewIrGenerator()
-	programIr := irgen.Generate(ast)
+	programIr := ir.Generate(ast)
 
 	if *targetString == "ir" {
 		programIr.Print(output)

@@ -147,3 +147,26 @@ func (p *Printer) VisitUnaryOperation(uo *UnaryOperation) {
 	uo.Operand.Accept(p)
 	p.write(")")
 }
+
+func (p *Printer) VisitIfStatement(ifStmt *IfStatement) {
+	p.write("if ")
+	ifStmt.Condition.Accept(p)
+	p.writeln(" {")
+
+	p.indent()
+	ifStmt.ThenBlock.Accept(p)
+	p.dedent()
+
+	if ifStmt.ElseBlock != nil {
+		p.writeIndent()
+		p.writeln("} else {")
+		p.indent()
+		ifStmt.ElseBlock.Accept(p)
+		p.dedent()
+		p.writeIndent()
+		p.write("}")
+	} else {
+		p.writeIndent()
+		p.write("}")
+	}
+}

@@ -1354,3 +1354,510 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 		})
 	}
 }
+
+func TestParseStatement_IfStatement(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected *Program
+	}{
+		{
+			name: "simple if statement without else",
+			src:  `func main() { if x == 5 { return; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: "==",
+										Right:    Expression{Literal: NewIntLiteral(5)},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{ReturnStatement: &ReturnStatement{Value: nil}},
+										},
+									},
+									ElseBlock: nil,
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "if statement with else",
+			src:  `func main() { if x > 0 { y = 1; } else { y = 0; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{Assignment: &Assignment{
+													VariableName: "y",
+													Value:        Expression{Literal: NewIntLiteral(1)},
+												}},
+											}},
+										},
+									},
+									ElseBlock: &Block{
+										Statements: []Statement{
+											{ExpressionStatement: &ExpressionStatement{
+												Expression: Expression{Assignment: &Assignment{
+													VariableName: "y",
+													Value:        Expression{Literal: NewIntLiteral(0)},
+												}},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "if statement with complex boolean condition",
+			src:  `func main() { if (x > 0) && (y < 10) { return x; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left: Expression{BinaryOperation: &BinaryOperation{
+											Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+											Operator: ">",
+											Right:    Expression{Literal: NewIntLiteral(0)},
+										}},
+										Operator: "&&",
+										Right: Expression{BinaryOperation: &BinaryOperation{
+											Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+											Operator: "<",
+											Right:    Expression{Literal: NewIntLiteral(10)},
+										}},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{ReturnStatement: &ReturnStatement{
+												Value: &Expression{VariableReference: &VariableReference{Name: "x"}},
+											}},
+										},
+									},
+									ElseBlock: nil,
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "if statement with unary not condition",
+			src:  `func main() { if !flag { return; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{UnaryOperation: &UnaryOperation{
+										Operator: "!",
+										Operand:  Expression{VariableReference: &VariableReference{Name: "flag"}},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{ReturnStatement: &ReturnStatement{Value: nil}},
+										},
+									},
+									ElseBlock: nil,
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "nested if statements",
+			src:  `func main() { if x > 0 { if y > 0 { return 1; } } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(0)},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{IfStatement: &IfStatement{
+												Condition: Expression{BinaryOperation: &BinaryOperation{
+													Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+													Operator: ">",
+													Right:    Expression{Literal: NewIntLiteral(0)},
+												}},
+												ThenBlock: &Block{
+													Statements: []Statement{
+														{ReturnStatement: &ReturnStatement{
+															Value: &Expression{Literal: NewIntLiteral(1)},
+														}},
+													},
+												},
+												ElseBlock: nil,
+											}},
+										},
+									},
+									ElseBlock: nil,
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			program, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("Error parsing program: %v", err)
+			}
+			if !reflect.DeepEqual(program, tc.expected) {
+				t.Errorf("Expected %+v, got %+v", tc.expected, program)
+			}
+		})
+	}
+}
+
+func TestParseStatement_IfStatement_Error(t *testing.T) {
+	testCases := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "if without condition",
+			src:  `func main() { if { return; } }`,
+		},
+		{
+			name: "if without opening brace",
+			src:  `func main() { if x > 0  return; } }`,
+		},
+		{
+			name: "if without closing brace",
+			src:  `func main() { if x > 0 { return; }`,
+		},
+		{
+			name: "else without opening brace",
+			src:  `func main() { if x > 0 { return; } else  return; } }`,
+		},
+		{
+			name: "else without closing brace",
+			src:  `func main() { if x > 0 { return; } else { return; }`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			_, err := parser.ParseProgram()
+			if err == nil {
+				t.Error("Expected error but got none")
+			}
+		})
+	}
+}
+
+func TestParseStatement_ElseIfStatement(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected *Program
+	}{
+		{
+			name: "simple else if",
+			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: "==",
+										Right:    Expression{Literal: NewIntLiteral(1)},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{ReturnStatement: &ReturnStatement{
+												Value: &Expression{Literal: NewIntLiteral(1)},
+											}},
+										},
+									},
+									ElseBlock: &Block{
+										Statements: []Statement{
+											{IfStatement: &IfStatement{
+												Condition: Expression{BinaryOperation: &BinaryOperation{
+													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+													Operator: "==",
+													Right:    Expression{Literal: NewIntLiteral(2)},
+												}},
+												ThenBlock: &Block{
+													Statements: []Statement{
+														{ReturnStatement: &ReturnStatement{
+															Value: &Expression{Literal: NewIntLiteral(2)},
+														}},
+													},
+												},
+												ElseBlock: nil,
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "else if with final else",
+			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else { return 0; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: "==",
+										Right:    Expression{Literal: NewIntLiteral(1)},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{ReturnStatement: &ReturnStatement{
+												Value: &Expression{Literal: NewIntLiteral(1)},
+											}},
+										},
+									},
+									ElseBlock: &Block{
+										Statements: []Statement{
+											{IfStatement: &IfStatement{
+												Condition: Expression{BinaryOperation: &BinaryOperation{
+													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+													Operator: "==",
+													Right:    Expression{Literal: NewIntLiteral(2)},
+												}},
+												ThenBlock: &Block{
+													Statements: []Statement{
+														{ReturnStatement: &ReturnStatement{
+															Value: &Expression{Literal: NewIntLiteral(2)},
+														}},
+													},
+												},
+												ElseBlock: &Block{
+													Statements: []Statement{
+														{ReturnStatement: &ReturnStatement{
+															Value: &Expression{Literal: NewIntLiteral(0)},
+														}},
+													},
+												},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple else if chain",
+			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else if x == 3 { return 3; } else { return 0; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: "==",
+										Right:    Expression{Literal: NewIntLiteral(1)},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{ReturnStatement: &ReturnStatement{
+												Value: &Expression{Literal: NewIntLiteral(1)},
+											}},
+										},
+									},
+									ElseBlock: &Block{
+										Statements: []Statement{
+											{IfStatement: &IfStatement{
+												Condition: Expression{BinaryOperation: &BinaryOperation{
+													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+													Operator: "==",
+													Right:    Expression{Literal: NewIntLiteral(2)},
+												}},
+												ThenBlock: &Block{
+													Statements: []Statement{
+														{ReturnStatement: &ReturnStatement{
+															Value: &Expression{Literal: NewIntLiteral(2)},
+														}},
+													},
+												},
+												ElseBlock: &Block{
+													Statements: []Statement{
+														{IfStatement: &IfStatement{
+															Condition: Expression{BinaryOperation: &BinaryOperation{
+																Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+																Operator: "==",
+																Right:    Expression{Literal: NewIntLiteral(3)},
+															}},
+															ThenBlock: &Block{
+																Statements: []Statement{
+																	{ReturnStatement: &ReturnStatement{
+																		Value: &Expression{Literal: NewIntLiteral(3)},
+																	}},
+																},
+															},
+															ElseBlock: &Block{
+																Statements: []Statement{
+																	{ReturnStatement: &ReturnStatement{
+																		Value: &Expression{Literal: NewIntLiteral(0)},
+																	}},
+																},
+															},
+														}},
+													},
+												},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "else if with complex condition",
+			src:  `func main() { if x > 10 { return 1; } else if (x > 5) && (x <= 10) { return 2; } else { return 0; } }`,
+			expected: &Program{
+				Functions: []*Function{
+					{
+						Name:   "main",
+						Params: []*Param{},
+						Body: &Block{
+							Statements: []Statement{
+								{IfStatement: &IfStatement{
+									Condition: Expression{BinaryOperation: &BinaryOperation{
+										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+										Operator: ">",
+										Right:    Expression{Literal: NewIntLiteral(10)},
+									}},
+									ThenBlock: &Block{
+										Statements: []Statement{
+											{ReturnStatement: &ReturnStatement{
+												Value: &Expression{Literal: NewIntLiteral(1)},
+											}},
+										},
+									},
+									ElseBlock: &Block{
+										Statements: []Statement{
+											{IfStatement: &IfStatement{
+												Condition: Expression{BinaryOperation: &BinaryOperation{
+													Left: Expression{BinaryOperation: &BinaryOperation{
+														Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+														Operator: ">",
+														Right:    Expression{Literal: NewIntLiteral(5)},
+													}},
+													Operator: "&&",
+													Right: Expression{BinaryOperation: &BinaryOperation{
+														Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+														Operator: "<=",
+														Right:    Expression{Literal: NewIntLiteral(10)},
+													}},
+												}},
+												ThenBlock: &Block{
+													Statements: []Statement{
+														{ReturnStatement: &ReturnStatement{
+															Value: &Expression{Literal: NewIntLiteral(2)},
+														}},
+													},
+												},
+												ElseBlock: &Block{
+													Statements: []Statement{
+														{ReturnStatement: &ReturnStatement{
+															Value: &Expression{Literal: NewIntLiteral(0)},
+														}},
+													},
+												},
+											}},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			program, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("Error parsing program: %v", err)
+			}
+			if !reflect.DeepEqual(program, tc.expected) {
+				t.Errorf("Expected %+v, got %+v", tc.expected, program)
+			}
+		})
+	}
+}

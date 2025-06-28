@@ -45,6 +45,7 @@ type Statement struct {
 	VariableDeclaration *VariableDeclaration
 	ExpressionStatement *ExpressionStatement
 	ReturnStatement     *ReturnStatement
+	IfStatement         *IfStatement
 }
 
 func (s *Statement) Accept(visitor AstVisitor) {
@@ -54,6 +55,8 @@ func (s *Statement) Accept(visitor AstVisitor) {
 		s.ExpressionStatement.Accept(visitor)
 	} else if s.ReturnStatement != nil {
 		s.ReturnStatement.Accept(visitor)
+	} else if s.IfStatement != nil {
+		s.IfStatement.Accept(visitor)
 	}
 }
 
@@ -171,4 +174,14 @@ type UnaryOperation struct {
 
 func (u *UnaryOperation) Accept(visitor AstVisitor) {
 	visitor.VisitUnaryOperation(u)
+}
+
+type IfStatement struct {
+	Condition Expression
+	ThenBlock *Block
+	ElseBlock *Block // optional
+}
+
+func (i *IfStatement) Accept(visitor AstVisitor) {
+	visitor.VisitIfStatement(i)
 }

@@ -15,4 +15,5 @@ type AstVisitor interface {
 	VisitReturnStatement(returnStatement *ReturnStatement)
 	VisitBinaryOperation(binaryOperation *BinaryOperation)
 	VisitUnaryOperation(unaryOperation *UnaryOperation)
+	VisitIfStatement(ifStatement *IfStatement)
 }

@@ -215,12 +215,15 @@ func (p *Parser) parseBlock() (*Block, error) {
 		}
 		statements = append(statements, stmt)
 
-		lex, err = p.consume()
-		if err != nil {
-			return nil, err
-		}
-		if !lex.IsPunctuation(";") {
-			return nil, fmt.Errorf("%d:%d: expected ';' after statement, got %v", lex.Line, lex.Col, lex)
+		// Only require semicolon for statements that need it
+		if statementRequiresSemicolon(stmt) {
+			lex, err = p.consume()
+			if err != nil {
+				return nil, err
+			}
+			if !lex.IsPunctuation(";") {
+				return nil, fmt.Errorf("%d:%d: expected ';' after statement, got %v", lex.Line, lex.Col, lex)
+			}
 		}
 	}
 
@@ -231,6 +234,16 @@ func (p *Parser) parseBlock() (*Block, error) {
 	}
 
 	return &Block{Statements: statements}, nil
+}
+
+// statementRequiresSemicolon returns true if the statement requires a semicolon after it
+func statementRequiresSemicolon(stmt Statement) bool {
+	// If statements don't require semicolons since they end with a block
+	if stmt.IfStatement != nil {
+		return false
+	}
+	// All other statements require semicolons
+	return true
 }
 
 func (p *Parser) parseStatement() (Statement, error) {
@@ -251,6 +264,13 @@ func (p *Parser) parseStatement() (Statement, error) {
 			return Statement{}, err
 		}
 		return Statement{ReturnStatement: retStmt}, nil
+	}
+	if lex.IsKeyword("if") {
+		ifStmt, err := p.parseIfStatement()
+		if err != nil {
+			return Statement{}, err
+		}
+		return Statement{IfStatement: ifStmt}, nil
 	}
 	expression, err := p.parseExpression()
 	if err != nil {
@@ -649,4 +669,85 @@ func (p *Parser) parseVariableReference() (Expression, error) {
 	return Expression{VariableReference: &VariableReference{
 		Name: lex.Str,
 	}}, nil
+}
+
+func (p *Parser) parseIfStatement() (*IfStatement, error) {
+	// consume 'if'
+	_, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+
+	// parse condition expression
+	condition, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	// parse then block
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation("{") {
+		return nil, fmt.Errorf("%d:%d: expected '{' after if condition, got %v", lex.Line, lex.Col, lex)
+	}
+
+	thenBlock, err := p.parseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	// check for optional else clause
+	var elseBlock *Block
+	lex, err = p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if lex.IsKeyword("else") {
+		_, err = p.consume() // consume 'else'
+		if err != nil {
+			return nil, err
+		}
+
+		// check if this is "else if" (else followed by if)
+		lex, err = p.peek()
+		if err != nil {
+			return nil, err
+		}
+
+		if lex.IsKeyword("if") {
+			// This is "else if" - parse another if statement and wrap it in a block
+			nestedIf, err := p.parseIfStatement()
+			if err != nil {
+				return nil, err
+			}
+
+			elseBlock = &Block{
+				Statements: []Statement{
+					{IfStatement: nestedIf},
+				},
+			}
+		} else {
+			// This is regular "else" - expect opening brace
+			lex, err = p.consume()
+			if err != nil {
+				return nil, err
+			}
+			if !lex.IsPunctuation("{") {
+				return nil, fmt.Errorf("%d:%d: expected '{' after else, got %v", lex.Line, lex.Col, lex)
+			}
+
+			elseBlock, err = p.parseBlock()
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return &IfStatement{
+		Condition: condition,
+		ThenBlock: thenBlock,
+		ElseBlock: elseBlock,
+	}, nil
 }

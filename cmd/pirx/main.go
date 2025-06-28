@@ -12,11 +12,13 @@ import (
 	"github.com/iley/pirx/internal/codegen"
 	"github.com/iley/pirx/internal/ir"
 	"github.com/iley/pirx/internal/lexer"
+	"github.com/iley/pirx/internal/opt"
 	"github.com/iley/pirx/internal/parser"
 )
 
 func main() {
 	outputString := flag.String("o", "", "output file name")
+	optimize := flag.Bool("O", false, "optimize the code")
 	targetString := flag.String("t", "aarch64-darwin", "target architecture")
 	flag.Parse()
 
@@ -68,6 +70,10 @@ func main() {
 		output = outputFile
 	}
 	programIr := ir.Generate(ast)
+
+	if *optimize {
+		programIr = opt.Run(programIr)
+	}
 
 	if *targetString == "ir" {
 		programIr.Print(output)

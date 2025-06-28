@@ -9,6 +9,8 @@ import (
 type IrContext struct {
 	nextTempIndex  int
 	nextLabelIndex int
+	breakLabel     string
+	continueLabel  string
 }
 
 func (ic *IrContext) allocTemp() string {
@@ -101,6 +103,10 @@ func generateStatementOps(ic *IrContext, node parser.Statement) []Op {
 		ops = generateIfOps(ic, *node.IfStatement)
 	} else if node.WhileStatement != nil {
 		ops = generateWhileOps(ic, *node.WhileStatement)
+	} else if node.BreakStatement != nil {
+		ops = append(ops, Jump{Goto: ic.breakLabel})
+	} else if node.ContinueStatement != nil {
+		ops = append(ops, Jump{Goto: ic.continueLabel})
 	} else {
 		panic(fmt.Sprintf("unknown statement type %v", node))
 	}
@@ -179,18 +185,24 @@ func generateIfOps(ic *IrContext, stmt parser.IfStatement) []Op {
 }
 
 func generateWhileOps(ic *IrContext, stmt parser.WhileStatement) []Op {
-	ops := []Op{}
-	continueLabel := ic.allocLabel()
-	breakLabel := ic.allocLabel()
+	prevBreakLabel := ic.breakLabel
+	prevContinueLabel := ic.continueLabel
 
-	ops = append(ops, Anchor{Label: continueLabel})
+	ops := []Op{}
+	ic.continueLabel = ic.allocLabel()
+	ic.breakLabel = ic.allocLabel()
+
+	ops = append(ops, Anchor{Label: ic.continueLabel})
 	condOps, condArg := generateExpressionOps(ic, stmt.Condition)
 	ops = append(ops, condOps...)
-	ops = append(ops, JumpUnless{Condition: condArg, Goto: breakLabel})
+	ops = append(ops, JumpUnless{Condition: condArg, Goto: ic.breakLabel})
 	blockOps := generateBlockOps(ic, stmt.Body)
 	ops = append(ops, blockOps...)
-	ops = append(ops, Jump{Goto: continueLabel})
-	ops = append(ops, Anchor{Label: breakLabel})
+	ops = append(ops, Jump{Goto: ic.continueLabel})
+	ops = append(ops, Anchor{Label: ic.breakLabel})
+
+	ic.breakLabel = prevBreakLabel
+	ic.continueLabel = prevContinueLabel
 
 	return ops
 }

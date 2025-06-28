@@ -18,7 +18,7 @@ import (
 
 func main() {
 	outputString := flag.String("o", "", "output file name")
-	optimize := flag.Bool("O", false, "optimize the code")
+	noOptimize := flag.Bool("O0", false, "don't optimize the code")
 	targetString := flag.String("t", "aarch64-darwin", "target architecture")
 	flag.Parse()
 
@@ -71,7 +71,7 @@ func main() {
 	}
 	programIr := ir.Generate(ast)
 
-	if *optimize {
+	if !*noOptimize {
 		programIr = opt.Run(programIr)
 	}
 

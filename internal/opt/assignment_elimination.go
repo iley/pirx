@@ -45,6 +45,16 @@ func isIneffectiveAssignment(ops []ir.Op, index int) bool {
 		}
 
 		for j := index+1; j < nextIdx; j++ {
+			if _, ok := ops[j].(ir.Jump); ok {
+				// It's a jump, all bets are off.
+				return false
+			}
+
+			if _, ok := ops[j].(ir.JumpUnless); ok {
+				// It's a jump, all bets are off.
+				return false
+			}
+
 			args := ops[j].GetArgs()
 			for _, arg := range args {
 				if arg.Variable != "" && arg.Variable == first.Target {

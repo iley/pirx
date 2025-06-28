@@ -344,7 +344,7 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, e
 }
 
 func isBinaryOperator(op string) bool {
-	return op == "+" || op == "-" || op == "*" || op == "/" ||
+	return op == "+" || op == "-" || op == "*" || op == "/" || op == "%" ||
 		op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=" ||
 		op == "&&" || op == "||"
 }
@@ -359,7 +359,7 @@ func getOperatorPrecedence(op string) int {
 		return 3
 	case "+", "-":
 		return 4
-	case "*", "/":
+	case "*", "/", "%":
 		return 5
 	default:
 		return 0

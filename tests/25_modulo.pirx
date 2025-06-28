@@ -1,0 +1,6 @@
+func main() {
+  printf("10 %% 2 = %d\n", 10 % 2);
+  printf("10 %% 3 = %d\n", 10 % 3);
+  printf("10 %% 7 = %d\n", 10 % 7);
+  return 0;
+}

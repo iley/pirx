@@ -254,6 +254,9 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 		fmt.Fprintf(cc.output, "  mul x0, x0, x1\n")
 	case "/":
 		fmt.Fprintf(cc.output, "  sdiv x0, x0, x1\n")
+	case "%":
+		fmt.Fprintf(cc.output, "  sdiv x2, x0, x1\n")
+		fmt.Fprintf(cc.output, "  msub x0, x2, x1, x0\n")
 	case "==":
 		fmt.Fprintf(cc.output, "  cmp x0, x1\n")
 		fmt.Fprintf(cc.output, "  cset x0, eq\n")

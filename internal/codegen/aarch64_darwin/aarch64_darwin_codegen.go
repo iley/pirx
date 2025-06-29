@@ -199,18 +199,18 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 			spShift = util.Align(int64(len(call.Args)-1), 16)
 		}
 
+		// TODO: How to pass the information about the argument count here?
+		namedArgsCount := 1
+
 		// Then generate stack pushes for the arguments except the first one.
-		// TODO: Properly handle the first N arguments that are not variadic instead of assuming there's always one.
-		for i, arg := range call.Args[1:] {
+		for i, arg := range call.Args[namedArgsCount:] {
 			generateRegisterLoad(cc, "x0", arg)
-			// Store the base for arguments in X9 because we need SP for referencing locals.
-			// TODO: Just use offset from SP.
 			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*WORD_SIZE-int(spShift))
 		}
 
-		if len(call.Args) > 0 {
-			// Put the first argument into X0.
-			generateRegisterLoad(cc, "x0", call.Args[0])
+		for i, arg := range call.Args[0:namedArgsCount] {
+			reg := fmt.Sprintf("x%d", i)
+			generateRegisterLoad(cc, reg, arg)
 		}
 
 		if spShift > 0 {

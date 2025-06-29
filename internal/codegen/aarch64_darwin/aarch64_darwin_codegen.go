@@ -200,6 +200,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 		}
 
 		// Then generate stack pushes for the arguments except the first one.
+		// TODO: Properly handle the first N arguments that are not variadic instead of assuming there's always one.
 		for i, arg := range call.Args[1:] {
 			generateRegisterLoad(cc, "x0", arg)
 			// Store the base for arguments in X9 because we need SP for referencing locals.

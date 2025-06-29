@@ -6,20 +6,30 @@ import (
 	"github.com/iley/pirx/internal/parser"
 )
 
+type funcProto struct {
+	name       string
+	params     []funcParam
+	returnType string
+	variadic bool
+}
+
+type funcParam struct {
+	name string
+	typ  string
+}
+
 type TypeChecker struct {
-	declaredVars map[string]string
-	errors       []error
+	declaredVars  map[string]string
+	declaredFuncs map[string]funcProto
+	errors        []error
 }
 
 func NewTypeChecker() *TypeChecker {
 	return &TypeChecker{
-		declaredVars: make(map[string]string),
-		errors:       []error{},
+		declaredVars:  make(map[string]string),
+		declaredFuncs: make(map[string]funcProto),
+		errors:        []error{},
 	}
-}
-
-func (c *TypeChecker) Success() bool {
-	return len(c.errors) == 0
 }
 
 func (c *TypeChecker) Errors() []error {
@@ -27,6 +37,23 @@ func (c *TypeChecker) Errors() []error {
 }
 
 func (c *TypeChecker) CheckProgram(program *parser.Program) {
+	for _, proto := range getBuiltins() {
+		c.declaredFuncs[proto.name] = proto
+	}
+
+	// Gather function prototypes so we can check arguments and types later.
+	for _, fn := range program.Functions {
+		proto := funcProto{
+			name:       fn.Name,
+			params:     []funcParam{},
+			returnType: fn.ReturnType,
+		}
+		for _, p := range fn.Params {
+			proto.params = append(proto.params, funcParam{p.Name, p.Type})
+		}
+		c.declaredFuncs[fn.Name] = proto
+	}
+
 	for _, fn := range program.Functions {
 		c.CheckFunction(fn)
 	}
@@ -94,8 +121,18 @@ func (c *TypeChecker) CheckVariableDeclaration(decl *parser.VariableDeclaration)
 }
 
 func (c *TypeChecker) CheckFunctionCall(functionCall *parser.FunctionCall) {
+	proto, declared := c.declaredFuncs[functionCall.FunctionName]
+	if !declared {
+		c.errors = append(c.errors, fmt.Errorf("function %s is not declared", functionCall.FunctionName))
+	}
+
+	if declared && !proto.variadic && (len(proto.params) != len(functionCall.Args)) {
+		c.errors =append(c.errors, fmt.Errorf("function %s has %d arguments but %d were provided", functionCall.FunctionName, len(proto.params), len(functionCall.Args)))
+	}
+
 	for _, expr := range functionCall.Args {
 		c.CheckExpression(expr)
+		// TODO: Check argument type.
 	}
 }
 
@@ -155,4 +192,20 @@ func (c *TypeChecker) CheckBreakStatement(stmt *parser.BreakStatement) {
 
 func (c *TypeChecker) CheckContinueStatement(stmt *parser.ContinueStatement) {
 	// noop
+}
+
+func getBuiltins() []funcProto {
+	return []funcProto{
+		{
+			name: "printf",
+			params: []funcParam{{"fmt", "string"}},
+			returnType: "int",
+			variadic: true,
+		},
+		{
+			name: "putchar",
+			params: []funcParam{{"c", "int"}},
+			returnType: "int",
+		},
+	}
 }

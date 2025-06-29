@@ -1,0 +1,18 @@
+func one_argument(a: int) {}
+func two_arguments(a: int, b: int) {}
+
+func main() : int {
+  unknown_function();
+
+  one_argument();
+  one_argument(1);
+  one_argument(1, 2);
+  one_argument(1, 2, 3);
+
+  two_arguments();
+  two_arguments(1);
+  two_arguments(1, 2);
+  two_arguments(1, 2,3 );
+
+  return 0;
+}

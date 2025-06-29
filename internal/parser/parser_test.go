@@ -22,7 +22,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body:   &Block{Statements: []Statement{}},
+						Body:   Block{Statements: []Statement{}},
 					},
 				},
 			},
@@ -35,7 +35,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{VariableDeclaration: &VariableDeclaration{
 									Name: "x",
@@ -58,7 +58,7 @@ func TestParseProgram(t *testing.T) {
 							{Name: "a", Type: "int"},
 							{Name: "b", Type: "int"},
 						},
-						Body: &Block{Statements: []Statement{}},
+						Body: Block{Statements: []Statement{}},
 					},
 				},
 			},
@@ -71,7 +71,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{ExpressionStatement: &ExpressionStatement{
 									Expression: Expression{FunctionCall: &FunctionCall{
@@ -96,7 +96,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{VariableDeclaration: &VariableDeclaration{
 									Name: "x",
@@ -120,12 +120,12 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body:   &Block{Statements: []Statement{}},
+						Body:   Block{Statements: []Statement{}},
 					},
 					{
 						Name:   "helper",
 						Params: []*Param{},
-						Body:   &Block{Statements: []Statement{}},
+						Body:   Block{Statements: []Statement{}},
 					},
 				},
 			},
@@ -138,7 +138,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{ReturnStatement: &ReturnStatement{
 									Value: nil,
@@ -157,7 +157,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{ReturnStatement: &ReturnStatement{
 									Value: &Expression{Literal: NewIntLiteral(42)},
@@ -176,7 +176,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{ReturnStatement: &ReturnStatement{
 									Value: &Expression{Literal: NewStringLiteral("hello")},
@@ -195,7 +195,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{ReturnStatement: &ReturnStatement{
 									Value: &Expression{FunctionCall: &FunctionCall{
@@ -217,7 +217,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{ReturnStatement: &ReturnStatement{
 									Value: &Expression{Literal: NewIntLiteral(1)},
@@ -242,7 +242,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{VariableDeclaration: &VariableDeclaration{
 									Name: "x",
@@ -267,7 +267,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{BreakStatement: &BreakStatement{}},
 							},
@@ -284,7 +284,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{VariableDeclaration: &VariableDeclaration{
 									Name: "x",
@@ -310,7 +310,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{ContinueStatement: &ContinueStatement{}},
 							},
@@ -327,7 +327,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{VariableDeclaration: &VariableDeclaration{
 									Name: "x",
@@ -1455,7 +1455,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1484,7 +1484,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1527,7 +1527,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1566,7 +1566,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{UnaryOperation: &UnaryOperation{
@@ -1594,7 +1594,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1699,7 +1699,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1748,7 +1748,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1803,7 +1803,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1876,7 +1876,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{IfStatement: &IfStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1962,7 +1962,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -1999,7 +1999,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2043,7 +2043,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{UnaryOperation: &UnaryOperation{
@@ -2078,7 +2078,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2136,7 +2136,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2237,7 +2237,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{BreakStatement: &BreakStatement{}},
 							},
@@ -2254,7 +2254,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2282,7 +2282,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2328,7 +2328,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2392,7 +2392,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{ContinueStatement: &ContinueStatement{}},
 							},
@@ -2409,7 +2409,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2437,7 +2437,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{
@@ -2483,7 +2483,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 					{
 						Name:   "main",
 						Params: []*Param{},
-						Body: &Block{
+						Body: Block{
 							Statements: []Statement{
 								{WhileStatement: &WhileStatement{
 									Condition: Expression{BinaryOperation: &BinaryOperation{

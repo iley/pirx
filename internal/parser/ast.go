@@ -29,8 +29,7 @@ func (p *Program) String() string {
 type Function struct {
 	Name   string
 	Params []*Param
-	// TODO: Make Body non-optional.
-	Body *Block
+	Body   Block
 }
 
 func (f *Function) String() string {

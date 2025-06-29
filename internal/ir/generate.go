@@ -50,9 +50,7 @@ func generateFunction(ic *IrContext, node *parser.Function) IrFunction {
 	fic := *ic
 	fic.nextTempIndex = 1
 
-	if node.Body != nil {
-		irfunc.Ops = generateBlockOps(&fic, *node.Body)
-	}
+	irfunc.Ops = generateBlockOps(&fic, node.Body)
 
 	// Add implicit return if the function doesn't end with a return
 	if len(irfunc.Ops) == 0 {

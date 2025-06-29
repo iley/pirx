@@ -126,7 +126,7 @@ func (p *Parser) parseFunction() (*Function, error) {
 	return &Function{
 		Name:   name,
 		Params: params,
-		Body:   body,
+		Body:   *body,
 	}, nil
 }
 

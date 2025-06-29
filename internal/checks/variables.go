@@ -38,11 +38,7 @@ func (c *VariableChecker) CheckFunction(fn *parser.Function) {
 		c.declaredVars[param.Name] = param.Type
 	}
 
-	if fn.Body == nil {
-		return
-	}
-
-	c.CheckBlock(fn.Body)
+	c.CheckBlock(&fn.Body)
 }
 
 func (c *VariableChecker) CheckBlock(block *parser.Block) {

@@ -101,11 +101,11 @@ func (c *TypeChecker) CheckVariableDeclaration(decl *parser.VariableDeclaration)
 func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) {
 	proto, declared := c.declaredFuncs[call.FunctionName]
 	if !declared {
-		c.errors = append(c.errors, fmt.Errorf("function %s is not declared", call.FunctionName))
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s is not declared", call.Loc.Line, call.Loc.Col, call.FunctionName))
 	}
 
 	if declared && !proto.Variadic && (len(proto.Args) != len(call.Args)) {
-		c.errors = append(c.errors, fmt.Errorf("function %s has %d arguments but %d were provided", call.FunctionName, len(proto.Args), len(call.Args)))
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s has %d arguments but %d were provided", call.Loc.Line, call.Loc.Col, call.FunctionName, len(proto.Args), len(call.Args)))
 	}
 
 	for _, expr := range call.Args {
@@ -123,7 +123,7 @@ func (c *TypeChecker) CheckAssignment(assignment *parser.Assignment) {
 	_, declared := c.declaredVars[target]
 	if !declared {
 		// TODO: Line and column.
-		c.errors = append(c.errors, fmt.Errorf("variable %s is not declared before assignment", target))
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before assignment", assignment.Loc.Line, assignment.Loc.Col, target))
 	}
 
 	c.CheckExpression(assignment.Value)
@@ -132,7 +132,7 @@ func (c *TypeChecker) CheckAssignment(assignment *parser.Assignment) {
 func (c *TypeChecker) CheckVariableReference(ref *parser.VariableReference) {
 	_, declared := c.declaredVars[ref.Name]
 	if !declared {
-		c.errors = append(c.errors, fmt.Errorf("variable %s is not declared before reference", ref.Name))
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before reference", ref.Loc.Line, ref.Loc.Col, ref.Name))
 	}
 }
 

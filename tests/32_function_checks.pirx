@@ -12,7 +12,7 @@ func main() : int {
   two_arguments();
   two_arguments(1);
   two_arguments(1, 2);
-  two_arguments(1, 2,3 );
+  two_arguments(1, 2, 3);
 
   return 0;
 }

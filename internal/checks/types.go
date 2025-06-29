@@ -105,7 +105,7 @@ func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) {
 	}
 
 	if declared && !proto.Variadic && (len(proto.Args) != len(call.Args)) {
-		c.errors =append(c.errors, fmt.Errorf("function %s has %d arguments but %d were provided", call.FunctionName, len(proto.Args), len(call.Args)))
+		c.errors = append(c.errors, fmt.Errorf("function %s has %d arguments but %d were provided", call.FunctionName, len(proto.Args), len(call.Args)))
 	}
 
 	for _, expr := range call.Args {

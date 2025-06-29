@@ -8,6 +8,68 @@ import (
 	"github.com/iley/pirx/internal/lexer"
 )
 
+// compareASTIgnoreLocation recursively compares AST nodes while ignoring Location fields
+func compareASTIgnoreLocation(a, b interface{}) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	va := reflect.ValueOf(a)
+	vb := reflect.ValueOf(b)
+
+	if !va.IsValid() && !vb.IsValid() {
+		return true
+	}
+	if !va.IsValid() || !vb.IsValid() {
+		return false
+	}
+
+	if va.Type() != vb.Type() {
+		return false
+	}
+
+	switch va.Kind() {
+	case reflect.Ptr:
+		if va.IsNil() && vb.IsNil() {
+			return true
+		}
+		if va.IsNil() || vb.IsNil() {
+			return false
+		}
+		return compareASTIgnoreLocation(va.Elem().Interface(), vb.Elem().Interface())
+
+	case reflect.Struct:
+		for i := 0; i < va.NumField(); i++ {
+			field := va.Type().Field(i)
+			// Skip Location fields
+			if field.Name == "Loc" || field.Type.Name() == "Location" {
+				continue
+			}
+			if !compareASTIgnoreLocation(va.Field(i).Interface(), vb.Field(i).Interface()) {
+				return false
+			}
+		}
+		return true
+
+	case reflect.Slice:
+		if va.Len() != vb.Len() {
+			return false
+		}
+		for i := 0; i < va.Len(); i++ {
+			if !compareASTIgnoreLocation(va.Index(i).Interface(), vb.Index(i).Interface()) {
+				return false
+			}
+		}
+		return true
+
+	default:
+		return reflect.DeepEqual(a, b)
+	}
+}
+
 func TestParseProgram(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -18,11 +80,13 @@ func TestParseProgram(t *testing.T) {
 			name: "trivial program",
 			src:  `func main() {}`,
 			expected: &Program{
+				Loc: Location{Line: 1, Col: 1},
 				Functions: []Function{
 					{
-						Name:   "main",
+						Loc:  Location{Line: 1, Col: 1},
+						Name: "main",
 						Args: []Arg{},
-						Body:   Block{Statements: []Statement{}},
+						Body: Block{Loc: Location{Line: 1, Col: 14}, Statements: []Statement{}},
 					},
 				},
 			},
@@ -31,13 +95,16 @@ func TestParseProgram(t *testing.T) {
 			name: "function with var declaration",
 			src:  `func main() { var x: int; }`,
 			expected: &Program{
+				Loc: Location{Line: 1, Col: 1},
 				Functions: []Function{
 					{
-						Name:   "main",
+						Loc:  Location{Line: 1, Col: 1},
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
+							Loc: Location{Line: 1, Col: 15},
 							Statements: []Statement{
-								&VariableDeclaration{Name: "x", Type: "int"},
+								&VariableDeclaration{Loc: Location{Line: 1, Col: 15}, Name: "x", Type: "int"},
 							},
 						},
 					},
@@ -66,7 +133,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -91,7 +158,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -109,14 +176,14 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
-						Body:   Block{Statements: []Statement{}},
+						Body: Block{Statements: []Statement{}},
 					},
 					{
-						Name:   "helper",
+						Name: "helper",
 						Args: []Arg{},
-						Body:   Block{Statements: []Statement{}},
+						Body: Block{Statements: []Statement{}},
 					},
 				},
 			},
@@ -127,7 +194,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -144,7 +211,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -161,7 +228,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -180,7 +247,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -202,7 +269,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -227,7 +294,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -252,7 +319,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -269,7 +336,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -295,7 +362,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -312,7 +379,7 @@ func TestParseProgram(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -342,8 +409,8 @@ func TestParseProgram(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseProgram() error = %v", err)
 			}
-			if !reflect.DeepEqual(prog, tc.expected) {
-				t.Errorf("ParseProgram() got = %+v, want %+v", prog, tc.expected)
+			if !compareASTIgnoreLocation(prog, tc.expected) {
+				t.Errorf("ParseProgram() got = %#v, want %#v", prog, tc.expected)
 			}
 		})
 	}
@@ -495,7 +562,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
 
-			if !reflect.DeepEqual(exprStmt.Expression, tc.expected) {
+			if !compareASTIgnoreLocation(exprStmt.Expression, tc.expected) {
 				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
 			}
 		})
@@ -552,7 +619,7 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
 
-			if !reflect.DeepEqual(exprStmt.Expression, tc.expected) {
+			if !compareASTIgnoreLocation(exprStmt.Expression, tc.expected) {
 				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
 			}
 		})
@@ -614,7 +681,7 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
 
-			if !reflect.DeepEqual(exprStmt.Expression, tc.expected) {
+			if !compareASTIgnoreLocation(exprStmt.Expression, tc.expected) {
 				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
 			}
 		})
@@ -777,7 +844,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
 
-			if !reflect.DeepEqual(exprStmt.Expression, tc.expected) {
+			if !compareASTIgnoreLocation(exprStmt.Expression, tc.expected) {
 				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
 			}
 		})
@@ -1223,7 +1290,7 @@ func TestParseExpression_BinaryOperation(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !reflect.DeepEqual(result, tc.expected) {
+			if !compareASTIgnoreLocation(result, tc.expected) {
 				t.Errorf("expected %+v, got %+v", tc.expected, result)
 			}
 		})
@@ -1425,7 +1492,7 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !reflect.DeepEqual(result, tc.expected) {
+			if !compareASTIgnoreLocation(result, tc.expected) {
 				t.Errorf("expected %+v, got %+v", tc.expected, result)
 			}
 		})
@@ -1444,7 +1511,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1473,7 +1540,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1516,7 +1583,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1555,7 +1622,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1583,7 +1650,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1630,7 +1697,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error parsing program: %v", err)
 			}
-			if !reflect.DeepEqual(program, tc.expected) {
+			if !compareASTIgnoreLocation(program, tc.expected) {
 				t.Errorf("Expected %+v, got %+v", tc.expected, program)
 			}
 		})
@@ -1688,7 +1755,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1737,7 +1804,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1792,7 +1859,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1865,7 +1932,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1932,7 +1999,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error parsing program: %v", err)
 			}
-			if !reflect.DeepEqual(program, tc.expected) {
+			if !compareASTIgnoreLocation(program, tc.expected) {
 				t.Errorf("Expected %+v, got %+v", tc.expected, program)
 			}
 		})
@@ -1951,7 +2018,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -1988,7 +2055,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2032,7 +2099,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2067,7 +2134,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2125,7 +2192,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2176,7 +2243,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error parsing program: %v", err)
 			}
-			if !reflect.DeepEqual(program, tc.expected) {
+			if !compareASTIgnoreLocation(program, tc.expected) {
 				t.Errorf("Expected %+v, got %+v", tc.expected, program)
 			}
 		})
@@ -2226,7 +2293,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2243,7 +2310,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2271,7 +2338,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2317,7 +2384,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2362,7 +2429,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error parsing program: %v", err)
 			}
-			if !reflect.DeepEqual(program, tc.expected) {
+			if !compareASTIgnoreLocation(program, tc.expected) {
 				t.Errorf("Expected %+v, got %+v", tc.expected, program)
 			}
 		})
@@ -2381,7 +2448,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2398,7 +2465,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2426,7 +2493,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2472,7 +2539,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			expected: &Program{
 				Functions: []Function{
 					{
-						Name:   "main",
+						Name: "main",
 						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
@@ -2517,7 +2584,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error parsing program: %v", err)
 			}
-			if !reflect.DeepEqual(program, tc.expected) {
+			if !compareASTIgnoreLocation(program, tc.expected) {
 				t.Errorf("Expected %+v, got %+v", tc.expected, program)
 			}
 		})

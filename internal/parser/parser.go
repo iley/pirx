@@ -7,6 +7,10 @@ import (
 	"github.com/iley/pirx/internal/lexer"
 )
 
+func locationFromLexeme(lex lexer.Lexeme) Location {
+	return Location{Line: lex.Line, Col: lex.Col}
+}
+
 var (
 	// TODO: Find a better way of figuring out whether a function is variadic.
 	VariadicFuncs = map[string]struct{}{
@@ -49,6 +53,12 @@ func (p *Parser) peek() (lexer.Lexeme, error) {
 }
 
 func (p *Parser) ParseProgram() (*Program, error) {
+	lex, err := p.peek()
+	if err != nil {
+		return nil, err
+	}
+	programLoc := locationFromLexeme(lex)
+
 	functions := []Function{}
 
 	for {
@@ -67,7 +77,7 @@ func (p *Parser) ParseProgram() (*Program, error) {
 		functions = append(functions, fn)
 	}
 
-	return &Program{Functions: functions}, nil
+	return &Program{Loc: programLoc, Functions: functions}, nil
 }
 
 func (p *Parser) parseFunction() (Function, error) {
@@ -78,6 +88,7 @@ func (p *Parser) parseFunction() (Function, error) {
 	if !lex.IsKeyword("func") {
 		return Function{}, fmt.Errorf("%d:%d: expected 'func', got %v", lex.Line, lex.Col, lex)
 	}
+	funcLoc := locationFromLexeme(lex)
 	// function name
 	lex, err = p.consume()
 	if err != nil {
@@ -148,6 +159,7 @@ func (p *Parser) parseFunction() (Function, error) {
 	}
 
 	return Function{
+		Loc:        funcLoc,
 		Name:       name,
 		Args:       args,
 		Body:       *body,
@@ -175,6 +187,7 @@ func (p *Parser) parseArguments() ([]Arg, error) {
 		if lex.Type != lexer.LEX_IDENT {
 			return nil, fmt.Errorf("%d:%d: expected arg name, got %v", lex.Line, lex.Col, lex)
 		}
+		argLoc := locationFromLexeme(lex)
 		name := lex.Str
 
 		// colon
@@ -196,7 +209,7 @@ func (p *Parser) parseArguments() ([]Arg, error) {
 		}
 		typeStr := lex.Str
 
-		args = append(args, Arg{Name: name, Type: typeStr})
+		args = append(args, Arg{Loc: argLoc, Name: name, Type: typeStr})
 
 		lex, err = p.peek()
 		if err != nil {
@@ -220,6 +233,12 @@ func (p *Parser) parseArguments() ([]Arg, error) {
 }
 
 func (p *Parser) parseBlock() (*Block, error) {
+	lex, err := p.peek()
+	if err != nil {
+		return nil, err
+	}
+	blockLoc := locationFromLexeme(lex)
+
 	statements := []Statement{}
 
 	for {
@@ -253,12 +272,12 @@ func (p *Parser) parseBlock() (*Block, error) {
 	}
 
 	// consume '}'
-	_, err := p.consume()
+	_, err = p.consume()
 	if err != nil {
 		return nil, err
 	}
 
-	return &Block{Statements: statements}, nil
+	return &Block{Loc: blockLoc, Statements: statements}, nil
 }
 
 // statementRequiresSemicolon returns true if the statement requires a semicolon after it
@@ -296,19 +315,19 @@ func (p *Parser) parseStatement() (Statement, error) {
 	}
 	// TODO: Validate that break is only used inside a loop (likely a separate AST pass).
 	if lex.IsKeyword("break") {
-		_, err := p.consume() // consume the "break" keyword
+		breakLex, err := p.consume() // consume the "break" keyword
 		if err != nil {
 			return nil, err
 		}
-		return &BreakStatement{}, nil
+		return &BreakStatement{Loc: locationFromLexeme(breakLex)}, nil
 	}
 	// TODO: Validate that continue is only used inside a loop (likely a separate AST pass).
 	if lex.IsKeyword("continue") {
-		_, err := p.consume() // consume the "continue" keyword
+		continueLex, err := p.consume() // consume the "continue" keyword
 		if err != nil {
 			return nil, err
 		}
-		return &ContinueStatement{}, nil
+		return &ContinueStatement{Loc: locationFromLexeme(continueLex)}, nil
 	}
 	if lex.IsKeyword("if") {
 		ifStmt, err := p.parseIfStatement()
@@ -328,7 +347,7 @@ func (p *Parser) parseStatement() (Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ExpressionStatement{Expression: expression}, nil
+	return &ExpressionStatement{Loc: expression.GetLocation(), Expression: expression}, nil
 }
 
 func (p *Parser) parseExpression() (Expression, error) {
@@ -360,10 +379,11 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, e
 		}
 
 		operator := lex.Str
-		_, err = p.consume() // consume the operator
+		operatorLex, err := p.consume() // consume the operator
 		if err != nil {
 			return nil, err
 		}
+		operatorLoc := locationFromLexeme(operatorLex)
 
 		// For left-associative operators, use precedence + 1
 		// For right-associative operators, use precedence
@@ -375,6 +395,7 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, e
 		}
 
 		left = &BinaryOperation{
+			Loc:      operatorLoc,
 			Left:     left,
 			Operator: operator,
 			Right:    right,
@@ -445,6 +466,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	if lex.Type != lexer.LEX_IDENT {
 		return nil, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
 	}
+	callLoc := locationFromLexeme(lex)
 	name := lex.Str
 
 	// '('
@@ -466,7 +488,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	}
 	if lex.IsPunctuation(")") {
 		p.consume() // consume ')'
-		return &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}, nil
+		return &FunctionCall{Loc: callLoc, FunctionName: name, Args: args, Variadic: variadic}, nil
 	}
 
 	for {
@@ -499,7 +521,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 		return nil, err
 	}
 
-	return &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}, nil
+	return &FunctionCall{Loc: callLoc, FunctionName: name, Args: args, Variadic: variadic}, nil
 }
 
 func (p *Parser) parseIntegerLiteral() (Expression, error) {
@@ -507,11 +529,14 @@ func (p *Parser) parseIntegerLiteral() (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+	litLoc := locationFromLexeme(lex)
 	val, err := strconv.Atoi(lex.Str)
 	if err != nil {
 		return nil, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
 	}
-	return NewIntLiteral(int64(val)), nil
+	literal := NewIntLiteral(int64(val))
+	literal.Loc = litLoc
+	return literal, nil
 }
 
 func (p *Parser) parseStringLiteral() (Expression, error) {
@@ -519,7 +544,8 @@ func (p *Parser) parseStringLiteral() (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Literal{StringValue: &lex.Str}, nil
+	litLoc := locationFromLexeme(lex)
+	return &Literal{Loc: litLoc, StringValue: &lex.Str}, nil
 }
 
 func (p *Parser) parseParenthesizedExpression() (Expression, error) {
@@ -559,6 +585,7 @@ func (p *Parser) parseUnaryExpression() (Expression, error) {
 	if !lex.IsOperator("!") {
 		return nil, fmt.Errorf("%d:%d: expected '!', got %v", lex.Line, lex.Col, lex)
 	}
+	unaryLoc := locationFromLexeme(lex)
 
 	// parse the operand
 	operand, err := p.parsePrimaryExpression()
@@ -567,6 +594,7 @@ func (p *Parser) parseUnaryExpression() (Expression, error) {
 	}
 
 	return &UnaryOperation{
+		Loc:      unaryLoc,
 		Operator: lex.Str,
 		Operand:  operand,
 	}, nil
@@ -574,10 +602,11 @@ func (p *Parser) parseUnaryExpression() (Expression, error) {
 
 func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 	// consume 'var'
-	_, err := p.consume()
+	varLex, err := p.consume()
 	if err != nil {
 		return nil, err
 	}
+	varLoc := locationFromLexeme(varLex)
 
 	// variable name
 	lex, err := p.consume()
@@ -610,6 +639,7 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 	typeStr := lex.Str
 
 	return &VariableDeclaration{
+		Loc:  varLoc,
 		Name: name,
 		Type: typeStr,
 	}, nil
@@ -617,10 +647,11 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 
 func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
 	// consume 'return'
-	_, err := p.consume()
+	retLex, err := p.consume()
 	if err != nil {
 		return nil, err
 	}
+	retLoc := locationFromLexeme(retLex)
 
 	// Check if there's an expression to return
 	lex, err := p.peek()
@@ -630,7 +661,7 @@ func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
 
 	// If the next token is a semicolon, this is a return without a value
 	if lex.IsPunctuation(";") {
-		return &ReturnStatement{Value: nil}, nil
+		return &ReturnStatement{Loc: retLoc, Value: nil}, nil
 	}
 
 	// Otherwise, parse the return value expression
@@ -639,7 +670,7 @@ func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
 		return nil, err
 	}
 
-	return &ReturnStatement{Value: expr}, nil
+	return &ReturnStatement{Loc: retLoc, Value: expr}, nil
 }
 
 func (p *Parser) parseIdentifierExpression() (Expression, error) {
@@ -686,6 +717,7 @@ func (p *Parser) parseAssignment() (Expression, error) {
 	if lex.Type != lexer.LEX_IDENT {
 		return nil, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
 	}
+	assignLoc := locationFromLexeme(lex)
 	varName := lex.Str
 
 	// '='
@@ -704,6 +736,7 @@ func (p *Parser) parseAssignment() (Expression, error) {
 	}
 
 	return &Assignment{
+		Loc:          assignLoc,
 		VariableName: varName,
 		Value:        value,
 	}, nil
@@ -718,18 +751,21 @@ func (p *Parser) parseVariableReference() (Expression, error) {
 	if lex.Type != lexer.LEX_IDENT {
 		return nil, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
 	}
+	varLoc := locationFromLexeme(lex)
 
 	return &VariableReference{
+		Loc:  varLoc,
 		Name: lex.Str,
 	}, nil
 }
 
 func (p *Parser) parseIfStatement() (*IfStatement, error) {
 	// consume 'if'
-	_, err := p.consume()
+	ifLex, err := p.consume()
 	if err != nil {
 		return nil, err
 	}
+	ifLoc := locationFromLexeme(ifLex)
 
 	// parse condition expression
 	condition, err := p.parseExpression()
@@ -777,6 +813,7 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 			}
 
 			elseBlock = &Block{
+				Loc: locationFromLexeme(lex),
 				Statements: []Statement{
 					nestedIf,
 				},
@@ -799,6 +836,7 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 	}
 
 	return &IfStatement{
+		Loc:       ifLoc,
 		Condition: condition,
 		ThenBlock: *thenBlock,
 		ElseBlock: elseBlock,
@@ -807,10 +845,11 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 
 func (p *Parser) parseWhileStatement() (*WhileStatement, error) {
 	// consume 'while'
-	_, err := p.consume()
+	whileLex, err := p.consume()
 	if err != nil {
 		return nil, err
 	}
+	whileLoc := locationFromLexeme(whileLex)
 
 	// parse condition expression
 	condition, err := p.parseExpression()
@@ -833,6 +872,7 @@ func (p *Parser) parseWhileStatement() (*WhileStatement, error) {
 	}
 
 	return &WhileStatement{
+		Loc:       whileLoc,
 		Condition: condition,
 		Body:      *body,
 	}, nil

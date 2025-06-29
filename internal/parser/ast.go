@@ -7,12 +7,23 @@ import (
 	"github.com/iley/pirx/internal/util"
 )
 
+type Location struct {
+	Line int
+	Col  int
+}
+
 type AstNode interface {
 	fmt.Stringer
+	GetLocation() Location
 }
 
 type Program struct {
+	Loc       Location
 	Functions []Function
+}
+
+func (p *Program) GetLocation() Location {
+	return p.Loc
 }
 
 func (p *Program) String() string {
@@ -27,10 +38,15 @@ func (p *Program) String() string {
 }
 
 type Function struct {
+	Loc        Location
 	Name       string
 	Args       []Arg
 	Body       Block
 	ReturnType string
+}
+
+func (f *Function) GetLocation() Location {
+	return f.Loc
 }
 
 func (f *Function) String() string {
@@ -54,8 +70,13 @@ func (f *Function) String() string {
 }
 
 type Arg struct {
+	Loc  Location
 	Name string
 	Type string
+}
+
+func (a Arg) GetLocation() Location {
+	return a.Loc
 }
 
 func (a Arg) String() string {
@@ -63,7 +84,12 @@ func (a Arg) String() string {
 }
 
 type Block struct {
+	Loc        Location
 	Statements []Statement
+}
+
+func (b *Block) GetLocation() Location {
+	return b.Loc
 }
 
 func (b *Block) String() string {
@@ -85,8 +111,13 @@ type Statement interface {
 }
 
 type VariableDeclaration struct {
+	Loc  Location
 	Name string
 	Type string
+}
+
+func (d *VariableDeclaration) GetLocation() Location {
+	return d.Loc
 }
 
 func (d *VariableDeclaration) isStatement() {}
@@ -96,7 +127,12 @@ func (d *VariableDeclaration) String() string {
 }
 
 type ExpressionStatement struct {
+	Loc        Location
 	Expression Expression
+}
+
+func (s *ExpressionStatement) GetLocation() Location {
+	return s.Loc
 }
 
 func (s *ExpressionStatement) isStatement() {}
@@ -106,7 +142,12 @@ func (s *ExpressionStatement) String() string {
 }
 
 type ReturnStatement struct {
+	Loc   Location
 	Value Expression // optional return value
+}
+
+func (r *ReturnStatement) GetLocation() Location {
+	return r.Loc
 }
 
 func (r *ReturnStatement) isStatement() {}
@@ -120,9 +161,14 @@ func (r *ReturnStatement) String() string {
 }
 
 type IfStatement struct {
+	Loc       Location
 	Condition Expression
 	ThenBlock Block
 	ElseBlock *Block // optional
+}
+
+func (i *IfStatement) GetLocation() Location {
+	return i.Loc
 }
 
 func (i *IfStatement) isStatement() {}
@@ -136,8 +182,13 @@ func (i *IfStatement) String() string {
 }
 
 type WhileStatement struct {
+	Loc       Location
 	Condition Expression
 	Body      Block
+}
+
+func (w *WhileStatement) GetLocation() Location {
+	return w.Loc
 }
 
 func (w *WhileStatement) isStatement() {}
@@ -147,6 +198,11 @@ func (w *WhileStatement) String() string {
 }
 
 type BreakStatement struct {
+	Loc Location
+}
+
+func (b *BreakStatement) GetLocation() Location {
+	return b.Loc
 }
 
 func (b *BreakStatement) isStatement() {}
@@ -156,6 +212,11 @@ func (b *BreakStatement) String() string {
 }
 
 type ContinueStatement struct {
+	Loc Location
+}
+
+func (c *ContinueStatement) GetLocation() Location {
+	return c.Loc
 }
 
 func (c *ContinueStatement) isStatement() {}
@@ -172,8 +233,13 @@ type Expression interface {
 }
 
 type Literal struct {
+	Loc         Location
 	StringValue *string
 	IntValue    *int64
+}
+
+func (l *Literal) GetLocation() Location {
+	return l.Loc
 }
 
 func (l *Literal) isExpression() {}
@@ -197,8 +263,13 @@ func NewStringLiteral(value string) *Literal {
 }
 
 type Assignment struct {
+	Loc          Location
 	VariableName string
 	Value        Expression
+}
+
+func (a *Assignment) GetLocation() Location {
+	return a.Loc
 }
 
 func (a *Assignment) isExpression() {}
@@ -208,7 +279,12 @@ func (a *Assignment) String() string {
 }
 
 type VariableReference struct {
+	Loc  Location
 	Name string
+}
+
+func (v *VariableReference) GetLocation() Location {
+	return v.Loc
 }
 
 func (v *VariableReference) isExpression() {}
@@ -218,9 +294,14 @@ func (v *VariableReference) String() string {
 }
 
 type FunctionCall struct {
+	Loc          Location
 	FunctionName string
 	Args         []Expression
 	Variadic     bool
+}
+
+func (f *FunctionCall) GetLocation() Location {
+	return f.Loc
 }
 
 func (f *FunctionCall) isExpression() {}
@@ -237,9 +318,14 @@ func (f *FunctionCall) String() string {
 }
 
 type BinaryOperation struct {
+	Loc      Location
 	Left     Expression
 	Operator string
 	Right    Expression
+}
+
+func (b *BinaryOperation) GetLocation() Location {
+	return b.Loc
 }
 
 func (b *BinaryOperation) isExpression() {}
@@ -249,8 +335,13 @@ func (b *BinaryOperation) String() string {
 }
 
 type UnaryOperation struct {
+	Loc      Location
 	Operator string
 	Operand  Expression
+}
+
+func (u *UnaryOperation) GetLocation() Location {
+	return u.Loc
 }
 
 func (u *UnaryOperation) isExpression() {}

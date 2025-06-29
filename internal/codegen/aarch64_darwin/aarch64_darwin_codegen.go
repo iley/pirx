@@ -190,7 +190,8 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 		return fmt.Errorf("Too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
 	}
 
-	if call.Variadic {
+	// Check whether this is a variadic call.
+	if len(call.Args) != call.NamedArgs {
 		// Darwin deviates from the standard ARM64 ABI for variadic functions.
 		// Arguments go on the stack.
 		// First, move SP to allocate space for the args. Don't forget to align SP by 16.
@@ -199,16 +200,13 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 			spShift = util.Align(int64(len(call.Args)-1), 16)
 		}
 
-		// TODO: How to pass the information about the argument count here?
-		namedArgsCount := 1
-
 		// Then generate stack pushes for the arguments except the first one.
-		for i, arg := range call.Args[namedArgsCount:] {
+		for i, arg := range call.Args[call.NamedArgs:] {
 			generateRegisterLoad(cc, "x0", arg)
 			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*WORD_SIZE-int(spShift))
 		}
 
-		for i, arg := range call.Args[0:namedArgsCount] {
+		for i, arg := range call.Args[0:call.NamedArgs] {
 			reg := fmt.Sprintf("x%d", i)
 			generateRegisterLoad(cc, reg, arg)
 		}

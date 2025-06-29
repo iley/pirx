@@ -3,6 +3,7 @@ package ir
 import (
 	"fmt"
 
+	"github.com/iley/pirx/internal/functions"
 	"github.com/iley/pirx/internal/parser"
 )
 
@@ -11,6 +12,7 @@ type IrContext struct {
 	nextLabelIndex int
 	breakLabel     string
 	continueLabel  string
+	funcs          map[string]functions.Proto
 }
 
 func (ic *IrContext) allocTemp() string {
@@ -27,7 +29,15 @@ func (ic *IrContext) allocLabel() string {
 
 func Generate(node *parser.Program) IrProgram {
 	irp := IrProgram{}
-	ic := IrContext{nextLabelIndex: 1}
+	ic := IrContext{
+		nextLabelIndex: 1,
+		funcs:          make(map[string]functions.Proto),
+	}
+
+	for _, funcProto := range functions.GetFunctionTable(node) {
+		ic.funcs[funcProto.Name] = funcProto
+	}
+
 	for _, function := range node.Functions {
 		irFunc := generateFunction(&ic, function)
 		irp.Functions = append(irp.Functions, irFunc)
@@ -124,16 +134,33 @@ func generateExpressionOps(ic *IrContext, node parser.Expression) ([]Op, Arg) {
 		ops, rvalueArg := generateExpressionOps(ic, assignment.Value)
 		ops = append(ops, Assign{Target: assignment.VariableName, Value: rvalueArg})
 		return ops, rvalueArg
-	} else if functionCall, ok := node.(*parser.FunctionCall); ok {
+	} else if call, ok := node.(*parser.FunctionCall); ok {
+		// TODO: Extract function call generation into a function.
 		ops := []Op{}
 		args := []Arg{}
-		for _, argNode := range functionCall.Args {
+		for _, argNode := range call.Args {
 			subOps, subArg := generateExpressionOps(ic, argNode)
 			ops = append(ops, subOps...)
 			args = append(args, subArg)
 		}
+
+		funcProto, ok := ic.funcs[call.FunctionName]
+		if !ok {
+			panic(fmt.Sprintf("unknown function %s", call.FunctionName))
+		}
+
+		if !funcProto.Variadic && len(args) != len(funcProto.Params) {
+			panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Params)))
+		}
+
 		temp := ic.allocTemp()
-		ops = append(ops, Call{Result: temp, Function: functionCall.FunctionName, Args: args, Variadic: functionCall.Variadic})
+		ops = append(ops, Call{
+			Result:    temp,
+			Function:  call.FunctionName,
+			Args:      args,
+			NamedArgs: len(funcProto.Params),
+		})
+
 		return ops, Arg{Variable: temp}
 	} else if variableReference, ok := node.(*parser.VariableReference); ok {
 		return []Op{}, Arg{Variable: variableReference.Name}

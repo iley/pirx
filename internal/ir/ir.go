@@ -95,10 +95,10 @@ func (o BinaryOp) GetArgs() []Arg {
 }
 
 type Call struct {
-	Result   string
-	Function string
-	Args     []Arg
-	Variadic bool
+	Result    string
+	Function  string
+	Args      []Arg
+	NamedArgs int // How many of the provided arguments correspond to named arguments. Everything else are treated as variadic args.
 }
 
 func (c Call) String() string {

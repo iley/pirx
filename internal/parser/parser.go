@@ -130,8 +130,8 @@ func (p *Parser) parseFunction() (*Function, error) {
 	}, nil
 }
 
-func (p *Parser) parseParameters() ([]*Param, error) {
-	params := []*Param{}
+func (p *Parser) parseParameters() ([]Param, error) {
+	params := []Param{}
 
 	lex, err := p.peek()
 	if err != nil {
@@ -171,7 +171,7 @@ func (p *Parser) parseParameters() ([]*Param, error) {
 		}
 		typeStr := lex.Str
 
-		params = append(params, &Param{Name: name, Type: typeStr})
+		params = append(params, Param{Name: name, Type: typeStr})
 
 		lex, err = p.peek()
 		if err != nil {

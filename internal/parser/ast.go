@@ -28,7 +28,7 @@ func (p *Program) String() string {
 
 type Function struct {
 	Name   string
-	Params []*Param
+	Params []Param
 	Body   Block
 }
 

@@ -19,7 +19,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{ReturnStatement: &parser.ReturnStatement{
@@ -48,7 +48,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{ReturnStatement: &parser.ReturnStatement{
@@ -77,7 +77,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{ReturnStatement: &parser.ReturnStatement{
@@ -108,7 +108,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{ReturnStatement: &parser.ReturnStatement{
@@ -141,7 +141,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{VariableDeclaration: &parser.VariableDeclaration{
@@ -177,7 +177,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{ReturnStatement: &parser.ReturnStatement{
@@ -234,7 +234,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body:   parser.Block{Statements: []parser.Statement{}},
 					},
 				},
@@ -257,7 +257,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{VariableDeclaration: &parser.VariableDeclaration{
@@ -288,7 +288,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{ExpressionStatement: &parser.ExpressionStatement{
@@ -321,7 +321,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{VariableDeclaration: &parser.VariableDeclaration{
@@ -355,7 +355,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 				Functions: []*parser.Function{
 					{
 						Name:   "test",
-						Params: []*parser.Param{},
+						Params: []parser.Param{},
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								{ReturnStatement: &parser.ReturnStatement{

@@ -135,33 +135,7 @@ func generateExpressionOps(ic *IrContext, node parser.Expression) ([]Op, Arg) {
 		ops = append(ops, Assign{Target: assignment.VariableName, Value: rvalueArg})
 		return ops, rvalueArg
 	} else if call, ok := node.(*parser.FunctionCall); ok {
-		// TODO: Extract function call generation into a function.
-		ops := []Op{}
-		args := []Arg{}
-		for _, argNode := range call.Args {
-			subOps, subArg := generateExpressionOps(ic, argNode)
-			ops = append(ops, subOps...)
-			args = append(args, subArg)
-		}
-
-		funcProto, ok := ic.funcs[call.FunctionName]
-		if !ok {
-			panic(fmt.Sprintf("unknown function %s", call.FunctionName))
-		}
-
-		if !funcProto.Variadic && len(args) != len(funcProto.Params) {
-			panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Params)))
-		}
-
-		temp := ic.allocTemp()
-		ops = append(ops, Call{
-			Result:    temp,
-			Function:  call.FunctionName,
-			Args:      args,
-			NamedArgs: len(funcProto.Params),
-		})
-
-		return ops, Arg{Variable: temp}
+		return generateFunctionCallOps(ic, call)
 	} else if variableReference, ok := node.(*parser.VariableReference); ok {
 		return []Op{}, Arg{Variable: variableReference.Name}
 	} else if binaryOperation, ok := node.(*parser.BinaryOperation); ok {
@@ -230,4 +204,33 @@ func generateWhileOps(ic *IrContext, stmt parser.WhileStatement) []Op {
 	ic.continueLabel = prevContinueLabel
 
 	return ops
+}
+
+func generateFunctionCallOps(ic *IrContext, call *parser.FunctionCall) ([]Op, Arg) {
+	ops := []Op{}
+	args := []Arg{}
+	for _, argNode := range call.Args {
+		subOps, subArg := generateExpressionOps(ic, argNode)
+		ops = append(ops, subOps...)
+		args = append(args, subArg)
+	}
+
+	funcProto, ok := ic.funcs[call.FunctionName]
+	if !ok {
+		panic(fmt.Sprintf("unknown function %s", call.FunctionName))
+	}
+
+	if !funcProto.Variadic && len(args) != len(funcProto.Params) {
+		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Params)))
+	}
+
+	temp := ic.allocTemp()
+	ops = append(ops, Call{
+		Result:    temp,
+		Function:  call.FunctionName,
+		Args:      args,
+		NamedArgs: len(funcProto.Params),
+	})
+
+	return ops, Arg{Variable: temp}
 }

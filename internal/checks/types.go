@@ -39,8 +39,8 @@ func (c *TypeChecker) CheckProgram(program *parser.Program) {
 
 func (c *TypeChecker) CheckFunction(fn parser.Function) {
 	c.declaredVars = make(map[string]string)
-	for _, param := range fn.Params {
-		c.declaredVars[param.Name] = param.Type
+	for _, arg := range fn.Args {
+		c.declaredVars[arg.Name] = arg.Type
 	}
 
 	c.CheckBlock(&fn.Body)
@@ -104,8 +104,8 @@ func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) {
 		c.errors = append(c.errors, fmt.Errorf("function %s is not declared", call.FunctionName))
 	}
 
-	if declared && !proto.Variadic && (len(proto.Params) != len(call.Args)) {
-		c.errors =append(c.errors, fmt.Errorf("function %s has %d arguments but %d were provided", call.FunctionName, len(proto.Params), len(call.Args)))
+	if declared && !proto.Variadic && (len(proto.Args) != len(call.Args)) {
+		c.errors =append(c.errors, fmt.Errorf("function %s has %d arguments but %d were provided", call.FunctionName, len(proto.Args), len(call.Args)))
 	}
 
 	for _, expr := range call.Args {

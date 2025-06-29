@@ -52,8 +52,8 @@ func generateFunction(ic *IrContext, node parser.Function) IrFunction {
 		Ops:    []Op{},
 	}
 
-	for _, param := range node.Params {
-		irfunc.Params = append(irfunc.Params, param.Name)
+	for _, arg := range node.Args {
+		irfunc.Params = append(irfunc.Params, arg.Name)
 	}
 
 	// Create a new context for this function
@@ -220,8 +220,8 @@ func generateFunctionCallOps(ic *IrContext, call *parser.FunctionCall) ([]Op, Ar
 		panic(fmt.Sprintf("unknown function %s", call.FunctionName))
 	}
 
-	if !funcProto.Variadic && len(args) != len(funcProto.Params) {
-		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Params)))
+	if !funcProto.Variadic && len(args) != len(funcProto.Args) {
+		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Args)))
 	}
 
 	temp := ic.allocTemp()
@@ -229,7 +229,7 @@ func generateFunctionCallOps(ic *IrContext, call *parser.FunctionCall) ([]Op, Ar
 		Result:    temp,
 		Function:  call.FunctionName,
 		Args:      args,
-		NamedArgs: len(funcProto.Params),
+		NamedArgs: len(funcProto.Args),
 	})
 
 	return ops, Arg{Variable: temp}

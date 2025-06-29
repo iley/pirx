@@ -96,7 +96,7 @@ func (p *Parser) parseFunction() (Function, error) {
 		return Function{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
-	params, err := p.parseParameters()
+	args, err := p.parseArguments()
 	if err != nil {
 		return Function{}, err
 	}
@@ -149,31 +149,31 @@ func (p *Parser) parseFunction() (Function, error) {
 
 	return Function{
 		Name:       name,
-		Params:     params,
+		Args:       args,
 		Body:       *body,
 		ReturnType: returnType,
 	}, nil
 }
 
-func (p *Parser) parseParameters() ([]Param, error) {
-	params := []Param{}
+func (p *Parser) parseArguments() ([]Arg, error) {
+	args := []Arg{}
 
 	lex, err := p.peek()
 	if err != nil {
 		return nil, err
 	}
 	if lex.IsPunctuation(")") {
-		return params, nil
+		return args, nil
 	}
 
 	for {
-		// param name
+		// arg name
 		lex, err := p.consume()
 		if err != nil {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_IDENT {
-			return nil, fmt.Errorf("%d:%d: expected param name, got %v", lex.Line, lex.Col, lex)
+			return nil, fmt.Errorf("%d:%d: expected arg name, got %v", lex.Line, lex.Col, lex)
 		}
 		name := lex.Str
 
@@ -186,17 +186,17 @@ func (p *Parser) parseParameters() ([]Param, error) {
 			return nil, fmt.Errorf("%d:%d: expected ':' after parameter name, got %v", lex.Line, lex.Col, lex)
 		}
 
-		// param type
+		// arg type
 		lex, err = p.consume()
 		if err != nil {
 			return nil, err
 		}
 		if lex.Type != lexer.LEX_IDENT {
-			return nil, fmt.Errorf("%d:%d: expected param type, got %v", lex.Line, lex.Col, lex)
+			return nil, fmt.Errorf("%d:%d: expected arg type, got %v", lex.Line, lex.Col, lex)
 		}
 		typeStr := lex.Str
 
-		params = append(params, Param{Name: name, Type: typeStr})
+		args = append(args, Arg{Name: name, Type: typeStr})
 
 		lex, err = p.peek()
 		if err != nil {
@@ -216,7 +216,7 @@ func (p *Parser) parseParameters() ([]Param, error) {
 		}
 	}
 
-	return params, nil
+	return args, nil
 }
 
 func (p *Parser) parseBlock() (*Block, error) {

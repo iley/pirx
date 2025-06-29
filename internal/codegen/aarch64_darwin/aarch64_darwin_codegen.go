@@ -76,9 +76,9 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// Map from local variable name to its offset on the stack.
 	locals := make(map[string]int)
 
-	// Add params to locals.
-	for _, param := range f.Params {
-		locals[param] = -1
+	// Add args to locals.
+	for _, arg := range f.Params {
+		locals[arg] = -1
 	}
 
 	// We need to know how many unique locals we have in total so we can allocate space on the stack below.
@@ -109,18 +109,18 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 
 	// Offset from SP for locals.
 	offset := 0
-	for i, param := range f.Params {
+	for i, arg := range f.Params {
 		if offset > MAX_SP_OFFSET {
 			panic(fmt.Sprintf("too many locals: maximum offset supported is %d", MAX_SP_OFFSET))
 		}
 		fmt.Fprintf(cc.output, "  str x%d, [sp, #%d]\n", i, offset)
-		locals[param] = offset
+		locals[arg] = offset
 		offset += WORD_SIZE
 	}
 
 	for _, name := range slices.Collect(maps.Keys(locals)) {
 		if locals[name] != -1 {
-			// Skip params that were handled above.
+			// Skip args that were handled above.
 			continue
 		}
 		locals[name] = offset

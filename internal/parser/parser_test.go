@@ -21,7 +21,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body:   Block{Statements: []Statement{}},
 					},
 				},
@@ -34,7 +34,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&VariableDeclaration{Name: "x", Type: "int"},
@@ -51,7 +51,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name: "add",
-						Params: []Param{
+						Args: []Arg{
 							{Name: "a", Type: "int"},
 							{Name: "b", Type: "int"},
 						},
@@ -67,7 +67,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&ExpressionStatement{
@@ -92,7 +92,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&VariableDeclaration{Name: "x", Type: "int"},
@@ -110,12 +110,12 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body:   Block{Statements: []Statement{}},
 					},
 					{
 						Name:   "helper",
-						Params: []Param{},
+						Args: []Arg{},
 						Body:   Block{Statements: []Statement{}},
 					},
 				},
@@ -128,7 +128,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&ReturnStatement{Value: nil},
@@ -145,7 +145,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&ReturnStatement{Value: NewIntLiteral(42)},
@@ -162,7 +162,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&ReturnStatement{
@@ -181,7 +181,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&ReturnStatement{
@@ -203,7 +203,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&ReturnStatement{
@@ -228,7 +228,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&VariableDeclaration{
@@ -253,7 +253,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&BreakStatement{},
@@ -270,7 +270,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&VariableDeclaration{
@@ -296,7 +296,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&ContinueStatement{},
@@ -313,7 +313,7 @@ func TestParseProgram(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&VariableDeclaration{
@@ -1445,7 +1445,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1474,7 +1474,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1517,7 +1517,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1556,7 +1556,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1584,7 +1584,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1689,7 +1689,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1738,7 +1738,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1793,7 +1793,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1866,7 +1866,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
@@ -1952,7 +1952,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -1989,7 +1989,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2033,7 +2033,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2068,7 +2068,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2126,7 +2126,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2227,7 +2227,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&BreakStatement{},
@@ -2244,7 +2244,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2272,7 +2272,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2318,7 +2318,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2382,7 +2382,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&ContinueStatement{},
@@ -2399,7 +2399,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2427,7 +2427,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
@@ -2473,7 +2473,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 				Functions: []Function{
 					{
 						Name:   "main",
-						Params: []Param{},
+						Args: []Arg{},
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{

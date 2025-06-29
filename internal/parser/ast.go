@@ -28,7 +28,7 @@ func (p *Program) String() string {
 
 type Function struct {
 	Name       string
-	Params     []Param
+	Args       []Arg
 	Body       Block
 	ReturnType string
 }
@@ -36,9 +36,9 @@ type Function struct {
 func (f *Function) String() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("(func %s (", f.Name))
-	for i, param := range f.Params {
-		sb.WriteString(param.String())
-		if i != len(f.Params)-1 {
+	for i, arg := range f.Args {
+		sb.WriteString(arg.String())
+		if i != len(f.Args)-1 {
 			sb.WriteString(" ")
 		}
 	}
@@ -53,13 +53,13 @@ func (f *Function) String() string {
 	return sb.String()
 }
 
-type Param struct {
+type Arg struct {
 	Name string
 	Type string
 }
 
-func (p Param) String() string {
-	return fmt.Sprintf("(%s %s)", p.Name, p.Type)
+func (a Arg) String() string {
+	return fmt.Sprintf("(%s %s)", a.Name, a.Type)
 }
 
 type Block struct {

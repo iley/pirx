@@ -4,13 +4,13 @@ func getBuiltins() []Proto {
 	return []Proto{
 		{
 			Name:       "printf",
-			Params:     []Param{{"fmt", "string"}},
+			Args:       []Arg{{"fmt", "string"}},
 			ReturnType: "int",
 			Variadic:   true,
 		},
 		{
 			Name:       "putchar",
-			Params:     []Param{{"ch", "int"}},
+			Args:       []Arg{{"ch", "int"}},
 			ReturnType: "int",
 		},
 	}

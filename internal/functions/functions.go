@@ -4,12 +4,12 @@ import "github.com/iley/pirx/internal/parser"
 
 type Proto struct {
 	Name       string
-	Params     []Param
+	Args       []Arg
 	ReturnType string
 	Variadic   bool
 }
 
-type Param struct {
+type Arg struct {
 	Name string
 	Typ  string
 }
@@ -21,11 +21,11 @@ func GetFunctionTable(program *parser.Program) []Proto {
 	for _, fn := range program.Functions {
 		proto := Proto{
 			Name:       fn.Name,
-			Params:     []Param{},
+			Args:       []Arg{},
 			ReturnType: fn.ReturnType,
 		}
-		for _, p := range fn.Params {
-			proto.Params = append(proto.Params, Param{p.Name, p.Type})
+		for _, p := range fn.Args {
+			proto.Args = append(proto.Args, Arg{p.Name, p.Type})
 		}
 		protos = append(protos, proto)
 	}

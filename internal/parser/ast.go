@@ -100,7 +100,7 @@ func (s *ExpressionStatement) String() string {
 }
 
 type ReturnStatement struct {
-	Value *Expression // optional return value
+	Value Expression // optional return value
 }
 
 func (r *ReturnStatement) isStatement() {}
@@ -160,36 +160,17 @@ func (c *ContinueStatement) String() string {
 
 // Expression types.
 
-type Expression struct {
-	Literal           *Literal
-	Assignment        *Assignment
-	FunctionCall      *FunctionCall
-	VariableReference *VariableReference
-	BinaryOperation   *BinaryOperation
-	UnaryOperation    *UnaryOperation
-}
-
-func (e *Expression) String() string {
-	if e.Literal != nil {
-		return e.Literal.String()
-	} else if e.Assignment != nil {
-		return e.Assignment.String()
-	} else if e.FunctionCall != nil {
-		return e.FunctionCall.String()
-	} else if e.VariableReference != nil {
-		return e.VariableReference.String()
-	} else if e.BinaryOperation != nil {
-		return e.BinaryOperation.String()
-	} else if e.UnaryOperation != nil {
-		return e.UnaryOperation.String()
-	}
-	panic("Invalid expression type")
+type Expression interface {
+	AstNode
+	isExpression()
 }
 
 type Literal struct {
 	StringValue *string
 	IntValue    *int64
 }
+
+func (l *Literal) isExpression() {}
 
 func (l *Literal) String() string {
 	if l.StringValue != nil {
@@ -214,6 +195,8 @@ type Assignment struct {
 	Value        Expression
 }
 
+func (a *Assignment) isExpression() {}
+
 func (a *Assignment) String() string {
 	return fmt.Sprintf("(= %s %s)", a.VariableName, a.Value.String())
 }
@@ -221,6 +204,8 @@ func (a *Assignment) String() string {
 type VariableReference struct {
 	Name string
 }
+
+func (v *VariableReference) isExpression() {}
 
 func (v *VariableReference) String() string {
 	return v.Name
@@ -231,6 +216,8 @@ type FunctionCall struct {
 	Args         []Expression
 	Variadic     bool
 }
+
+func (f *FunctionCall) isExpression() {}
 
 func (f *FunctionCall) String() string {
 	var sb strings.Builder
@@ -249,6 +236,8 @@ type BinaryOperation struct {
 	Right    Expression
 }
 
+func (b *BinaryOperation) isExpression() {}
+
 func (b *BinaryOperation) String() string {
 	return fmt.Sprintf("(%s %s %s)", b.Operator, b.Left.String(), b.Right.String())
 }
@@ -257,6 +246,8 @@ type UnaryOperation struct {
 	Operator string
 	Operand  Expression
 }
+
+func (u *UnaryOperation) isExpression() {}
 
 func (u *UnaryOperation) String() string {
 	return fmt.Sprintf("(%s %s)", u.Operator, u.Operand.String())

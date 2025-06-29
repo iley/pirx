@@ -67,19 +67,19 @@ func (c *VariableChecker) CheckStatement(stmt parser.Statement) {
 	}
 }
 
-func (c *VariableChecker) CheckExpression(expr *parser.Expression) {
-	if expr.Literal != nil {
-		c.CheckLiteral(expr.Literal)
-	} else if expr.Assignment != nil {
-		c.CheckAssignment(expr.Assignment)
-	} else if expr.FunctionCall != nil {
-		c.CheckFunctionCall(expr.FunctionCall)
-	} else if expr.VariableReference != nil {
-		c.CheckVariableReference(expr.VariableReference)
-	} else if expr.BinaryOperation != nil {
-		c.CheckBinaryOperation(expr.BinaryOperation)
-	} else if expr.UnaryOperation != nil {
-		c.CheckUnaryOperation(expr.UnaryOperation)
+func (c *VariableChecker) CheckExpression(expr parser.Expression) {
+	if literal, ok := expr.(*parser.Literal); ok {
+		c.CheckLiteral(literal)
+	} else if assignment, ok := expr.(*parser.Assignment); ok {
+		c.CheckAssignment(assignment)
+	} else if functionCall, ok := expr.(*parser.FunctionCall); ok {
+		c.CheckFunctionCall(functionCall)
+	} else if variableReference, ok := expr.(*parser.VariableReference); ok {
+		c.CheckVariableReference(variableReference)
+	} else if binaryOperation, ok := expr.(*parser.BinaryOperation); ok {
+		c.CheckBinaryOperation(binaryOperation)
+	} else if unaryOperation, ok := expr.(*parser.UnaryOperation); ok {
+		c.CheckUnaryOperation(unaryOperation)
 	} else {
 		panic(fmt.Sprintf("Invalid expression type: %v", expr))
 	}
@@ -95,12 +95,12 @@ func (c *VariableChecker) CheckVariableDeclaration(decl *parser.VariableDeclarat
 
 func (c *VariableChecker) CheckFunctionCall(functionCall *parser.FunctionCall) {
 	for _, expr := range functionCall.Args {
-		c.CheckExpression(&expr)
+		c.CheckExpression(expr)
 	}
 }
 
 func (c *VariableChecker) CheckExpressionStatement(e *parser.ExpressionStatement) {
-	c.CheckExpression(&e.Expression)
+	c.CheckExpression(e.Expression)
 }
 
 func (c *VariableChecker) CheckAssignment(assignment *parser.Assignment) {
@@ -111,7 +111,7 @@ func (c *VariableChecker) CheckAssignment(assignment *parser.Assignment) {
 		c.errors = append(c.errors, fmt.Errorf("variable %s is not declared before assignment", target))
 	}
 
-	c.CheckExpression(&assignment.Value)
+	c.CheckExpression(assignment.Value)
 }
 
 func (c *VariableChecker) CheckVariableReference(ref *parser.VariableReference) {
@@ -128,16 +128,16 @@ func (c *VariableChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
 }
 
 func (c *VariableChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) {
-	c.CheckExpression(&binOp.Left)
-	c.CheckExpression(&binOp.Right)
+	c.CheckExpression(binOp.Left)
+	c.CheckExpression(binOp.Right)
 }
 
 func (c *VariableChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) {
-	c.CheckExpression(&unaryOp.Operand)
+	c.CheckExpression(unaryOp.Operand)
 }
 
 func (c *VariableChecker) CheckIfStatement(stmt *parser.IfStatement) {
-	c.CheckExpression(&stmt.Condition)
+	c.CheckExpression(stmt.Condition)
 	c.CheckBlock(&stmt.ThenBlock)
 	if stmt.ElseBlock != nil {
 		c.CheckBlock(stmt.ElseBlock)
@@ -145,7 +145,7 @@ func (c *VariableChecker) CheckIfStatement(stmt *parser.IfStatement) {
 }
 
 func (c *VariableChecker) CheckWhileStatement(stmt *parser.WhileStatement) {
-	c.CheckExpression(&stmt.Condition)
+	c.CheckExpression(stmt.Condition)
 	c.CheckBlock(&stmt.Body)
 }
 

@@ -71,13 +71,13 @@ func TestParseProgram(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&ExpressionStatement{
-									Expression: Expression{FunctionCall: &FunctionCall{
+									Expression: &FunctionCall{
 										FunctionName: "foo",
 										Args: []Expression{
-											{Literal: NewIntLiteral(1)},
-											{Literal: NewStringLiteral("two")},
+											NewIntLiteral(1),
+											NewStringLiteral("two"),
 										},
-									}},
+									},
 								},
 							},
 						},
@@ -148,7 +148,7 @@ func TestParseProgram(t *testing.T) {
 						Params: []Param{},
 						Body: Block{
 							Statements: []Statement{
-								&ReturnStatement{Value: &Expression{Literal: NewIntLiteral(42)}},
+								&ReturnStatement{Value: NewIntLiteral(42)},
 							},
 						},
 					},
@@ -166,7 +166,7 @@ func TestParseProgram(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&ReturnStatement{
-									Value: &Expression{Literal: NewStringLiteral("hello")},
+									Value: NewStringLiteral("hello"),
 								},
 							},
 						},
@@ -185,10 +185,10 @@ func TestParseProgram(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&ReturnStatement{
-									Value: &Expression{FunctionCall: &FunctionCall{
+									Value: &FunctionCall{
 										FunctionName: "foo",
 										Args:         []Expression{},
-									}},
+									},
 								},
 							},
 						},
@@ -207,10 +207,10 @@ func TestParseProgram(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&ReturnStatement{
-									Value: &Expression{Literal: NewIntLiteral(1)},
+									Value: NewIntLiteral(1),
 								},
 								&ReturnStatement{
-									Value: &Expression{Literal: NewStringLiteral("two")},
+									Value: NewStringLiteral("two"),
 								},
 								&ReturnStatement{
 									Value: nil,
@@ -236,9 +236,9 @@ func TestParseProgram(t *testing.T) {
 									Type: "int",
 								},
 								&ReturnStatement{
-									Value: &Expression{VariableReference: &VariableReference{
+									Value: &VariableReference{
 										Name: "x",
-									}},
+									},
 								},
 							},
 						},
@@ -279,9 +279,9 @@ func TestParseProgram(t *testing.T) {
 								},
 								&BreakStatement{},
 								&ReturnStatement{
-									Value: &Expression{VariableReference: &VariableReference{
+									Value: &VariableReference{
 										Name: "x",
-									}},
+									},
 								},
 							},
 						},
@@ -322,9 +322,9 @@ func TestParseProgram(t *testing.T) {
 								},
 								&ContinueStatement{},
 								&ReturnStatement{
-									Value: &Expression{VariableReference: &VariableReference{
+									Value: &VariableReference{
 										Name: "x",
-									}},
+									},
 								},
 							},
 						},
@@ -421,55 +421,55 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 		{
 			name: "function call with no arguments",
 			src:  `func main() { foo(); }`,
-			expected: Expression{FunctionCall: &FunctionCall{
+			expected: &FunctionCall{
 				FunctionName: "foo",
 				Args:         []Expression{},
-			}},
+			},
 		},
 		{
 			name: "function call with single integer argument",
 			src:  `func main() { foo(42); }`,
-			expected: Expression{FunctionCall: &FunctionCall{
+			expected: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					{Literal: NewIntLiteral(42)},
+					NewIntLiteral(42),
 				},
-			}},
+			},
 		},
 		{
 			name: "function call with single string argument",
 			src:  `func main() { foo("hello"); }`,
-			expected: Expression{FunctionCall: &FunctionCall{
+			expected: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					{Literal: NewStringLiteral("hello")},
+					NewStringLiteral("hello"),
 				},
-			}},
+			},
 		},
 		{
 			name: "function call with multiple arguments",
 			src:  `func main() { foo(1, "two", 3); }`,
-			expected: Expression{FunctionCall: &FunctionCall{
+			expected: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					{Literal: NewIntLiteral(1)},
-					{Literal: NewStringLiteral("two")},
-					{Literal: NewIntLiteral(3)},
+					NewIntLiteral(1),
+					NewStringLiteral("two"),
+					NewIntLiteral(3),
 				},
-			}},
+			},
 		},
 		{
 			name: "nested function calls",
 			src:  `func main() { foo(bar()); }`,
-			expected: Expression{FunctionCall: &FunctionCall{
+			expected: &FunctionCall{
 				FunctionName: "foo",
 				Args: []Expression{
-					{FunctionCall: &FunctionCall{
+					&FunctionCall{
 						FunctionName: "bar",
 						Args:         []Expression{},
-					}},
+					},
 				},
-			}},
+			},
 		},
 	}
 
@@ -511,22 +511,22 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 		{
 			name:     "zero",
 			src:      `func main() { 0; }`,
-			expected: Expression{Literal: NewIntLiteral(0)},
+			expected: NewIntLiteral(0),
 		},
 		{
 			name:     "positive integer",
 			src:      `func main() { 42; }`,
-			expected: Expression{Literal: NewIntLiteral(42)},
+			expected: NewIntLiteral(42),
 		},
 		{
 			name:     "large integer",
 			src:      `func main() { 999999; }`,
-			expected: Expression{Literal: NewIntLiteral(999999)},
+			expected: NewIntLiteral(999999),
 		},
 		{
 			name:     "single digit",
 			src:      `func main() { 7; }`,
-			expected: Expression{Literal: NewIntLiteral(7)},
+			expected: NewIntLiteral(7),
 		},
 	}
 
@@ -568,27 +568,27 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 		{
 			name:     "empty string",
 			src:      `func main() { ""; }`,
-			expected: Expression{Literal: NewStringLiteral("")},
+			expected: NewStringLiteral(""),
 		},
 		{
 			name:     "simple string",
 			src:      `func main() { "hello"; }`,
-			expected: Expression{Literal: NewStringLiteral("hello")},
+			expected: NewStringLiteral("hello"),
 		},
 		{
 			name:     "string with spaces",
 			src:      `func main() { "hello world"; }`,
-			expected: Expression{Literal: NewStringLiteral("hello world")},
+			expected: NewStringLiteral("hello world"),
 		},
 		{
 			name:     "string with numbers",
 			src:      `func main() { "abc123"; }`,
-			expected: Expression{Literal: NewStringLiteral("abc123")},
+			expected: NewStringLiteral("abc123"),
 		},
 		{
 			name:     "string with special characters",
 			src:      `func main() { "hello, world!"; }`,
-			expected: Expression{Literal: NewStringLiteral("hello, world!")},
+			expected: NewStringLiteral("hello, world!"),
 		},
 	}
 
@@ -678,80 +678,80 @@ func TestParseExpression_Assignment(t *testing.T) {
 		{
 			name: "assignment with integer literal",
 			src:  `func main() { x = 42; }`,
-			expected: Expression{Assignment: &Assignment{
+			expected: &Assignment{
 				VariableName: "x",
-				Value:        Expression{Literal: NewIntLiteral(42)},
-			}},
+				Value:        NewIntLiteral(42),
+			},
 		},
 		{
 			name: "assignment with string literal",
 			src:  `func main() { name = "hello"; }`,
-			expected: Expression{Assignment: &Assignment{
+			expected: &Assignment{
 				VariableName: "name",
-				Value:        Expression{Literal: NewStringLiteral("hello")},
-			}},
+				Value:        NewStringLiteral("hello"),
+			},
 		},
 		{
 			name: "assignment with function call",
 			src:  `func main() { result = foo(); }`,
-			expected: Expression{Assignment: &Assignment{
+			expected: &Assignment{
 				VariableName: "result",
-				Value: Expression{FunctionCall: &FunctionCall{
+				Value: &FunctionCall{
 					FunctionName: "foo",
 					Args:         []Expression{},
-				}},
-			}},
+				},
+			},
 		},
 		{
 			name: "assignment with function call with args",
 			src:  `func main() { result = add(1, 2); }`,
-			expected: Expression{Assignment: &Assignment{
+			expected: &Assignment{
 				VariableName: "result",
-				Value: Expression{FunctionCall: &FunctionCall{
+				Value: &FunctionCall{
 					FunctionName: "add",
 					Args: []Expression{
-						{Literal: NewIntLiteral(1)},
-						{Literal: NewIntLiteral(2)},
+						NewIntLiteral(1),
+						NewIntLiteral(2),
 					},
-				}},
-			}},
+				},
+			},
 		},
 		{
 			name: "assignment with zero",
 			src:  `func main() { counter = 0; }`,
-			expected: Expression{Assignment: &Assignment{
+			expected: &Assignment{
 				VariableName: "counter",
-				Value:        Expression{Literal: NewIntLiteral(0)},
-			}},
+				Value:        NewIntLiteral(0),
+			},
 		},
 		{
 			name: "assignment with empty string",
 			src:  `func main() { text = ""; }`,
-			expected: Expression{Assignment: &Assignment{
+			expected: &Assignment{
 				VariableName: "text",
-				Value:        Expression{Literal: NewStringLiteral("")},
-			}},
+				Value:        NewStringLiteral(""),
+			},
 		},
 		{
 			name: "chained assignment",
 			src:  `func main() { x = y = 1; }`,
-			expected: Expression{Assignment: &Assignment{
+			expected: &Assignment{
 				VariableName: "x",
-				Value: Expression{Assignment: &Assignment{
+				Value: &Assignment{
 					VariableName: "y",
-					Value:        Expression{Literal: NewIntLiteral(1)},
-				}},
-			}},
+					Value:        NewIntLiteral(1),
+				},
+			},
 		},
 		{
 			name: "assignment with variable",
 			src:  `func main() { x = y; }`,
-			expected: Expression{Assignment: &Assignment{
+			expected: &Assignment{
 				VariableName: "x",
-				Value: Expression{VariableReference: &VariableReference{
+				Value: &VariableReference{
 					Name: "y",
-				}},
-			}},
+				},
+			},
 		},
 	}
 
@@ -831,387 +831,387 @@ func TestParseExpression_BinaryOperation(t *testing.T) {
 		{
 			name: "simple addition",
 			src:  "1 + 2",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(1)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(1),
 				Operator: "+",
-				Right:    Expression{Literal: NewIntLiteral(2)},
-			}},
+				Right:    NewIntLiteral(2),
+			},
 		},
 		{
 			name: "addition with variables",
 			src:  "x + y",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "x"},
 				Operator: "+",
-				Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
-			}},
+				Right:    &VariableReference{Name: "y"},
+			},
 		},
 		{
 			name: "addition with mixed types",
 			src:  "5 + x",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(5)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(5),
 				Operator: "+",
-				Right:    Expression{VariableReference: &VariableReference{Name: "x"}},
-			}},
+				Right:    &VariableReference{Name: "x"},
+			},
 		},
 		{
 			name: "simple subtraction",
 			src:  "10 - 3",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(10)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(10),
 				Operator: "-",
-				Right:    Expression{Literal: NewIntLiteral(3)},
-			}},
+				Right:    NewIntLiteral(3),
+			},
 		},
 		{
 			name: "subtraction with variables",
 			src:  "x - y",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "x"},
 				Operator: "-",
-				Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
-			}},
+				Right:    &VariableReference{Name: "y"},
+			},
 		},
 		{
 			name: "subtraction with mixed types",
 			src:  "15 - z",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(15)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(15),
 				Operator: "-",
-				Right:    Expression{VariableReference: &VariableReference{Name: "z"}},
-			}},
+				Right:    &VariableReference{Name: "z"},
+			},
 		},
 		{
 			name: "variable subtraction from literal",
 			src:  "a - 5",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "a"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "a"},
 				Operator: "-",
-				Right:    Expression{Literal: NewIntLiteral(5)},
-			}},
+				Right:    NewIntLiteral(5),
+			},
 		},
 		{
 			name: "simple multiplication",
 			src:  "3 * 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(3)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(3),
 				Operator: "*",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "multiplication with variables",
 			src:  "x * y",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "x"},
 				Operator: "*",
-				Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
-			}},
+				Right:    &VariableReference{Name: "y"},
+			},
 		},
 		{
 			name: "multiplication with mixed types",
 			src:  "7 * z",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(7)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(7),
 				Operator: "*",
-				Right:    Expression{VariableReference: &VariableReference{Name: "z"}},
-			}},
+				Right:    &VariableReference{Name: "z"},
+			},
 		},
 		{
 			name: "variable multiplication with literal",
 			src:  "b * 8",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "b"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "b"},
 				Operator: "*",
-				Right:    Expression{Literal: NewIntLiteral(8)},
-			}},
+				Right:    NewIntLiteral(8),
+			},
 		},
 		{
 			name: "mixed addition and multiplication (correct precedence)",
 			src:  "2 + 3 * 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(2)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(2),
 				Operator: "+",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(3)},
+				Right: &BinaryOperation{
+					Left:     NewIntLiteral(3),
 					Operator: "*",
-					Right:    Expression{Literal: NewIntLiteral(4)},
-				}},
-			}},
+					Right:    NewIntLiteral(4),
+				},
+			},
 		},
 		{
 			name: "mixed multiplication and addition (correct precedence)",
 			src:  "2 * 3 + 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(2)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(2),
 					Operator: "*",
-					Right:    Expression{Literal: NewIntLiteral(3)},
-				}},
+					Right:    NewIntLiteral(3),
+				},
 				Operator: "+",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "multiple multiplications (left associative)",
 			src:  "2 * 3 * 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(2)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(2),
 					Operator: "*",
-					Right:    Expression{Literal: NewIntLiteral(3)},
-				}},
+					Right:    NewIntLiteral(3),
+				},
 				Operator: "*",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "complex precedence test",
 			src:  "1 + 2 * 3 + 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(1)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(1),
 					Operator: "+",
-					Right: Expression{BinaryOperation: &BinaryOperation{
-						Left:     Expression{Literal: NewIntLiteral(2)},
+					Right: &BinaryOperation{
+						Left:     NewIntLiteral(2),
 						Operator: "*",
-						Right:    Expression{Literal: NewIntLiteral(3)},
-					}},
-				}},
+						Right:    NewIntLiteral(3),
+					},
+				},
 				Operator: "+",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "subtraction and multiplication precedence",
 			src:  "10 - 2 * 3",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(10)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(10),
 				Operator: "-",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(2)},
+				Right: &BinaryOperation{
+					Left:     NewIntLiteral(2),
 					Operator: "*",
-					Right:    Expression{Literal: NewIntLiteral(3)},
-				}},
-			}},
+					Right:    NewIntLiteral(3),
+				},
+			},
 		},
 		{
 			name: "simple division",
 			src:  "12 / 3",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(12)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(12),
 				Operator: "/",
-				Right:    Expression{Literal: NewIntLiteral(3)},
-			}},
+				Right:    NewIntLiteral(3),
+			},
 		},
 		{
 			name: "division with variables",
 			src:  "x / y",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "x"},
 				Operator: "/",
-				Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
-			}},
+				Right:    &VariableReference{Name: "y"},
+			},
 		},
 		{
 			name: "division with mixed types",
 			src:  "20 / z",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(20)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(20),
 				Operator: "/",
-				Right:    Expression{VariableReference: &VariableReference{Name: "z"}},
-			}},
+				Right:    &VariableReference{Name: "z"},
+			},
 		},
 		{
 			name: "variable division with literal",
 			src:  "w / 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "w"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "w"},
 				Operator: "/",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "mixed addition and division (correct precedence)",
 			src:  "2 + 8 / 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(2)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(2),
 				Operator: "+",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(8)},
+				Right: &BinaryOperation{
+					Left:     NewIntLiteral(8),
 					Operator: "/",
-					Right:    Expression{Literal: NewIntLiteral(4)},
-				}},
-			}},
+					Right:    NewIntLiteral(4),
+				},
+			},
 		},
 		{
 			name: "mixed division and addition (correct precedence)",
 			src:  "12 / 3 + 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(12)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(12),
 					Operator: "/",
-					Right:    Expression{Literal: NewIntLiteral(3)},
-				}},
+					Right:    NewIntLiteral(3),
+				},
 				Operator: "+",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "multiplication and division (same precedence, left associative)",
 			src:  "8 * 2 / 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(8)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(8),
 					Operator: "*",
-					Right:    Expression{Literal: NewIntLiteral(2)},
-				}},
+					Right:    NewIntLiteral(2),
+				},
 				Operator: "/",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "division and multiplication (same precedence, left associative)",
 			src:  "12 / 3 * 2",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(12)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(12),
 					Operator: "/",
-					Right:    Expression{Literal: NewIntLiteral(3)},
-				}},
+					Right:    NewIntLiteral(3),
+				},
 				Operator: "*",
-				Right:    Expression{Literal: NewIntLiteral(2)},
-			}},
+				Right:    NewIntLiteral(2),
+			},
 		},
 		{
 			name: "multiple divisions (left associative)",
 			src:  "24 / 4 / 2",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(24)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(24),
 					Operator: "/",
-					Right:    Expression{Literal: NewIntLiteral(4)},
-				}},
+					Right:    NewIntLiteral(4),
+				},
 				Operator: "/",
-				Right:    Expression{Literal: NewIntLiteral(2)},
-			}},
+				Right:    NewIntLiteral(2),
+			},
 		},
 		{
 			name: "complex expression with division",
 			src:  "1 + 12 / 3 - 2",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(1)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(1),
 					Operator: "+",
-					Right: Expression{BinaryOperation: &BinaryOperation{
-						Left:     Expression{Literal: NewIntLiteral(12)},
+					Right: &BinaryOperation{
+						Left:     NewIntLiteral(12),
 						Operator: "/",
-						Right:    Expression{Literal: NewIntLiteral(3)},
-					}},
-				}},
+						Right:    NewIntLiteral(3),
+					},
+				},
 				Operator: "-",
-				Right:    Expression{Literal: NewIntLiteral(2)},
-			}},
+				Right:    NewIntLiteral(2),
+			},
 		},
 		{
 			name: "simple parentheses",
 			src:  "(2 + 3)",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(2)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(2),
 				Operator: "+",
-				Right:    Expression{Literal: NewIntLiteral(3)},
-			}},
+				Right:    NewIntLiteral(3),
+			},
 		},
 		{
 			name: "parentheses changing precedence",
 			src:  "(2 + 3) * 4",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(2)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(2),
 					Operator: "+",
-					Right:    Expression{Literal: NewIntLiteral(3)},
-				}},
+					Right:    NewIntLiteral(3),
+				},
 				Operator: "*",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "parentheses with division",
 			src:  "12 / (2 + 1)",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{Literal: NewIntLiteral(12)},
+			expected: &BinaryOperation{
+				Left:     NewIntLiteral(12),
 				Operator: "/",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(2)},
+				Right: &BinaryOperation{
+					Left:     NewIntLiteral(2),
 					Operator: "+",
-					Right:    Expression{Literal: NewIntLiteral(1)},
-				}},
-			}},
+					Right:    NewIntLiteral(1),
+				},
+			},
 		},
 		{
 			name: "nested parentheses",
 			src:  "((2 + 3) * 4)",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(2)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(2),
 					Operator: "+",
-					Right:    Expression{Literal: NewIntLiteral(3)},
-				}},
+					Right:    NewIntLiteral(3),
+				},
 				Operator: "*",
-				Right:    Expression{Literal: NewIntLiteral(4)},
-			}},
+				Right:    NewIntLiteral(4),
+			},
 		},
 		{
 			name: "complex parentheses expression",
 			src:  "(2 + 3) * (4 - 1)",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(2)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(2),
 					Operator: "+",
-					Right:    Expression{Literal: NewIntLiteral(3)},
-				}},
+					Right:    NewIntLiteral(3),
+				},
 				Operator: "*",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(4)},
+				Right: &BinaryOperation{
+					Left:     NewIntLiteral(4),
 					Operator: "-",
-					Right:    Expression{Literal: NewIntLiteral(1)},
-				}},
-			}},
+					Right:    NewIntLiteral(1),
+				},
+			},
 		},
 		{
 			name: "parentheses with variables",
 			src:  "(x + y) * z",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     &VariableReference{Name: "x"},
 					Operator: "+",
-					Right:    Expression{VariableReference: &VariableReference{Name: "y"}},
-				}},
+					Right:    &VariableReference{Name: "y"},
+				},
 				Operator: "*",
-				Right:    Expression{VariableReference: &VariableReference{Name: "z"}},
-			}},
+				Right:    &VariableReference{Name: "z"},
+			},
 		},
 		{
 			name: "multiple operations with parentheses",
 			src:  "1 + (2 * 3) + (8 / 4)",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(1)},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     NewIntLiteral(1),
 					Operator: "+",
-					Right: Expression{BinaryOperation: &BinaryOperation{
-						Left:     Expression{Literal: NewIntLiteral(2)},
+					Right: &BinaryOperation{
+						Left:     NewIntLiteral(2),
 						Operator: "*",
-						Right:    Expression{Literal: NewIntLiteral(3)},
-					}},
-				}},
+						Right:    NewIntLiteral(3),
+					},
+				},
 				Operator: "+",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{Literal: NewIntLiteral(8)},
+				Right: &BinaryOperation{
+					Left:     NewIntLiteral(8),
 					Operator: "/",
-					Right:    Expression{Literal: NewIntLiteral(4)},
-				}},
-			}},
+					Right:    NewIntLiteral(4),
+				},
+			},
 		},
 	}
 
@@ -1240,180 +1240,180 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 		{
 			name: "equality comparison",
 			src:  "x == 42",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "x"},
 				Operator: "==",
-				Right:    Expression{Literal: NewIntLiteral(42)},
-			}},
+				Right:    NewIntLiteral(42),
+			},
 		},
 		{
 			name: "inequality comparison",
 			src:  "y != 0",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "y"},
 				Operator: "!=",
-				Right:    Expression{Literal: NewIntLiteral(0)},
-			}},
+				Right:    NewIntLiteral(0),
+			},
 		},
 		{
 			name: "less than comparison",
 			src:  "a < b",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "a"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "a"},
 				Operator: "<",
-				Right:    Expression{VariableReference: &VariableReference{Name: "b"}},
-			}},
+				Right:    &VariableReference{Name: "b"},
+			},
 		},
 		{
 			name: "greater than comparison",
 			src:  "x > 10",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "x"},
 				Operator: ">",
-				Right:    Expression{Literal: NewIntLiteral(10)},
-			}},
+				Right:    NewIntLiteral(10),
+			},
 		},
 		{
 			name: "less than or equal comparison",
 			src:  "score <= max",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "score"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "score"},
 				Operator: "<=",
-				Right:    Expression{VariableReference: &VariableReference{Name: "max"}},
-			}},
+				Right:    &VariableReference{Name: "max"},
+			},
 		},
 		{
 			name: "greater than or equal comparison",
 			src:  "age >= 18",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "age"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "age"},
 				Operator: ">=",
-				Right:    Expression{Literal: NewIntLiteral(18)},
-			}},
+				Right:    NewIntLiteral(18),
+			},
 		},
 		// Logical operators
 		{
 			name: "logical AND",
 			src:  "x > 0 && y > 0",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     &VariableReference{Name: "x"},
 					Operator: ">",
-					Right:    Expression{Literal: NewIntLiteral(0)},
-				}},
+					Right:    NewIntLiteral(0),
+				},
 				Operator: "&&",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+				Right: &BinaryOperation{
+					Left:     &VariableReference{Name: "y"},
 					Operator: ">",
-					Right:    Expression{Literal: NewIntLiteral(0)},
-				}},
-			}},
+					Right:    NewIntLiteral(0),
+				},
+			},
 		},
 		{
 			name: "logical OR",
 			src:  "x == 0 || y == 0",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     &VariableReference{Name: "x"},
 					Operator: "==",
-					Right:    Expression{Literal: NewIntLiteral(0)},
-				}},
+					Right:    NewIntLiteral(0),
+				},
 				Operator: "||",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+				Right: &BinaryOperation{
+					Left:     &VariableReference{Name: "y"},
 					Operator: "==",
-					Right:    Expression{Literal: NewIntLiteral(0)},
-				}},
-			}},
+					Right:    NewIntLiteral(0),
+				},
+			},
 		},
 		// Unary negation operator
 		{
 			name: "logical NOT",
 			src:  "!found",
-			expected: Expression{UnaryOperation: &UnaryOperation{
+			expected: &UnaryOperation{
 				Operator: "!",
-				Operand:  Expression{VariableReference: &VariableReference{Name: "found"}},
-			}},
+				Operand:  &VariableReference{Name: "found"},
+			},
 		},
 		{
 			name: "logical NOT with parentheses",
 			src:  "!(x > 0)",
-			expected: Expression{UnaryOperation: &UnaryOperation{
+			expected: &UnaryOperation{
 				Operator: "!",
-				Operand: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+				Operand: &BinaryOperation{
+					Left:     &VariableReference{Name: "x"},
 					Operator: ">",
-					Right:    Expression{Literal: NewIntLiteral(0)},
-				}},
-			}},
+					Right:    NewIntLiteral(0),
+				},
+			},
 		},
 		// Complex expressions with mixed precedence
 		{
 			name: "comparison with arithmetic (correct precedence)",
 			src:  "x + 1 == y * 2",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left:     &VariableReference{Name: "x"},
 					Operator: "+",
-					Right:    Expression{Literal: NewIntLiteral(1)},
-				}},
+					Right:    NewIntLiteral(1),
+				},
 				Operator: "==",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+				Right: &BinaryOperation{
+					Left:     &VariableReference{Name: "y"},
 					Operator: "*",
-					Right:    Expression{Literal: NewIntLiteral(2)},
-				}},
-			}},
+					Right:    NewIntLiteral(2),
+				},
+			},
 		},
 		{
 			name: "logical AND with higher precedence than OR",
 			src:  "a || b && c",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left:     Expression{VariableReference: &VariableReference{Name: "a"}},
+			expected: &BinaryOperation{
+				Left:     &VariableReference{Name: "a"},
 				Operator: "||",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "b"}},
+				Right: &BinaryOperation{
+					Left:     &VariableReference{Name: "b"},
 					Operator: "&&",
-					Right:    Expression{VariableReference: &VariableReference{Name: "c"}},
-				}},
-			}},
+					Right:    &VariableReference{Name: "c"},
+				},
+			},
 		},
 		{
 			name: "negation with comparison",
 			src:  "!x == 0",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{UnaryOperation: &UnaryOperation{
+			expected: &BinaryOperation{
+				Left: &UnaryOperation{
 					Operator: "!",
-					Operand:  Expression{VariableReference: &VariableReference{Name: "x"}},
-				}},
+					Operand:  &VariableReference{Name: "x"},
+				},
 				Operator: "==",
-				Right:    Expression{Literal: NewIntLiteral(0)},
-			}},
+				Right:    NewIntLiteral(0),
+			},
 		},
 		{
 			name: "complex boolean expression",
 			src:  "x > 0 && y < 10 || z == 42",
-			expected: Expression{BinaryOperation: &BinaryOperation{
-				Left: Expression{BinaryOperation: &BinaryOperation{
-					Left: Expression{BinaryOperation: &BinaryOperation{
-						Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+			expected: &BinaryOperation{
+				Left: &BinaryOperation{
+					Left: &BinaryOperation{
+						Left:     &VariableReference{Name: "x"},
 						Operator: ">",
-						Right:    Expression{Literal: NewIntLiteral(0)},
-					}},
+						Right:    NewIntLiteral(0),
+					},
 					Operator: "&&",
-					Right: Expression{BinaryOperation: &BinaryOperation{
-						Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+					Right: &BinaryOperation{
+						Left:     &VariableReference{Name: "y"},
 						Operator: "<",
-						Right:    Expression{Literal: NewIntLiteral(10)},
-					}},
-				}},
+						Right:    NewIntLiteral(10),
+					},
+				},
 				Operator: "||",
-				Right: Expression{BinaryOperation: &BinaryOperation{
-					Left:     Expression{VariableReference: &VariableReference{Name: "z"}},
+				Right: &BinaryOperation{
+					Left:     &VariableReference{Name: "z"},
 					Operator: "==",
-					Right:    Expression{Literal: NewIntLiteral(42)},
-				}},
-			}},
+					Right:    NewIntLiteral(42),
+				},
+			},
 		},
 	}
 
@@ -1449,11 +1449,11 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: "==",
-										Right:    Expression{Literal: NewIntLiteral(5)},
-									}},
+										Right:    NewIntLiteral(5),
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&ReturnStatement{Value: nil},
@@ -1478,28 +1478,28 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&ExpressionStatement{
-												Expression: Expression{Assignment: &Assignment{
+												Expression: &Assignment{
 													VariableName: "y",
-													Value:        Expression{Literal: NewIntLiteral(1)},
-												}},
+													Value:        NewIntLiteral(1),
+												},
 											},
 										},
 									},
 									ElseBlock: &Block{
 										Statements: []Statement{
 											&ExpressionStatement{
-												Expression: Expression{Assignment: &Assignment{
+												Expression: &Assignment{
 													VariableName: "y",
-													Value:        Expression{Literal: NewIntLiteral(0)},
-												}},
+													Value:        NewIntLiteral(0),
+												},
 											},
 										},
 									},
@@ -1521,23 +1521,23 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left: Expression{BinaryOperation: &BinaryOperation{
-											Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left: &BinaryOperation{
+											Left:     &VariableReference{Name: "x"},
 											Operator: ">",
-											Right:    Expression{Literal: NewIntLiteral(0)},
-										}},
+											Right:    NewIntLiteral(0),
+										},
 										Operator: "&&",
-										Right: Expression{BinaryOperation: &BinaryOperation{
-											Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+										Right: &BinaryOperation{
+											Left:     &VariableReference{Name: "y"},
 											Operator: "<",
-											Right:    Expression{Literal: NewIntLiteral(10)},
-										}},
-									}},
+											Right:    NewIntLiteral(10),
+										},
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&ReturnStatement{
-												Value: &Expression{VariableReference: &VariableReference{Name: "x"}},
+												Value: &VariableReference{Name: "x"},
 											},
 										},
 									},
@@ -1560,10 +1560,10 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{UnaryOperation: &UnaryOperation{
+									Condition: &UnaryOperation{
 										Operator: "!",
-										Operand:  Expression{VariableReference: &VariableReference{Name: "flag"}},
-									}},
+										Operand:  &VariableReference{Name: "flag"},
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&ReturnStatement{Value: nil},
@@ -1588,23 +1588,23 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&IfStatement{
-												Condition: Expression{BinaryOperation: &BinaryOperation{
-													Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+												Condition: &BinaryOperation{
+													Left:     &VariableReference{Name: "y"},
 													Operator: ">",
-													Right:    Expression{Literal: NewIntLiteral(0)},
-												}},
+													Right:    NewIntLiteral(0),
+												},
 												ThenBlock: Block{
 													Statements: []Statement{
 														&ReturnStatement{
-															Value: &Expression{Literal: NewIntLiteral(1)},
+															Value: NewIntLiteral(1),
 														},
 													},
 												},
@@ -1693,30 +1693,30 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: "==",
-										Right:    Expression{Literal: NewIntLiteral(1)},
-									}},
+										Right:    NewIntLiteral(1),
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&ReturnStatement{
-												Value: &Expression{Literal: NewIntLiteral(1)},
+												Value: NewIntLiteral(1),
 											},
 										},
 									},
 									ElseBlock: &Block{
 										Statements: []Statement{
 											&IfStatement{
-												Condition: Expression{BinaryOperation: &BinaryOperation{
-													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+												Condition: &BinaryOperation{
+													Left:     &VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    Expression{Literal: NewIntLiteral(2)},
-												}},
+													Right:    NewIntLiteral(2),
+												},
 												ThenBlock: Block{
 													Statements: []Statement{
 														&ReturnStatement{
-															Value: &Expression{Literal: NewIntLiteral(2)},
+															Value: NewIntLiteral(2),
 														},
 													},
 												},
@@ -1742,37 +1742,37 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: "==",
-										Right:    Expression{Literal: NewIntLiteral(1)},
-									}},
+										Right:    NewIntLiteral(1),
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&ReturnStatement{
-												Value: &Expression{Literal: NewIntLiteral(1)},
+												Value: NewIntLiteral(1),
 											},
 										},
 									},
 									ElseBlock: &Block{
 										Statements: []Statement{
 											&IfStatement{
-												Condition: Expression{BinaryOperation: &BinaryOperation{
-													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+												Condition: &BinaryOperation{
+													Left:     &VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    Expression{Literal: NewIntLiteral(2)},
-												}},
+													Right:    NewIntLiteral(2),
+												},
 												ThenBlock: Block{
 													Statements: []Statement{
 														&ReturnStatement{
-															Value: &Expression{Literal: NewIntLiteral(2)},
+															Value: NewIntLiteral(2),
 														},
 													},
 												},
 												ElseBlock: &Block{
 													Statements: []Statement{
 														&ReturnStatement{
-															Value: &Expression{Literal: NewIntLiteral(0)},
+															Value: NewIntLiteral(0),
 														},
 													},
 												},
@@ -1797,52 +1797,52 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: "==",
-										Right:    Expression{Literal: NewIntLiteral(1)},
-									}},
+										Right:    NewIntLiteral(1),
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&ReturnStatement{
-												Value: &Expression{Literal: NewIntLiteral(1)},
+												Value: NewIntLiteral(1),
 											},
 										},
 									},
 									ElseBlock: &Block{
 										Statements: []Statement{
 											&IfStatement{
-												Condition: Expression{BinaryOperation: &BinaryOperation{
-													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+												Condition: &BinaryOperation{
+													Left:     &VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    Expression{Literal: NewIntLiteral(2)},
-												}},
+													Right:    NewIntLiteral(2),
+												},
 												ThenBlock: Block{
 													Statements: []Statement{
 														&ReturnStatement{
-															Value: &Expression{Literal: NewIntLiteral(2)},
+															Value: NewIntLiteral(2),
 														},
 													},
 												},
 												ElseBlock: &Block{
 													Statements: []Statement{
 														&IfStatement{
-															Condition: Expression{BinaryOperation: &BinaryOperation{
-																Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+															Condition: &BinaryOperation{
+																Left:     &VariableReference{Name: "x"},
 																Operator: "==",
-																Right:    Expression{Literal: NewIntLiteral(3)},
-															}},
+																Right:    NewIntLiteral(3),
+															},
 															ThenBlock: Block{
 																Statements: []Statement{
 																	&ReturnStatement{
-																		Value: &Expression{Literal: NewIntLiteral(3)},
+																		Value: NewIntLiteral(3),
 																	},
 																},
 															},
 															ElseBlock: &Block{
 																Statements: []Statement{
 																	&ReturnStatement{
-																		Value: &Expression{Literal: NewIntLiteral(0)},
+																		Value: NewIntLiteral(0),
 																	},
 																},
 															},
@@ -1870,45 +1870,45 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&IfStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(10)},
-									}},
+										Right:    NewIntLiteral(10),
+									},
 									ThenBlock: Block{
 										Statements: []Statement{
 											&ReturnStatement{
-												Value: &Expression{Literal: NewIntLiteral(1)},
+												Value: NewIntLiteral(1),
 											},
 										},
 									},
 									ElseBlock: &Block{
 										Statements: []Statement{
 											&IfStatement{
-												Condition: Expression{BinaryOperation: &BinaryOperation{
-													Left: Expression{BinaryOperation: &BinaryOperation{
-														Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+												Condition: &BinaryOperation{
+													Left: &BinaryOperation{
+														Left:     &VariableReference{Name: "x"},
 														Operator: ">",
-														Right:    Expression{Literal: NewIntLiteral(5)},
-													}},
+														Right:    NewIntLiteral(5),
+													},
 													Operator: "&&",
-													Right: Expression{BinaryOperation: &BinaryOperation{
-														Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+													Right: &BinaryOperation{
+														Left:     &VariableReference{Name: "x"},
 														Operator: "<=",
-														Right:    Expression{Literal: NewIntLiteral(10)},
-													}},
-												}},
+														Right:    NewIntLiteral(10),
+													},
+												},
 												ThenBlock: Block{
 													Statements: []Statement{
 														&ReturnStatement{
-															Value: &Expression{Literal: NewIntLiteral(2)},
+															Value: NewIntLiteral(2),
 														},
 													},
 												},
 												ElseBlock: &Block{
 													Statements: []Statement{
 														&ReturnStatement{
-															Value: &Expression{Literal: NewIntLiteral(0)},
+															Value: NewIntLiteral(0),
 														},
 													},
 												},
@@ -1956,22 +1956,22 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&ExpressionStatement{
-												Expression: Expression{Assignment: &Assignment{
+												Expression: &Assignment{
 													VariableName: "x",
-													Value: Expression{BinaryOperation: &BinaryOperation{
-														Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+													Value: &BinaryOperation{
+														Left:     &VariableReference{Name: "x"},
 														Operator: "-",
-														Right:    Expression{Literal: NewIntLiteral(1)},
-													}},
-												}},
+														Right:    NewIntLiteral(1),
+													},
+												},
 											},
 										},
 									},
@@ -1993,29 +1993,29 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left: Expression{BinaryOperation: &BinaryOperation{
-											Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left: &BinaryOperation{
+											Left:     &VariableReference{Name: "x"},
 											Operator: ">",
-											Right:    Expression{Literal: NewIntLiteral(0)},
-										}},
+											Right:    NewIntLiteral(0),
+										},
 										Operator: "&&",
-										Right: Expression{BinaryOperation: &BinaryOperation{
-											Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+										Right: &BinaryOperation{
+											Left:     &VariableReference{Name: "y"},
 											Operator: "<",
-											Right:    Expression{Literal: NewIntLiteral(10)},
-										}},
-									}},
+											Right:    NewIntLiteral(10),
+										},
+									},
 									Body: Block{
 										Statements: []Statement{
 											&ExpressionStatement{
-												Expression: Expression{FunctionCall: &FunctionCall{
+												Expression: &FunctionCall{
 													FunctionName: "printf",
 													Args: []Expression{
-														{Literal: NewStringLiteral("loop\n")},
+														NewStringLiteral("loop\n"),
 													},
 													Variadic: true,
-												}},
+												},
 											},
 										},
 									},
@@ -2037,20 +2037,20 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{UnaryOperation: &UnaryOperation{
+									Condition: &UnaryOperation{
 										Operator: "!",
-										Operand:  Expression{VariableReference: &VariableReference{Name: "done"}},
-									}},
+										Operand:  &VariableReference{Name: "done"},
+									},
 									Body: Block{
 										Statements: []Statement{
 											&ExpressionStatement{
-												Expression: Expression{Assignment: &Assignment{
+												Expression: &Assignment{
 													VariableName: "done",
-													Value: Expression{FunctionCall: &FunctionCall{
+													Value: &FunctionCall{
 														FunctionName: "check",
 														Args:         []Expression{},
-													}},
-												}},
+													},
+												},
 											},
 										},
 									},
@@ -2072,43 +2072,43 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&WhileStatement{
-												Condition: Expression{BinaryOperation: &BinaryOperation{
-													Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+												Condition: &BinaryOperation{
+													Left:     &VariableReference{Name: "y"},
 													Operator: ">",
-													Right:    Expression{Literal: NewIntLiteral(0)},
-												}},
+													Right:    NewIntLiteral(0),
+												},
 												Body: Block{
 													Statements: []Statement{
 														&ExpressionStatement{
-															Expression: Expression{Assignment: &Assignment{
+															Expression: &Assignment{
 																VariableName: "y",
-																Value: Expression{BinaryOperation: &BinaryOperation{
-																	Left:     Expression{VariableReference: &VariableReference{Name: "y"}},
+																Value: &BinaryOperation{
+																	Left:     &VariableReference{Name: "y"},
 																	Operator: "-",
-																	Right:    Expression{Literal: NewIntLiteral(1)},
-																}},
-															}},
+																	Right:    NewIntLiteral(1),
+																},
+															},
 														},
 													},
 												},
 											},
 											&ExpressionStatement{
-												Expression: Expression{Assignment: &Assignment{
+												Expression: &Assignment{
 													VariableName: "x",
-													Value: Expression{BinaryOperation: &BinaryOperation{
-														Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+													Value: &BinaryOperation{
+														Left:     &VariableReference{Name: "x"},
 														Operator: "-",
-														Right:    Expression{Literal: NewIntLiteral(1)},
-													}},
-												}},
+														Right:    NewIntLiteral(1),
+													},
+												},
 											},
 										},
 									},
@@ -2130,32 +2130,32 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "i"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "i"},
 										Operator: "<",
-										Right:    Expression{Literal: NewIntLiteral(10)},
-									}},
+										Right:    NewIntLiteral(10),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&ExpressionStatement{
-												Expression: Expression{FunctionCall: &FunctionCall{
+												Expression: &FunctionCall{
 													FunctionName: "printf",
 													Args: []Expression{
-														{Literal: NewStringLiteral("i = %d\n")},
-														{VariableReference: &VariableReference{Name: "i"}},
+														NewStringLiteral("i = %d\n"),
+														&VariableReference{Name: "i"},
 													},
 													Variadic: true,
-												}},
+												},
 											},
 											&ExpressionStatement{
-												Expression: Expression{Assignment: &Assignment{
+												Expression: &Assignment{
 													VariableName: "i",
-													Value: Expression{BinaryOperation: &BinaryOperation{
-														Left:     Expression{VariableReference: &VariableReference{Name: "i"}},
+													Value: &BinaryOperation{
+														Left:     &VariableReference{Name: "i"},
 														Operator: "+",
-														Right:    Expression{Literal: NewIntLiteral(1)},
-													}},
-												}},
+														Right:    NewIntLiteral(1),
+													},
+												},
 											},
 										},
 									},
@@ -2248,11 +2248,11 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&BreakStatement{},
@@ -2276,31 +2276,31 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&ExpressionStatement{
-												Expression: Expression{FunctionCall: &FunctionCall{
+												Expression: &FunctionCall{
 													FunctionName: "printf",
 													Args: []Expression{
-														{Literal: NewStringLiteral("before break\n")},
+														NewStringLiteral("before break\n"),
 													},
 													Variadic: true,
-												}},
+												},
 											},
 											&BreakStatement{},
 											&ExpressionStatement{
-												Expression: Expression{FunctionCall: &FunctionCall{
+												Expression: &FunctionCall{
 													FunctionName: "printf",
 													Args: []Expression{
-														{Literal: NewStringLiteral("after break\n")},
+														NewStringLiteral("after break\n"),
 													},
 													Variadic: true,
-												}},
+												},
 											},
 										},
 									},
@@ -2322,19 +2322,19 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&IfStatement{
-												Condition: Expression{BinaryOperation: &BinaryOperation{
-													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+												Condition: &BinaryOperation{
+													Left:     &VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    Expression{Literal: NewIntLiteral(5)},
-												}},
+													Right:    NewIntLiteral(5),
+												},
 												ThenBlock: Block{
 													Statements: []Statement{
 														&BreakStatement{},
@@ -2403,11 +2403,11 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&ContinueStatement{},
@@ -2431,31 +2431,31 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&ExpressionStatement{
-												Expression: Expression{FunctionCall: &FunctionCall{
+												Expression: &FunctionCall{
 													FunctionName: "printf",
 													Args: []Expression{
-														{Literal: NewStringLiteral("before continue\n")},
+														NewStringLiteral("before continue\n"),
 													},
 													Variadic: true,
-												}},
+												},
 											},
 											&ContinueStatement{},
 											&ExpressionStatement{
-												Expression: Expression{FunctionCall: &FunctionCall{
+												Expression: &FunctionCall{
 													FunctionName: "printf",
 													Args: []Expression{
-														{Literal: NewStringLiteral("after continue\n")},
+														NewStringLiteral("after continue\n"),
 													},
 													Variadic: true,
-												}},
+												},
 											},
 										},
 									},
@@ -2477,19 +2477,19 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 						Body: Block{
 							Statements: []Statement{
 								&WhileStatement{
-									Condition: Expression{BinaryOperation: &BinaryOperation{
-										Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+									Condition: &BinaryOperation{
+										Left:     &VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    Expression{Literal: NewIntLiteral(0)},
-									}},
+										Right:    NewIntLiteral(0),
+									},
 									Body: Block{
 										Statements: []Statement{
 											&IfStatement{
-												Condition: Expression{BinaryOperation: &BinaryOperation{
-													Left:     Expression{VariableReference: &VariableReference{Name: "x"}},
+												Condition: &BinaryOperation{
+													Left:     &VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    Expression{Literal: NewIntLiteral(5)},
-												}},
+													Right:    NewIntLiteral(5),
+												},
 												ThenBlock: Block{
 													Statements: []Statement{
 														&ContinueStatement{},

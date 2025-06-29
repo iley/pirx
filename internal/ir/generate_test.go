@@ -50,7 +50,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								&parser.ReturnStatement{
-									Value: &parser.Expression{Literal: parser.NewIntLiteral(42)},
+									Value: parser.NewIntLiteral(42),
 								},
 							},
 						},
@@ -79,9 +79,9 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								&parser.ReturnStatement{
-									Value: &parser.Expression{VariableReference: &parser.VariableReference{
+									Value: &parser.VariableReference{
 										Name: "x",
-									}},
+									},
 								},
 							},
 						},
@@ -110,10 +110,10 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								&parser.ReturnStatement{
-									Value: &parser.Expression{FunctionCall: &parser.FunctionCall{
+									Value: &parser.FunctionCall{
 										FunctionName: "foo",
 										Args:         []parser.Expression{},
-									}},
+									},
 								},
 							},
 						},
@@ -147,9 +147,9 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 									Type: "int",
 								},
 								&parser.ReturnStatement{
-									Value: &parser.Expression{VariableReference: &parser.VariableReference{
+									Value: &parser.VariableReference{
 										Name: "x",
-									}},
+									},
 								},
 							},
 						},
@@ -179,7 +179,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								&parser.ReturnStatement{
-									Value: &parser.Expression{Literal: parser.NewIntLiteral(1)},
+									Value: parser.NewIntLiteral(1),
 								},
 								&parser.ReturnStatement{
 									Value: nil,
@@ -290,10 +290,10 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								&parser.ExpressionStatement{
-									Expression: parser.Expression{FunctionCall: &parser.FunctionCall{
+									Expression: &parser.FunctionCall{
 										FunctionName: "foo",
 										Args:         []parser.Expression{},
-									}},
+									},
 								},
 							},
 						},
@@ -327,7 +327,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 									Type: "int",
 								},
 								&parser.ReturnStatement{
-									Value: &parser.Expression{Literal: parser.NewIntLiteral(42)},
+									Value: parser.NewIntLiteral(42),
 								},
 							},
 						},
@@ -357,7 +357,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 						Body: parser.Block{
 							Statements: []parser.Statement{
 								&parser.ReturnStatement{
-									Value: &parser.Expression{Literal: parser.NewIntLiteral(1)},
+									Value: parser.NewIntLiteral(1),
 								},
 								&parser.VariableDeclaration{
 									Name: "x",

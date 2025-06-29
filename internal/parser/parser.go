@@ -314,14 +314,14 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, e
 	// Parse the left operand
 	left, err := p.parsePrimaryExpression()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 
 	for {
 		// Check for binary operators
 		lex, err := p.peek()
 		if err != nil {
-			return Expression{}, err
+			return nil, err
 		}
 
 		// Check if this is a binary operator we recognize
@@ -337,7 +337,7 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, e
 		operator := lex.Str
 		_, err = p.consume() // consume the operator
 		if err != nil {
-			return Expression{}, err
+			return nil, err
 		}
 
 		// For left-associative operators, use precedence + 1
@@ -346,14 +346,14 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, e
 
 		right, err := p.parseExpressionWithPrecedence(nextMinPrecedence)
 		if err != nil {
-			return Expression{}, err
+			return nil, err
 		}
 
-		left = Expression{BinaryOperation: &BinaryOperation{
+		left = &BinaryOperation{
 			Left:     left,
 			Operator: operator,
 			Right:    right,
-		}}
+		}
 	}
 
 	return left, nil
@@ -385,7 +385,7 @@ func getOperatorPrecedence(op string) int {
 func (p *Parser) parsePrimaryExpression() (Expression, error) {
 	lex, err := p.peek()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	switch lex.Type {
 	case lexer.LEX_IDENT:
@@ -400,14 +400,14 @@ func (p *Parser) parsePrimaryExpression() (Expression, error) {
 		if lex.Str == "!" {
 			return p.parseUnaryExpression()
 		}
-		return Expression{}, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	case lexer.LEX_PUNCTUATION:
 		if lex.Str == "(" {
 			return p.parseParenthesizedExpression()
 		}
-		return Expression{}, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	default:
-		return Expression{}, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	}
 }
 
@@ -415,20 +415,20 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	// function name
 	lex, err := p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return Expression{}, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 
 	// '('
 	lex, err = p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if !lex.IsPunctuation("(") {
-		return Expression{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
 	args := []Expression{}
@@ -437,23 +437,23 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	// check for ')'
 	lex, err = p.peek()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if lex.IsPunctuation(")") {
 		p.consume() // consume ')'
-		return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}}, nil
+		return &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}, nil
 	}
 
 	for {
 		arg, err := p.parseExpression()
 		if err != nil {
-			return Expression{}, err
+			return nil, err
 		}
 		args = append(args, arg)
 
 		lex, err := p.peek()
 		if err != nil {
-			return Expression{}, err
+			return nil, err
 		}
 		if lex.IsPunctuation(")") {
 			break
@@ -461,65 +461,65 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 
 		lex, err = p.consume()
 		if err != nil {
-			return Expression{}, err
+			return nil, err
 		}
 		if !lex.IsPunctuation(",") {
-			return Expression{}, fmt.Errorf("%d:%d: expected ',' or ')', got %v", lex.Line, lex.Col, lex)
+			return nil, fmt.Errorf("%d:%d: expected ',' or ')', got %v", lex.Line, lex.Col, lex)
 		}
 	}
 
 	// consume ')'
 	_, err = p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 
-	return Expression{FunctionCall: &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}}, nil
+	return &FunctionCall{FunctionName: name, Args: args, Variadic: variadic}, nil
 }
 
 func (p *Parser) parseIntegerLiteral() (Expression, error) {
 	lex, err := p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	val, err := strconv.Atoi(lex.Str)
 	if err != nil {
-		return Expression{}, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
+		return nil, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
 	}
-	return Expression{Literal: NewIntLiteral(int64(val))}, nil
+	return NewIntLiteral(int64(val)), nil
 }
 
 func (p *Parser) parseStringLiteral() (Expression, error) {
 	lex, err := p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
-	return Expression{Literal: &Literal{StringValue: &lex.Str}}, nil
+	return &Literal{StringValue: &lex.Str}, nil
 }
 
 func (p *Parser) parseParenthesizedExpression() (Expression, error) {
 	// consume '('
 	lex, err := p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if !lex.IsPunctuation("(") {
-		return Expression{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
 	// parse the expression inside the parentheses
 	expr, err := p.parseExpression()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 
 	// consume ')'
 	lex, err = p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if !lex.IsPunctuation(")") {
-		return Expression{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
 	}
 
 	return expr, nil
@@ -529,22 +529,22 @@ func (p *Parser) parseUnaryExpression() (Expression, error) {
 	// consume the operator
 	lex, err := p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if !lex.IsOperator("!") {
-		return Expression{}, fmt.Errorf("%d:%d: expected '!', got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected '!', got %v", lex.Line, lex.Col, lex)
 	}
 
 	// parse the operand
 	operand, err := p.parsePrimaryExpression()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 
-	return Expression{UnaryOperation: &UnaryOperation{
+	return &UnaryOperation{
 		Operator: lex.Str,
 		Operand:  operand,
-	}}, nil
+	}, nil
 }
 
 func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
@@ -613,7 +613,7 @@ func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
 		return nil, err
 	}
 
-	return &ReturnStatement{Value: &expr}, nil
+	return &ReturnStatement{Value: expr}, nil
 }
 
 func (p *Parser) parseIdentifierExpression() (Expression, error) {
@@ -631,11 +631,11 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 		currentPos := p.pos
 		_, err := p.consume() // consume the identifier
 		if err != nil {
-			return Expression{}, err
+			return nil, err
 		}
 		nextLex, err := p.peek()
 		if err != nil {
-			return Expression{}, err
+			return nil, err
 		}
 		p.pos = currentPos // reset position
 
@@ -655,47 +655,47 @@ func (p *Parser) parseAssignment() (Expression, error) {
 	// variable name
 	lex, err := p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return Expression{}, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
 	}
 	varName := lex.Str
 
 	// '='
 	lex, err = p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if !lex.IsOperator("=") {
-		return Expression{}, fmt.Errorf("%d:%d: expected '=', got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected '=', got %v", lex.Line, lex.Col, lex)
 	}
 
 	// value expression
 	value, err := p.parseExpression()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 
-	return Expression{Assignment: &Assignment{
+	return &Assignment{
 		VariableName: varName,
 		Value:        value,
-	}}, nil
+	}, nil
 }
 
 func (p *Parser) parseVariableReference() (Expression, error) {
 	// variable name
 	lex, err := p.consume()
 	if err != nil {
-		return Expression{}, err
+		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return Expression{}, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
 	}
 
-	return Expression{VariableReference: &VariableReference{
+	return &VariableReference{
 		Name: lex.Str,
-	}}, nil
+	}, nil
 }
 
 func (p *Parser) parseIfStatement() (*IfStatement, error) {

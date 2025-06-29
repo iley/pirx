@@ -71,9 +71,94 @@ func (b *Block) String() string {
 	return sb.String()
 }
 
+// Statement types.
+
 type Statement interface {
 	AstNode
+	isStatement()
 }
+
+type VariableDeclaration struct {
+	Name string
+	Type string
+}
+
+func (d *VariableDeclaration) isStatement() {}
+
+func (d *VariableDeclaration) String() string {
+	return fmt.Sprintf("(decl %s %s)", d.Name, d.Type)
+}
+
+type ExpressionStatement struct {
+	Expression Expression
+}
+
+func (s *ExpressionStatement) isStatement() {}
+
+func (s *ExpressionStatement) String() string {
+	return s.Expression.String()
+}
+
+type ReturnStatement struct {
+	Value *Expression // optional return value
+}
+
+func (r *ReturnStatement) isStatement() {}
+
+func (r *ReturnStatement) String() string {
+	if r.Value == nil {
+		return "(return)"
+	} else {
+		return fmt.Sprintf("(return %s)", r.Value.String())
+	}
+}
+
+type IfStatement struct {
+	Condition Expression
+	ThenBlock Block
+	ElseBlock *Block // optional
+}
+
+func (i *IfStatement) isStatement() {}
+
+func (i *IfStatement) String() string {
+	if i.ElseBlock == nil {
+		return fmt.Sprintf("(if %s %s)", i.Condition.String(), i.ThenBlock.String())
+	} else {
+		return fmt.Sprintf("(if %s %s %s)", i.Condition.String(), i.ThenBlock.String(), i.ElseBlock.String())
+	}
+}
+
+type WhileStatement struct {
+	Condition Expression
+	Body      Block
+}
+
+func (w *WhileStatement) isStatement() {}
+
+func (w *WhileStatement) String() string {
+	return fmt.Sprintf("(while %s %s)", w.Condition.String(), w.Body.String())
+}
+
+type BreakStatement struct {
+}
+
+func (b *BreakStatement) isStatement() {}
+
+func (b *BreakStatement) String() string {
+	return "(break)"
+}
+
+type ContinueStatement struct {
+}
+
+func (c *ContinueStatement) isStatement() {}
+
+func (c *ContinueStatement) String() string {
+	return "(continue)"
+}
+
+// Expression types.
 
 type Expression struct {
 	Literal           *Literal
@@ -124,13 +209,21 @@ func NewStringLiteral(value string) *Literal {
 	return &Literal{StringValue: &value}
 }
 
-type VariableDeclaration struct {
-	Name string
-	Type string
+type Assignment struct {
+	VariableName string
+	Value        Expression
 }
 
-func (d *VariableDeclaration) String() string {
-	return fmt.Sprintf("(decl %s %s)", d.Name, d.Type)
+func (a *Assignment) String() string {
+	return fmt.Sprintf("(= %s %s)", a.VariableName, a.Value.String())
+}
+
+type VariableReference struct {
+	Name string
+}
+
+func (v *VariableReference) String() string {
+	return v.Name
 }
 
 type FunctionCall struct {
@@ -150,43 +243,6 @@ func (f *FunctionCall) String() string {
 	return sb.String()
 }
 
-type ExpressionStatement struct {
-	Expression Expression
-}
-
-func (s *ExpressionStatement) String() string {
-	return s.Expression.String()
-}
-
-type Assignment struct {
-	VariableName string
-	Value        Expression
-}
-
-func (a *Assignment) String() string {
-	return fmt.Sprintf("(= %s %s)", a.VariableName, a.Value.String())
-}
-
-type VariableReference struct {
-	Name string
-}
-
-func (v *VariableReference) String() string {
-	return v.Name
-}
-
-type ReturnStatement struct {
-	Value *Expression // optional return value
-}
-
-func (r *ReturnStatement) String() string {
-	if r.Value == nil {
-		return "(return)"
-	} else {
-		return fmt.Sprintf("(return %s)", r.Value.String())
-	}
-}
-
 type BinaryOperation struct {
 	Left     Expression
 	Operator string
@@ -204,41 +260,4 @@ type UnaryOperation struct {
 
 func (u *UnaryOperation) String() string {
 	return fmt.Sprintf("(%s %s)", u.Operator, u.Operand.String())
-}
-
-type IfStatement struct {
-	Condition Expression
-	ThenBlock Block
-	ElseBlock *Block // optional
-}
-
-func (i *IfStatement) String() string {
-	if i.ElseBlock == nil {
-		return fmt.Sprintf("(if %s %s)", i.Condition.String(), i.ThenBlock.String())
-	} else {
-		return fmt.Sprintf("(if %s %s %s)", i.Condition.String(), i.ThenBlock.String(), i.ElseBlock.String())
-	}
-}
-
-type WhileStatement struct {
-	Condition Expression
-	Body      Block
-}
-
-func (w *WhileStatement) String() string {
-	return fmt.Sprintf("(while %s %s)", w.Condition.String(), w.Body.String())
-}
-
-type BreakStatement struct {
-}
-
-func (b *BreakStatement) String() string {
-	return "(break)"
-}
-
-type ContinueStatement struct {
-}
-
-func (c *ContinueStatement) String() string {
-	return "(continue)"
 }

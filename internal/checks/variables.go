@@ -43,27 +43,27 @@ func (c *VariableChecker) CheckFunction(fn *parser.Function) {
 
 func (c *VariableChecker) CheckBlock(block *parser.Block) {
 	for _, stmt := range block.Statements {
-		c.CheckStatement(&stmt)
+		c.CheckStatement(stmt)
 	}
 }
 
-func (c *VariableChecker) CheckStatement(stmt *parser.Statement) {
-	if stmt.VariableDeclaration != nil {
-		c.CheckVariableDeclaration(stmt.VariableDeclaration)
-	} else if stmt.ExpressionStatement != nil {
-		c.CheckExpressionStatement(stmt.ExpressionStatement)
-	} else if stmt.ReturnStatement != nil {
-		c.CheckReturnStatement(stmt.ReturnStatement)
-	} else if stmt.IfStatement != nil {
-		c.CheckIfStatement(stmt.IfStatement)
-	} else if stmt.WhileStatement != nil {
-		c.CheckWhileStatement(stmt.WhileStatement)
-	} else if stmt.BreakStatement != nil {
-		c.CheckBreakStatement(stmt.BreakStatement)
-	} else if stmt.ContinueStatement != nil {
-		c.CheckContinueStatement(stmt.ContinueStatement)
+func (c *VariableChecker) CheckStatement(stmt parser.Statement) {
+	if varDecl, ok := stmt.(*parser.VariableDeclaration); ok {
+		c.CheckVariableDeclaration(varDecl)
+	} else if exprStmt, ok := stmt.(*parser.ExpressionStatement); ok {
+		c.CheckExpressionStatement(exprStmt)
+	} else if retStmt, ok := stmt.(*parser.ReturnStatement); ok {
+		c.CheckReturnStatement(retStmt)
+	} else if ifStmt, ok := stmt.(*parser.IfStatement); ok {
+		c.CheckIfStatement(ifStmt)
+	} else if whileStmt, ok := stmt.(*parser.WhileStatement); ok {
+		c.CheckWhileStatement(whileStmt)
+	} else if breakStmt, ok := stmt.(*parser.BreakStatement); ok {
+		c.CheckBreakStatement(breakStmt)
+	} else if contStmt, ok := stmt.(*parser.ContinueStatement); ok {
+		c.CheckContinueStatement(contStmt)
 	} else {
-		panic(fmt.Sprintf("unsupported statement type: %v", *stmt))
+		panic(fmt.Sprintf("unsupported statement type: %v", stmt))
 	}
 }
 

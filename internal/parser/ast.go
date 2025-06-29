@@ -71,33 +71,8 @@ func (b *Block) String() string {
 	return sb.String()
 }
 
-type Statement struct {
-	VariableDeclaration *VariableDeclaration
-	ExpressionStatement *ExpressionStatement
-	ReturnStatement     *ReturnStatement
-	IfStatement         *IfStatement
-	WhileStatement      *WhileStatement
-	BreakStatement      *BreakStatement
-	ContinueStatement   *ContinueStatement
-}
-
-func (s *Statement) String() string {
-	if s.VariableDeclaration != nil {
-		return s.VariableDeclaration.String()
-	} else if s.ExpressionStatement != nil {
-		return s.ExpressionStatement.String()
-	} else if s.ReturnStatement != nil {
-		return s.ReturnStatement.String()
-	} else if s.IfStatement != nil {
-		return s.IfStatement.String()
-	} else if s.WhileStatement != nil {
-		return s.WhileStatement.String()
-	} else if s.BreakStatement != nil {
-		return s.BreakStatement.String()
-	} else if s.ContinueStatement != nil {
-		return s.ContinueStatement.String()
-	}
-	panic(fmt.Sprintf("unsupported statement type: %v", *s))
+type Statement interface {
+	AstNode
 }
 
 type Expression struct {

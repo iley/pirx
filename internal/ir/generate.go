@@ -79,31 +79,31 @@ func generateBlockOps(ic *IrContext, block parser.Block) []Op {
 
 func generateStatementOps(ic *IrContext, node parser.Statement) []Op {
 	ops := []Op{}
-	if node.VariableDeclaration != nil {
+	if varDecl, ok := node.(*parser.VariableDeclaration); ok {
 		// TODO: types.
 		zero := int64(0)
-		ops = append(ops, Assign{Target: node.VariableDeclaration.Name, Value: Arg{LiteralInt: &zero}})
-	} else if node.ExpressionStatement != nil {
+		ops = append(ops, Assign{Target: varDecl.Name, Value: Arg{LiteralInt: &zero}})
+	} else if exprStmt, ok := node.(*parser.ExpressionStatement); ok {
 		// We ignore the result of the expression.
-		exprOps, _ := generateExpressionOps(ic, node.ExpressionStatement.Expression)
+		exprOps, _ := generateExpressionOps(ic, exprStmt.Expression)
 		ops = append(ops, exprOps...)
-	} else if node.ReturnStatement != nil {
-		if node.ReturnStatement.Value != nil {
+	} else if retStmt, ok := node.(*parser.ReturnStatement); ok {
+		if retStmt.Value != nil {
 			// Return with value
-			exprOps, resultArg := generateExpressionOps(ic, *node.ReturnStatement.Value)
+			exprOps, resultArg := generateExpressionOps(ic, *retStmt.Value)
 			ops = append(ops, exprOps...)
 			ops = append(ops, Return{Value: &resultArg})
 		} else {
 			// Bare return
 			ops = append(ops, Return{Value: nil})
 		}
-	} else if node.IfStatement != nil {
-		ops = generateIfOps(ic, *node.IfStatement)
-	} else if node.WhileStatement != nil {
-		ops = generateWhileOps(ic, *node.WhileStatement)
-	} else if node.BreakStatement != nil {
+	} else if ifStmt, ok := node.(*parser.IfStatement); ok {
+		ops = generateIfOps(ic, *ifStmt)
+	} else if whileStmt, ok := node.(*parser.WhileStatement); ok {
+		ops = generateWhileOps(ic, *whileStmt)
+	} else if _, ok := node.(*parser.BreakStatement); ok {
 		ops = append(ops, Jump{Goto: ic.breakLabel})
-	} else if node.ContinueStatement != nil {
+	} else if _, ok := node.(*parser.ContinueStatement); ok {
 		ops = append(ops, Jump{Goto: ic.continueLabel})
 	} else {
 		panic(fmt.Sprintf("unknown statement type %v", node))

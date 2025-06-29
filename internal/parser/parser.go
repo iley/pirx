@@ -239,11 +239,11 @@ func (p *Parser) parseBlock() (*Block, error) {
 // statementRequiresSemicolon returns true if the statement requires a semicolon after it
 func statementRequiresSemicolon(stmt Statement) bool {
 	// If statements don't require semicolons since they end with a block
-	if stmt.IfStatement != nil {
+	if _, ok := stmt.(*IfStatement); ok {
 		return false
 	}
 	// While statements don't require semicolons since they end with a block
-	if stmt.WhileStatement != nil {
+	if _, ok := stmt.(*WhileStatement); ok {
 		return false
 	}
 	// All other statements require semicolons
@@ -253,57 +253,57 @@ func statementRequiresSemicolon(stmt Statement) bool {
 func (p *Parser) parseStatement() (Statement, error) {
 	lex, err := p.peek()
 	if err != nil {
-		return Statement{}, err
+		return nil, err
 	}
 	if lex.IsKeyword("var") {
 		varDecl, err := p.parseVariableDeclaration()
 		if err != nil {
-			return Statement{}, err
+			return nil, err
 		}
-		return Statement{VariableDeclaration: varDecl}, nil
+		return varDecl, nil
 	}
 	if lex.IsKeyword("return") {
 		retStmt, err := p.parseReturnStatement()
 		if err != nil {
-			return Statement{}, err
+			return nil, err
 		}
-		return Statement{ReturnStatement: retStmt}, nil
+		return retStmt, nil
 	}
 	// TODO: Validate that break is only used inside a loop (likely a separate AST pass).
 	if lex.IsKeyword("break") {
 		_, err := p.consume() // consume the "break" keyword
 		if err != nil {
-			return Statement{}, err
+			return nil, err
 		}
-		return Statement{BreakStatement: &BreakStatement{}}, nil
+		return &BreakStatement{}, nil
 	}
 	// TODO: Validate that continue is only used inside a loop (likely a separate AST pass).
 	if lex.IsKeyword("continue") {
 		_, err := p.consume() // consume the "continue" keyword
 		if err != nil {
-			return Statement{}, err
+			return nil, err
 		}
-		return Statement{ContinueStatement: &ContinueStatement{}}, nil
+		return &ContinueStatement{}, nil
 	}
 	if lex.IsKeyword("if") {
 		ifStmt, err := p.parseIfStatement()
 		if err != nil {
-			return Statement{}, err
+			return nil, err
 		}
-		return Statement{IfStatement: ifStmt}, nil
+		return ifStmt, nil
 	}
 	if lex.IsKeyword("while") {
 		whileStmt, err := p.parseWhileStatement()
 		if err != nil {
-			return Statement{}, err
+			return nil, err
 		}
-		return Statement{WhileStatement: whileStmt}, nil
+		return whileStmt, nil
 	}
 	expression, err := p.parseExpression()
 	if err != nil {
-		return Statement{}, err
+		return nil, err
 	}
-	return Statement{ExpressionStatement: &ExpressionStatement{Expression: expression}}, nil
+	return &ExpressionStatement{Expression: expression}, nil
 }
 
 func (p *Parser) parseExpression() (Expression, error) {
@@ -752,7 +752,7 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 
 			elseBlock = &Block{
 				Statements: []Statement{
-					{IfStatement: nestedIf},
+					nestedIf,
 				},
 			}
 		} else {

@@ -18,7 +18,7 @@ func TestParseProgram(t *testing.T) {
 			name: "trivial program",
 			src:  `func main() {}`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -31,7 +31,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with var declaration",
 			src:  `func main() { var x: int; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -48,7 +48,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with arguments",
 			src:  `func add(a: int, b: int) {}`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name: "add",
 						Params: []Param{
@@ -64,7 +64,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with expression statements",
 			src:  `func main() { foo(1, "two"); }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -89,7 +89,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with multiple statements",
 			src:  `func main() { var x: int; var y: string; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -107,7 +107,7 @@ func TestParseProgram(t *testing.T) {
 			name: "program with two empty functions",
 			src:  `func main() {} func helper() {}`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -125,7 +125,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with return without value",
 			src:  `func main() { return; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -142,7 +142,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with return with integer value",
 			src:  `func main() { return 42; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -159,7 +159,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with return with string value",
 			src:  `func main() { return "hello"; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -178,7 +178,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with return with function call",
 			src:  `func main() { return foo(); }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -200,7 +200,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with multiple return statements",
 			src:  `func main() { return 1; return "two"; return; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -225,7 +225,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with mixed statements including return",
 			src:  `func main() { var x: int; return x; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -250,7 +250,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with break statement",
 			src:  `func main() { break; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -267,7 +267,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with multiple statements including break",
 			src:  `func main() { var x: int; break; return x; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -293,7 +293,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with continue statement",
 			src:  `func main() { continue; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -310,7 +310,7 @@ func TestParseProgram(t *testing.T) {
 			name: "function with multiple statements including continue",
 			src:  `func main() { var x: int; continue; return x; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1442,7 +1442,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			name: "simple if statement without else",
 			src:  `func main() { if x == 5 { return; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1471,7 +1471,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			name: "if statement with else",
 			src:  `func main() { if x > 0 { y = 1; } else { y = 0; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1514,7 +1514,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			name: "if statement with complex boolean condition",
 			src:  `func main() { if (x > 0) && (y < 10) { return x; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1553,7 +1553,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			name: "if statement with unary not condition",
 			src:  `func main() { if !flag { return; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1581,7 +1581,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			name: "nested if statements",
 			src:  `func main() { if x > 0 { if y > 0 { return 1; } } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1686,7 +1686,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			name: "simple else if",
 			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1735,7 +1735,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			name: "else if with final else",
 			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else { return 0; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1790,7 +1790,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			name: "multiple else if chain",
 			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else if x == 3 { return 3; } else { return 0; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1863,7 +1863,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			name: "else if with complex condition",
 			src:  `func main() { if x > 10 { return 1; } else if (x > 5) && (x <= 10) { return 2; } else { return 0; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1949,7 +1949,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			name: "simple while loop",
 			src:  `func main() { while x > 0 { x = x - 1; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -1986,7 +1986,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			name: "while loop with complex condition",
 			src:  `func main() { while (x > 0) && (y < 10) { printf("loop\n"); } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2030,7 +2030,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			name: "while loop with unary not condition",
 			src:  `func main() { while !done { done = check(); } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2065,7 +2065,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			name: "nested while loops",
 			src:  `func main() { while x > 0 { while y > 0 { y = y - 1; } x = x - 1; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2123,7 +2123,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			name: "while loop with multiple statements in body",
 			src:  `func main() { while i < 10 { printf("i = %d\n", i); i = i + 1; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2224,7 +2224,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			name: "simple break statement",
 			src:  `func main() { break; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2241,7 +2241,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			name: "break statement in while loop",
 			src:  `func main() { while x > 0 { break; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2269,7 +2269,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			name: "break statement with other statements",
 			src:  `func main() { while x > 0 { printf("before break\n"); break; printf("after break\n"); } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2315,7 +2315,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			name: "multiple break statements",
 			src:  `func main() { while x > 0 { if x == 5 { break; } break; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2379,7 +2379,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			name: "simple continue statement",
 			src:  `func main() { continue; }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2396,7 +2396,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			name: "continue statement in while loop",
 			src:  `func main() { while x > 0 { continue; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2424,7 +2424,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			name: "continue statement with other statements",
 			src:  `func main() { while x > 0 { printf("before continue\n"); continue; printf("after continue\n"); } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},
@@ -2470,7 +2470,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			name: "continue and break statements together",
 			src:  `func main() { while x > 0 { if x == 5 { continue; } break; } }`,
 			expected: &Program{
-				Functions: []*Function{
+				Functions: []Function{
 					{
 						Name:   "main",
 						Params: []Param{},

@@ -32,7 +32,7 @@ func (c *VariableChecker) CheckProgram(program *parser.Program) {
 	}
 }
 
-func (c *VariableChecker) CheckFunction(fn *parser.Function) {
+func (c *VariableChecker) CheckFunction(fn parser.Function) {
 	c.declaredVars = make(map[string]string)
 	for _, param := range fn.Params {
 		c.declaredVars[param.Name] = param.Type

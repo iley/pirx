@@ -16,7 +16,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 		{
 			name: "function with bare return",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -43,7 +43,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 		{
 			name: "function with return integer literal",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -72,7 +72,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 		{
 			name: "function with return variable",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -103,7 +103,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 		{
 			name: "function with return function call",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -136,7 +136,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 		{
 			name: "function with mixed statements including return",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -172,7 +172,7 @@ func TestIrGenerator_ReturnStatements(t *testing.T) {
 		{
 			name: "function with multiple return statements",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -229,7 +229,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 		{
 			name: "empty function gets implicit return",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -252,7 +252,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 		{
 			name: "function with variable declaration gets implicit return",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -283,7 +283,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 		{
 			name: "function with expression statement gets implicit return",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -316,7 +316,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 		{
 			name: "function ending with explicit return does not get implicit return",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},
@@ -350,7 +350,7 @@ func TestIrGenerator_ImplicitReturn(t *testing.T) {
 		{
 			name: "function with multiple statements ending with non-return gets implicit return",
 			program: &parser.Program{
-				Functions: []*parser.Function{
+				Functions: []parser.Function{
 					{
 						Name:   "test",
 						Params: []parser.Param{},

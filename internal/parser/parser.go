@@ -49,7 +49,7 @@ func (p *Parser) peek() (lexer.Lexeme, error) {
 }
 
 func (p *Parser) ParseProgram() (*Program, error) {
-	functions := []*Function{}
+	functions := []Function{}
 
 	for {
 		lex, err := p.peek()
@@ -70,60 +70,60 @@ func (p *Parser) ParseProgram() (*Program, error) {
 	return &Program{Functions: functions}, nil
 }
 
-func (p *Parser) parseFunction() (*Function, error) {
+func (p *Parser) parseFunction() (Function, error) {
 	lex, err := p.consume()
 	if err != nil {
-		return nil, err
+		return Function{}, err
 	}
 	if !lex.IsKeyword("func") {
-		return nil, fmt.Errorf("%d:%d: expected 'func', got %v", lex.Line, lex.Col, lex)
+		return Function{}, fmt.Errorf("%d:%d: expected 'func', got %v", lex.Line, lex.Col, lex)
 	}
 	// function name
 	lex, err = p.consume()
 	if err != nil {
-		return nil, err
+		return Function{}, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
+		return Function{}, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 	// '('
 	lex, err = p.consume()
 	if err != nil {
-		return nil, err
+		return Function{}, err
 	}
 	if !lex.IsPunctuation("(") {
-		return nil, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
+		return Function{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
 	params, err := p.parseParameters()
 	if err != nil {
-		return nil, err
+		return Function{}, err
 	}
 
 	// ')'
 	lex, err = p.consume()
 	if err != nil {
-		return nil, err
+		return Function{}, err
 	}
 	if !lex.IsPunctuation(")") {
-		return nil, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
+		return Function{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
 	}
 	// '{'
 	lex, err = p.consume()
 	if err != nil {
-		return nil, err
+		return Function{}, err
 	}
 	if !lex.IsPunctuation("{") {
-		return nil, fmt.Errorf("%d:%d: expected '{', got %v", lex.Line, lex.Col, lex)
+		return Function{}, fmt.Errorf("%d:%d: expected '{', got %v", lex.Line, lex.Col, lex)
 	}
 
 	body, err := p.parseBlock()
 	if err != nil {
-		return nil, err
+		return Function{}, err
 	}
 
-	return &Function{
+	return Function{
 		Name:   name,
 		Params: params,
 		Body:   *body,

@@ -12,7 +12,7 @@ type AstNode interface {
 }
 
 type Program struct {
-	Functions []*Function
+	Functions []Function
 }
 
 func (p *Program) String() string {

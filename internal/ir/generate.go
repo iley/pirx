@@ -35,7 +35,7 @@ func Generate(node *parser.Program) IrProgram {
 	return irp
 }
 
-func generateFunction(ic *IrContext, node *parser.Function) IrFunction {
+func generateFunction(ic *IrContext, node parser.Function) IrFunction {
 	irfunc := IrFunction{
 		Name:   node.Name,
 		Params: []string{},

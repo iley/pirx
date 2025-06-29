@@ -3,11 +3,11 @@
 // 2. Pass arguments to functions.
 // 3. Return values from functions.
 
-func first(x: int, y: int) {
+func first(x: int, y: int) : int {
     return x;
 }
 
-func second(x: int, y: int) {
+func second(x: int, y: int) : int {
     return y;
 }
 

@@ -27,9 +27,10 @@ func (p *Program) String() string {
 }
 
 type Function struct {
-	Name   string
-	Params []Param
-	Body   Block
+	Name       string
+	Params     []Param
+	Body       Block
+	ReturnType string
 }
 
 func (f *Function) String() string {
@@ -42,6 +43,11 @@ func (f *Function) String() string {
 		}
 	}
 	sb.WriteString(") ")
+	if f.ReturnType == "" {
+		sb.WriteString("() ")
+	} else {
+		sb.WriteString(f.ReturnType + " ")
+	}
 	sb.WriteString(f.Body.String())
 	sb.WriteString(")")
 	return sb.String()

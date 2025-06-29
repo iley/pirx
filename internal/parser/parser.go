@@ -109,6 +109,30 @@ func (p *Parser) parseFunction() (Function, error) {
 	if !lex.IsPunctuation(")") {
 		return Function{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
 	}
+
+	lex, err = p.peek()
+	if err != nil {
+		return Function{}, err
+	}
+
+	returnType := ""
+	if lex.IsPunctuation(":") {
+		// return type specifier
+		p.consume() // ":"
+
+		// return type
+		// TODO: Support composite types.
+		lex, err = p.consume()
+		if err != nil {
+			return Function{}, err
+		}
+
+		if lex.Type != lexer.LEX_IDENT {
+			return Function{}, fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
+		}
+		returnType = lex.Str
+	}
+
 	// '{'
 	lex, err = p.consume()
 	if err != nil {
@@ -124,9 +148,10 @@ func (p *Parser) parseFunction() (Function, error) {
 	}
 
 	return Function{
-		Name:   name,
-		Params: params,
-		Body:   *body,
+		Name:       name,
+		Params:     params,
+		Body:       *body,
+		ReturnType: returnType,
 	}, nil
 }
 
@@ -574,6 +599,7 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 	}
 
 	// type
+	// TODO: Support composite types.
 	lex, err = p.consume()
 	if err != nil {
 		return nil, err

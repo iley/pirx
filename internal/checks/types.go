@@ -174,8 +174,8 @@ func (c *TypeChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) string
 	leftType := c.CheckExpression(binOp.Left)
 	rightType := c.CheckExpression(binOp.Right)
 	// TODO: Check that the types are appropriate for the operation.
-	if leftType != rightType {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: cannot apply operation %s to operands of different types (%s and %s)",
+	if !binaryOperationSupported(binOp.Operator, leftType, rightType) {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: binary operation %s cannot be applied to values of types %s and %s",
 			binOp.Loc.Line,
 			binOp.Loc.Col,
 			binOp.Operator,
@@ -210,4 +210,28 @@ func (c *TypeChecker) CheckBreakStatement(stmt *parser.BreakStatement) {
 
 func (c *TypeChecker) CheckContinueStatement(stmt *parser.ContinueStatement) {
 	// noop
+}
+
+func binaryOperationSupported(op, left, right string) bool {
+	if left != right {
+		return false
+	}
+
+	if op == "==" || op == "!=" {
+		// Equality is supported for all types.
+		return true
+	}
+
+	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" ||
+		op == "<" || op == ">" || op == "<=" || op == ">=" {
+			// These are (currently) supproted for integers only.
+			return left == "int"
+	}
+
+	if op == "&&" || op == "||" {
+		// TODO: bool
+		return left == "int"
+	}
+
+	return true
 }

@@ -18,5 +18,7 @@ func main(): int {
   add(1, "foo");
   add("foo", 2);
 
+  !"foo";
+
 	return 0;
 }

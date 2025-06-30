@@ -187,8 +187,16 @@ func (c *TypeChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) string
 }
 
 func (c *TypeChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) string {
-	// TODO: Check that the operation is appropriate for the type.
-	return c.CheckExpression(unaryOp.Operand)
+	operandType := c.CheckExpression(unaryOp.Operand)
+	if !unaryOperationSupported(unaryOp.Operator, operandType) {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: unary operation %s cannot be applied to a value of type %s",
+			unaryOp.Loc.Line,
+			unaryOp.Loc.Col,
+			unaryOp.Operator,
+			operandType,
+		))
+	}
+	return operandType
 }
 
 func (c *TypeChecker) CheckIfStatement(stmt *parser.IfStatement) {
@@ -233,5 +241,13 @@ func binaryOperationSupported(op, left, right string) bool {
 		return left == "int"
 	}
 
-	return true
+	panic(fmt.Sprintf("unknown binary operation %s", op))
+}
+
+func unaryOperationSupported(op, val string) bool {
+	if op == "!" {
+		// TODO: bool
+		return val == "int"
+	}
+	panic(fmt.Sprintf("unknown binary operation %s", op))
 }

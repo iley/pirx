@@ -1,5 +1,4 @@
-// FIXME: Specifying return types is not supported yet.
-func factorial(n: int) {
+func factorial(n: int) : int {
   if n <= 1 {
     return 1;
   }

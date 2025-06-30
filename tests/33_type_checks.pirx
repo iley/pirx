@@ -1,0 +1,15 @@
+func random_number(): int {
+  return 42;
+}
+
+func main(): int {
+	var x : int;
+	x = "foo";
+  2 + "foo";
+
+  var s : string;
+  s = x;
+  s = random_number();
+
+	return 0;
+}

@@ -72,33 +72,38 @@ func (c *TypeChecker) CheckStatement(stmt parser.Statement) {
 	}
 }
 
-func (c *TypeChecker) CheckExpression(expr parser.Expression) {
+func (c *TypeChecker) CheckExpression(expr parser.Expression) string {
 	if literal, ok := expr.(*parser.Literal); ok {
-		c.CheckLiteral(literal)
+		return c.CheckLiteral(literal)
 	} else if assignment, ok := expr.(*parser.Assignment); ok {
-		c.CheckAssignment(assignment)
+		return c.CheckAssignment(assignment)
 	} else if functionCall, ok := expr.(*parser.FunctionCall); ok {
-		c.CheckFunctionCall(functionCall)
+		return c.CheckFunctionCall(functionCall)
 	} else if variableReference, ok := expr.(*parser.VariableReference); ok {
-		c.CheckVariableReference(variableReference)
+		return c.CheckVariableReference(variableReference)
 	} else if binaryOperation, ok := expr.(*parser.BinaryOperation); ok {
-		c.CheckBinaryOperation(binaryOperation)
+		return c.CheckBinaryOperation(binaryOperation)
 	} else if unaryOperation, ok := expr.(*parser.UnaryOperation); ok {
-		c.CheckUnaryOperation(unaryOperation)
+		return c.CheckUnaryOperation(unaryOperation)
 	} else {
 		panic(fmt.Sprintf("Invalid expression type: %v", expr))
 	}
 }
 
-func (c *TypeChecker) CheckLiteral(literal *parser.Literal) {
-	// noop
+func (c *TypeChecker) CheckLiteral(lit *parser.Literal) string {
+	if lit.StringValue != nil {
+		return "string"
+	} else if lit.IntValue != nil {
+		return "int"
+	}
+	panic(fmt.Sprintf("unknown literal type: %v", *lit))
 }
 
 func (c *TypeChecker) CheckVariableDeclaration(decl *parser.VariableDeclaration) {
 	c.declaredVars[decl.Name] = decl.Type
 }
 
-func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) {
+func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) string {
 	proto, declared := c.declaredFuncs[call.FunctionName]
 	if !declared {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s is not declared", call.Loc.Line, call.Loc.Col, call.FunctionName))
@@ -112,28 +117,42 @@ func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) {
 		c.CheckExpression(expr)
 		// TODO: Check argument type.
 	}
+
+	return proto.ReturnType
 }
 
 func (c *TypeChecker) CheckExpressionStatement(e *parser.ExpressionStatement) {
 	c.CheckExpression(e.Expression)
 }
 
-func (c *TypeChecker) CheckAssignment(assignment *parser.Assignment) {
+func (c *TypeChecker) CheckAssignment(assignment *parser.Assignment) string {
 	target := assignment.VariableName
-	_, declared := c.declaredVars[target]
+	varType, declared := c.declaredVars[target]
 	if !declared {
-		// TODO: Line and column.
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before assignment", assignment.Loc.Line, assignment.Loc.Col, target))
 	}
 
-	c.CheckExpression(assignment.Value)
+	valueType := c.CheckExpression(assignment.Value)
+	if valueType != varType {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: cannot assign value of type %s to variable %s of type %s",
+			assignment.Loc.Line,
+			assignment.Loc.Col,
+			valueType,
+			target,
+			varType,
+		))
+	}
+
+	return varType
 }
 
-func (c *TypeChecker) CheckVariableReference(ref *parser.VariableReference) {
-	_, declared := c.declaredVars[ref.Name]
+func (c *TypeChecker) CheckVariableReference(ref *parser.VariableReference) string {
+	varType, declared := c.declaredVars[ref.Name]
 	if !declared {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before reference", ref.Loc.Line, ref.Loc.Col, ref.Name))
 	}
+
+	return varType
 }
 
 func (c *TypeChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
@@ -142,13 +161,25 @@ func (c *TypeChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
 	}
 }
 
-func (c *TypeChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) {
-	c.CheckExpression(binOp.Left)
-	c.CheckExpression(binOp.Right)
+func (c *TypeChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) string {
+	leftType := c.CheckExpression(binOp.Left)
+	rightType := c.CheckExpression(binOp.Right)
+	// TODO: Check that the types are appropriate for the operation.
+	if leftType != rightType {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: cannot apply operation %s to operands of different types (%s and %s)",
+			binOp.Loc.Line,
+			binOp.Loc.Col,
+			binOp.Operator,
+			leftType,
+			rightType,
+		))
+	}
+	return leftType
 }
 
-func (c *TypeChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) {
-	c.CheckExpression(unaryOp.Operand)
+func (c *TypeChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) string {
+	// TODO: Check that the operation is appropriate for the type.
+	return c.CheckExpression(unaryOp.Operand)
 }
 
 func (c *TypeChecker) CheckIfStatement(stmt *parser.IfStatement) {

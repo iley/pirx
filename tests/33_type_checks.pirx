@@ -24,5 +24,13 @@ func main(): int {
   flag = 1;
   flag = "foo";
 
+  if 42 {
+    printf("42 is boolean?\n");
+  }
+
+  while "true" {
+    printf("what's the difference between a string and a bool?\n");
+  }
+
 	return 0;
 }

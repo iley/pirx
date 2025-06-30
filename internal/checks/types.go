@@ -210,7 +210,7 @@ func (c *TypeChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) string
 func (c *TypeChecker) CheckIfStatement(stmt *parser.IfStatement) {
 	exprType := c.CheckExpression(stmt.Condition)
 	if exprType != "bool" {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected a expression of type bool in if condition, got type %s",
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in if condition, got type %s",
 			stmt.Loc.Line,
 			stmt.Loc.Col,
 			exprType,
@@ -225,7 +225,7 @@ func (c *TypeChecker) CheckIfStatement(stmt *parser.IfStatement) {
 func (c *TypeChecker) CheckWhileStatement(stmt *parser.WhileStatement) {
 	exprType := c.CheckExpression(stmt.Condition)
 	if exprType != "bool" {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected a expression of type bool in while condition, got type %s",
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in while condition, got type %s",
 			stmt.Loc.Line,
 			stmt.Loc.Col,
 			exprType,

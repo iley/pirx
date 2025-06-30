@@ -113,9 +113,18 @@ func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) string {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s has %d arguments but %d were provided", call.Loc.Line, call.Loc.Col, call.FunctionName, len(proto.Args), len(call.Args)))
 	}
 
-	for _, expr := range call.Args {
-		c.CheckExpression(expr)
-		// TODO: Check argument type.
+	for i, expr := range call.Args {
+		actualArgType := c.CheckExpression(expr)
+
+		if i >= len(proto.Args) {
+			continue
+		}
+
+		expectedArgType := proto.Args[i].Typ
+		if actualArgType != expectedArgType {
+			c.errors = append(c.errors, fmt.Errorf("%d:%d: argument #%d of function %s has wrong type: expected %s but got %s",
+				call.Loc.Line, call.Loc.Col, i+1, call.FunctionName, expectedArgType, actualArgType))
+		}
 	}
 
 	return proto.ReturnType

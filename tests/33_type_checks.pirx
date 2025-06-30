@@ -2,14 +2,21 @@ func random_number(): int {
   return 42;
 }
 
+func add(x: int, y: int): int {
+  return x + y;
+}
+
 func main(): int {
-	var x : int;
+	var x: int;
 	x = "foo";
   2 + "foo";
 
   var s : string;
   s = x;
   s = random_number();
+
+  add(1, "foo");
+  add("foo", 2);
 
 	return 0;
 }

@@ -26,6 +26,8 @@ func (c *TypeChecker) Errors() []error {
 }
 
 func (c *TypeChecker) CheckProgram(program *parser.Program) {
+	// TODO: Check that function declarations use valid types.
+
 	// Gather function prototypes so we can check arguments and types later.
 	protos := functions.GetFunctionTable(program)
 	for _, proto := range protos {
@@ -95,11 +97,16 @@ func (c *TypeChecker) CheckLiteral(lit *parser.Literal) string {
 		return "string"
 	} else if lit.IntValue != nil {
 		return "int"
+	} else if lit.BoolValue != nil {
+		return "bool"
 	}
 	panic(fmt.Sprintf("unknown literal type: %v", *lit))
 }
 
 func (c *TypeChecker) CheckVariableDeclaration(decl *parser.VariableDeclaration) {
+	if !isValidType(decl.Type) {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: unknown type %s", decl.Loc.Line, decl.Loc.Col, decl.Type))
+	}
 	c.declaredVars[decl.Name] = decl.Type
 }
 
@@ -173,8 +180,8 @@ func (c *TypeChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
 func (c *TypeChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) string {
 	leftType := c.CheckExpression(binOp.Left)
 	rightType := c.CheckExpression(binOp.Right)
-	// TODO: Check that the types are appropriate for the operation.
-	if !binaryOperationSupported(binOp.Operator, leftType, rightType) {
+	resultType, ok := binaryOperationResult(binOp.Operator, leftType, rightType)
+	if !ok {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: binary operation %s cannot be applied to values of types %s and %s",
 			binOp.Loc.Line,
 			binOp.Loc.Col,
@@ -183,12 +190,13 @@ func (c *TypeChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) string
 			rightType,
 		))
 	}
-	return leftType
+	return resultType
 }
 
 func (c *TypeChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) string {
 	operandType := c.CheckExpression(unaryOp.Operand)
-	if !unaryOperationSupported(unaryOp.Operator, operandType) {
+	resultType, ok := unaryOperationResult(unaryOp.Operator, operandType)
+	if !ok {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: unary operation %s cannot be applied to a value of type %s",
 			unaryOp.Loc.Line,
 			unaryOp.Loc.Col,
@@ -196,11 +204,18 @@ func (c *TypeChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) string
 			operandType,
 		))
 	}
-	return operandType
+	return resultType
 }
 
 func (c *TypeChecker) CheckIfStatement(stmt *parser.IfStatement) {
-	c.CheckExpression(stmt.Condition)
+	exprType := c.CheckExpression(stmt.Condition)
+	if exprType != "bool" {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected a expression of type bool in if condition, got type %s",
+			stmt.Loc.Line,
+			stmt.Loc.Col,
+			exprType,
+		))
+	}
 	c.CheckBlock(&stmt.ThenBlock)
 	if stmt.ElseBlock != nil {
 		c.CheckBlock(stmt.ElseBlock)
@@ -208,7 +223,14 @@ func (c *TypeChecker) CheckIfStatement(stmt *parser.IfStatement) {
 }
 
 func (c *TypeChecker) CheckWhileStatement(stmt *parser.WhileStatement) {
-	c.CheckExpression(stmt.Condition)
+	exprType := c.CheckExpression(stmt.Condition)
+	if exprType != "bool" {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected a expression of type bool in while condition, got type %s",
+			stmt.Loc.Line,
+			stmt.Loc.Col,
+			exprType,
+		))
+	}
 	c.CheckBlock(&stmt.Body)
 }
 
@@ -220,34 +242,40 @@ func (c *TypeChecker) CheckContinueStatement(stmt *parser.ContinueStatement) {
 	// noop
 }
 
-func binaryOperationSupported(op, left, right string) bool {
+func binaryOperationResult(op, left, right string) (string, bool) {
 	if left != right {
-		return false
+		return "", false
 	}
 
 	if op == "==" || op == "!=" {
 		// Equality is supported for all types.
-		return true
+		return "bool", true
 	}
 
-	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" ||
-		op == "<" || op == ">" || op == "<=" || op == ">=" {
-			// These are (currently) supproted for integers only.
-			return left == "int"
+	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" {
+		// These are (currently) supproted for integers only.
+		return "int", left == "int"
+	}
+
+	if op == "<" || op == ">" || op == "<=" || op == ">=" {
+		// These are (currently) supproted for integers only.
+		return "bool", left == "int"
 	}
 
 	if op == "&&" || op == "||" {
-		// TODO: bool
-		return left == "int"
+		return "bool", left == "bool"
 	}
 
 	panic(fmt.Sprintf("unknown binary operation %s", op))
 }
 
-func unaryOperationSupported(op, val string) bool {
+func unaryOperationResult(op, val string) (string, bool) {
 	if op == "!" {
-		// TODO: bool
-		return val == "int"
+		return "bool", val == "bool"
 	}
 	panic(fmt.Sprintf("unknown binary operation %s", op))
+}
+
+func isValidType(name string) bool {
+	return name == "int" || name == "string" || name == "bool"
 }

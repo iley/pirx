@@ -434,6 +434,15 @@ func (p *Parser) parsePrimaryExpression() (Expression, error) {
 		return nil, err
 	}
 	switch lex.Type {
+	case lexer.LEX_KEYWORD:
+		if lex.IsKeyword("true") {
+			p.consume()
+			return NewBoolLiteral(true), nil
+		} else if lex.IsKeyword("false") {
+			p.consume()
+			return NewBoolLiteral(false), nil
+		}
+		return nil, fmt.Errorf("%d:%d: unexpected keyword %s when parsing a primary expression", lex.Line, lex.Col, lex.Str)
 	case lexer.LEX_IDENT:
 		// Look ahead to determine if this is a function call or assignment
 		return p.parseIdentifierExpression()

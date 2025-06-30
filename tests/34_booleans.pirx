@@ -1,0 +1,12 @@
+func main() {
+  var flag: bool;
+  flag = 1 < 2;
+  if flag {
+    printf("1 < 2 is true\n");
+  }
+  while flag {
+    printf("inside loop\n");
+    flag = !flag;
+  }
+  return 0;
+}

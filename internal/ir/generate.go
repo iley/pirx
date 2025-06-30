@@ -127,6 +127,14 @@ func generateExpressionOps(ic *IrContext, node parser.Expression) ([]Op, Arg) {
 			return []Op{}, Arg{LiteralInt: literal.IntValue}
 		} else if literal.StringValue != nil {
 			return []Op{}, Arg{LiteralString: literal.StringValue}
+		} else if literal.BoolValue != nil {
+			var intValue int64
+			if *literal.BoolValue == true {
+				intValue = 1
+			} else {
+				intValue = 0
+			}
+			return []Op{}, Arg{LiteralInt: &intValue}
 		} else {
 			panic(fmt.Sprintf("Invalid literal: %v. Only int and string are currently supported", literal))
 		}

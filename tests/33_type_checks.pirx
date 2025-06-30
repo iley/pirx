@@ -20,5 +20,9 @@ func main(): int {
 
   !"foo";
 
+  var flag: bool;
+  flag = 1;
+  flag = "foo";
+
 	return 0;
 }

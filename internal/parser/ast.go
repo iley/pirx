@@ -236,6 +236,7 @@ type Literal struct {
 	Loc         Location
 	StringValue *string
 	IntValue    *int64
+	BoolValue   *bool
 }
 
 func (l *Literal) GetLocation() Location {
@@ -249,6 +250,8 @@ func (l *Literal) String() string {
 		return fmt.Sprintf("\"%s\"", util.EscapeString(*l.StringValue))
 	} else if l.IntValue != nil {
 		return fmt.Sprintf("%d", *l.IntValue)
+	} else if l.BoolValue != nil {
+		return fmt.Sprintf("%v", *l.BoolValue)
 	}
 	panic(fmt.Sprintf("unknown literal type: %v", *l))
 }
@@ -260,6 +263,10 @@ func NewIntLiteral(value int64) *Literal {
 
 func NewStringLiteral(value string) *Literal {
 	return &Literal{StringValue: &value}
+}
+
+func NewBoolLiteral(value bool) *Literal {
+	return &Literal{BoolValue: &value}
 }
 
 type Assignment struct {

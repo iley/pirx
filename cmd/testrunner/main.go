@@ -292,7 +292,22 @@ func findTestCase(tests []TestCase, identifier string) (*TestCase, error) {
 // findPirxFile finds a .pirx file by identifier, looking in discovered tests first,
 // then trying direct file patterns
 func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, error) {
-	// First try to find it in the discovered tests
+	// If identifier is a path, try to match it directly
+	if strings.Contains(testIdentifier, "/") || strings.HasSuffix(testIdentifier, ".pirx") {
+		// Remove .pirx extension if present
+		identifier := strings.TrimSuffix(testIdentifier, ".pirx")
+		// Remove leading tests/ if present
+		identifier = strings.TrimPrefix(identifier, "tests/")
+
+		for _, test := range tests {
+			if test.Name == identifier {
+				return test.PirxFile, nil
+			}
+		}
+		return "", fmt.Errorf("test not found: %s", testIdentifier)
+	}
+
+	// If identifier is just a number, find test that starts with that number
 	for _, test := range tests {
 		if strings.HasPrefix(test.Name, testIdentifier+"_") || test.Name == testIdentifier {
 			return test.PirxFile, nil

@@ -298,20 +298,20 @@ func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, er
 			return test.PirxFile, nil
 		}
 	}
-	
+
 	// If not found in tests, try to construct the path directly
 	candidates := []string{
 		filepath.Join(testsDir, testIdentifier+".pirx"),
 		filepath.Join(testsDir, testIdentifier+"_*.pirx"),
 	}
-	
+
 	for _, pattern := range candidates {
 		matches, _ := filepath.Glob(pattern)
 		if len(matches) > 0 {
 			return matches[0], nil
 		}
 	}
-	
+
 	return "", fmt.Errorf("could not find test file for '%s'", testIdentifier)
 }
 
@@ -322,6 +322,36 @@ func getCompilationPaths(testsDir, baseName string, config *CompilationConfig) (
 	binFile = filepath.Join(testsDir, baseName+config.ExecutableSuffix)
 	generatedFiles = []string{asmFile, objFile, binFile}
 	return
+}
+
+// compileProgram compiles a pirx file and returns either the binary path (on success)
+// or error message (on failure), along with success flag and generated files for cleanup
+func compileProgram(config *CompilationConfig, pirxFile, testsDir, baseName string) (result string, success bool, generatedFiles []string) {
+	asmFile, objFile, binFile, generatedFiles := getCompilationPaths(testsDir, baseName, config)
+
+	// Step 1: Compile .pirx to .s using pirx compiler
+	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, pirxFile)
+	if output, err := pirxCmd.CombinedOutput(); err != nil {
+		return string(output), false, generatedFiles
+	}
+
+	// Step 2: Assemble .s to .o
+	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
+	asCmd := exec.Command(config.Assembler, asArgs...)
+	if output, err := asCmd.CombinedOutput(); err != nil {
+		errorMsg := fmt.Sprintf("assembly failed: %v\nOutput: %s", err, string(output))
+		return errorMsg, false, generatedFiles
+	}
+
+	// Step 3: Link .o to executable
+	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
+	ldCmd := exec.Command(config.Linker, ldArgs...)
+	if output, err := ldCmd.CombinedOutput(); err != nil {
+		errorMsg := fmt.Sprintf("linking failed: %v\nOutput: %s", err, string(output))
+		return errorMsg, false, generatedFiles
+	}
+
+	return binFile, true, generatedFiles
 }
 
 func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string) {
@@ -386,37 +416,16 @@ func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, te
 	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
 	fmt.Printf("Compiling and running: %s\n", baseName)
 
-	// Compile the program directly without using the test framework
-	asmFile, objFile, binFile, generatedFiles := getCompilationPaths(testsDir, baseName, config)
+	result, success, generatedFiles := compileProgram(config, pirxFile, testsDir, baseName)
 
-	// Step 1: Compile .pirx to .s using pirx compiler
-	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, pirxFile)
-	if output, err := pirxCmd.CombinedOutput(); err != nil {
-		fmt.Printf("Compilation failed:\n%s", string(output))
-		cleanupFiles(generatedFiles)
-		return
-	}
-
-	// Step 2: Assemble .s to .o
-	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
-	asCmd := exec.Command(config.Assembler, asArgs...)
-	if output, err := asCmd.CombinedOutput(); err != nil {
-		fmt.Printf("Assembly failed: %v\nOutput: %s", err, string(output))
-		cleanupFiles(generatedFiles)
-		return
-	}
-
-	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
-	ldCmd := exec.Command(config.Linker, ldArgs...)
-	if output, err := ldCmd.CombinedOutput(); err != nil {
-		fmt.Printf("Linking failed: %v\nOutput: %s", err, string(output))
+	if !success {
+		fmt.Printf("Compilation failed:\n%s", result)
 		cleanupFiles(generatedFiles)
 		return
 	}
 
 	fmt.Printf("Running program...\n")
-	output, err := runTest(binFile)
+	output, err := runTest(result) // result is the binary path
 	if err != nil {
 		fmt.Printf("Program output:\n%s\nProgram exited with error: %v\n", output, err)
 	} else {
@@ -436,15 +445,12 @@ func acceptTest(config *CompilationConfig, tests []TestCase, testsDir string, te
 	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
 	fmt.Printf("Accepting output for: %s\n", baseName)
 
-	// Compile the program directly without using the test framework
-	asmFile, objFile, binFile, generatedFiles := getCompilationPaths(testsDir, baseName, config)
+	result, success, generatedFiles := compileProgram(config, pirxFile, testsDir, baseName)
 
-	// Step 1: Compile .pirx to .s using pirx compiler
-	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, pirxFile)
-	if output, err := pirxCmd.CombinedOutput(); err != nil {
+	if !success {
 		// Compilation failed - save to .err file
 		errFile := filepath.Join(testsDir, baseName+".err")
-		if err := os.WriteFile(errFile, output, 0644); err != nil {
+		if err := os.WriteFile(errFile, []byte(result), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing .err file: %v\n", err)
 			os.Exit(1)
 		}
@@ -453,40 +459,8 @@ func acceptTest(config *CompilationConfig, tests []TestCase, testsDir string, te
 		return
 	}
 
-	// Step 2: Assemble .s to .o
-	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
-	asCmd := exec.Command(config.Assembler, asArgs...)
-	if output, err := asCmd.CombinedOutput(); err != nil {
-		// Assembly failed - save to .err file
-		errFile := filepath.Join(testsDir, baseName+".err")
-		errorMsg := fmt.Sprintf("assembly failed: %v\nOutput: %s", err, string(output))
-		if err := os.WriteFile(errFile, []byte(errorMsg), 0644); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing .err file: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("Assembly failed. Saved error output to %s\n", errFile)
-		cleanupFiles(generatedFiles)
-		return
-	}
-
-	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
-	ldCmd := exec.Command(config.Linker, ldArgs...)
-	if output, err := ldCmd.CombinedOutput(); err != nil {
-		// Linking failed - save to .err file
-		errFile := filepath.Join(testsDir, baseName+".err")
-		errorMsg := fmt.Sprintf("linking failed: %v\nOutput: %s", err, string(output))
-		if err := os.WriteFile(errFile, []byte(errorMsg), 0644); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing .err file: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("Linking failed. Saved error output to %s\n", errFile)
-		cleanupFiles(generatedFiles)
-		return
-	}
-
 	// Compilation successful - run the program and save output to .out file
-	output, _ := runTest(binFile)
+	output, _ := runTest(result) // result is the binary path
 	outFile := filepath.Join(testsDir, baseName+".out")
 	if err := os.WriteFile(outFile, []byte(output), 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing .out file: %v\n", err)

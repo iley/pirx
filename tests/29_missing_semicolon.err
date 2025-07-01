@@ -1,0 +1,2 @@
+error parsing program: 3:5: expected ';' after statement, got <KEYWORD "return">
+exit status 1

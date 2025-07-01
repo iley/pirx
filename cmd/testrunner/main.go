@@ -315,6 +315,15 @@ func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, er
 	return "", fmt.Errorf("could not find test file for '%s'", testIdentifier)
 }
 
+// getCompilationPaths returns the file paths used during compilation
+func getCompilationPaths(testsDir, baseName string, config *CompilationConfig) (asmFile, objFile, binFile string, generatedFiles []string) {
+	asmFile = filepath.Join(testsDir, baseName+".s")
+	objFile = filepath.Join(testsDir, baseName+".o")
+	binFile = filepath.Join(testsDir, baseName+config.ExecutableSuffix)
+	generatedFiles = []string{asmFile, objFile, binFile}
+	return
+}
+
 func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string) {
 	if len(tests) == 1 {
 		fmt.Printf("Found 1 test\n")
@@ -378,10 +387,7 @@ func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, te
 	fmt.Printf("Compiling and running: %s\n", baseName)
 
 	// Compile the program directly without using the test framework
-	asmFile := filepath.Join(testsDir, baseName+".s")
-	objFile := filepath.Join(testsDir, baseName+".o")
-	binFile := filepath.Join(testsDir, baseName+config.ExecutableSuffix)
-	generatedFiles := []string{asmFile, objFile, binFile}
+	asmFile, objFile, binFile, generatedFiles := getCompilationPaths(testsDir, baseName, config)
 
 	// Step 1: Compile .pirx to .s using pirx compiler
 	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, pirxFile)
@@ -431,10 +437,7 @@ func acceptTest(config *CompilationConfig, tests []TestCase, testsDir string, te
 	fmt.Printf("Accepting output for: %s\n", baseName)
 
 	// Compile the program directly without using the test framework
-	asmFile := filepath.Join(testsDir, baseName+".s")
-	objFile := filepath.Join(testsDir, baseName+".o")
-	binFile := filepath.Join(testsDir, baseName+config.ExecutableSuffix)
-	generatedFiles := []string{asmFile, objFile, binFile}
+	asmFile, objFile, binFile, generatedFiles := getCompilationPaths(testsDir, baseName, config)
 
 	// Step 1: Compile .pirx to .s using pirx compiler
 	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, pirxFile)

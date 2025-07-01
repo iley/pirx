@@ -289,7 +289,154 @@ func findTestCase(tests []TestCase, identifier string) (*TestCase, error) {
 	return nil, fmt.Errorf("test not found: %s", identifier)
 }
 
+func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string) {
+	if len(tests) == 1 {
+		fmt.Printf("Found 1 test\n")
+	} else {
+		fmt.Printf("Found %d tests\n", len(tests))
+	}
+
+	passed := 0
+	failed := 0
+
+	for _, test := range tests {
+		success, errorMsg := runSingleTest(config, test, testsDir)
+		if success {
+			fmt.Println("PASS")
+			passed++
+		} else {
+			fmt.Printf("FAIL - %s\n", errorMsg)
+			failed++
+		}
+	}
+
+	if failed == 0 {
+		fmt.Printf("Test Results: %d passed. All good!\n", passed)
+	} else {
+		fmt.Printf("Test Results: %d passed, %d failed\n", passed, failed)
+	}
+
+	if failed > 0 {
+		os.Exit(1)
+	}
+}
+
+func runSpecificTest(config *CompilationConfig, tests []TestCase, testsDir string, testIdentifier string) {
+	testCase, err := findTestCase(tests, testIdentifier)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Running specific test: %s\n", testCase.Name)
+
+	success, errorMsg := runSingleTest(config, *testCase, testsDir)
+	if success {
+		fmt.Println("PASS")
+		fmt.Printf("Test Results: 1 passed. All good!\n")
+	} else {
+		fmt.Printf("FAIL - %s\n", errorMsg)
+		fmt.Printf("Test Results: 0 passed, 1 failed\n")
+		os.Exit(1)
+	}
+}
+
+func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, testIdentifier string) {
+	// Find .pirx file directly without requiring .out or .err files
+	var pirxFile string
+
+	// First try to find it in the discovered tests
+	for _, test := range tests {
+		if strings.HasPrefix(test.Name, testIdentifier+"_") || test.Name == testIdentifier {
+			pirxFile = test.PirxFile
+			break
+		}
+	}
+
+	// If not found in tests, try to construct the path directly
+	if pirxFile == "" {
+		// Try different patterns
+		candidates := []string{
+			filepath.Join(testsDir, testIdentifier+".pirx"),
+			filepath.Join(testsDir, testIdentifier+"_*.pirx"),
+		}
+
+		for _, pattern := range candidates {
+			matches, _ := filepath.Glob(pattern)
+			if len(matches) > 0 {
+				pirxFile = matches[0]
+				break
+			}
+		}
+	}
+
+	if pirxFile == "" {
+		fmt.Fprintf(os.Stderr, "Error: could not find test file for '%s'\n", testIdentifier)
+		os.Exit(1)
+	}
+
+	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
+	fmt.Printf("Compiling and running: %s\n", baseName)
+
+	// Compile the program directly without using the test framework
+	asmFile := filepath.Join(testsDir, baseName+".s")
+	objFile := filepath.Join(testsDir, baseName+".o")
+	binFile := filepath.Join(testsDir, baseName+config.ExecutableSuffix)
+	generatedFiles := []string{asmFile, objFile, binFile}
+
+	// Step 1: Compile .pirx to .s using pirx compiler
+	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, pirxFile)
+	if output, err := pirxCmd.CombinedOutput(); err != nil {
+		fmt.Printf("Compilation failed:\n%s", string(output))
+		cleanupFiles(generatedFiles)
+		return
+	}
+
+	// Step 2: Assemble .s to .o
+	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
+	asCmd := exec.Command(config.Assembler, asArgs...)
+	if output, err := asCmd.CombinedOutput(); err != nil {
+		fmt.Printf("Assembly failed: %v\nOutput: %s", err, string(output))
+		cleanupFiles(generatedFiles)
+		return
+	}
+
+	// Step 3: Link .o to executable
+	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
+	ldCmd := exec.Command(config.Linker, ldArgs...)
+	if output, err := ldCmd.CombinedOutput(); err != nil {
+		fmt.Printf("Linking failed: %v\nOutput: %s", err, string(output))
+		cleanupFiles(generatedFiles)
+		return
+	}
+
+	fmt.Printf("Running program...\n")
+	output, err := runTest(binFile)
+	if err != nil {
+		fmt.Printf("Program output:\n%s\nProgram exited with error: %v\n", output, err)
+	} else {
+		fmt.Printf("Program output:\n%s", output)
+	}
+
+	cleanupFiles(generatedFiles)
+}
+
+func printUsage() {
+	fmt.Fprintf(os.Stderr, "Usage: %s <command> [args]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "\nCommands:\n")
+	fmt.Fprintf(os.Stderr, "  testall         Run all tests\n")
+	fmt.Fprintf(os.Stderr, "  test <test>     Run a specific test (e.g., '05' for tests/05_xxx.pirx)\n")
+	fmt.Fprintf(os.Stderr, "  run <test>      Compile and run a test program without comparison\n")
+}
+
 func main() {
+	if len(os.Args) < 2 {
+		printUsage()
+		os.Exit(1)
+	}
+
+	command := os.Args[1]
+
 	// Get compilation configuration for current platform
 	config, err := getCompilationConfig()
 	if err != nil {
@@ -315,51 +462,28 @@ func main() {
 		return tests[i].Name < tests[j].Name
 	})
 
-	// Check for command line arguments
-	var testsToRun []TestCase
-	if len(os.Args) > 1 {
-		// Run specific test
-		testIdentifier := os.Args[1]
-		testCase, err := findTestCase(tests, testIdentifier)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	switch command {
+	case "testall":
+		runAllTests(config, tests, testsDir)
+	case "test":
+		if len(os.Args) < 3 {
+			fmt.Fprintf(os.Stderr, "Error: 'test' command requires a test identifier\n")
+			printUsage()
 			os.Exit(1)
 		}
-		testsToRun = []TestCase{*testCase}
-		fmt.Printf("Running specific test: %s\n", testCase.Name)
-	} else {
-		// Run all tests
-		testsToRun = tests
-		if len(tests) == 1 {
-			fmt.Printf("Found 1 test\n")
-		} else {
-			fmt.Printf("Found %d tests\n", len(tests))
+		testIdentifier := os.Args[2]
+		runSpecificTest(config, tests, testsDir, testIdentifier)
+	case "run":
+		if len(os.Args) < 3 {
+			fmt.Fprintf(os.Stderr, "Error: 'run' command requires a test identifier\n")
+			printUsage()
+			os.Exit(1)
 		}
-	}
-
-	// Run tests
-	passed := 0
-	failed := 0
-
-	for _, test := range testsToRun {
-		success, errorMsg := runSingleTest(config, test, testsDir)
-		if success {
-			fmt.Println("PASS")
-			passed++
-		} else {
-			fmt.Printf("FAIL - %s\n", errorMsg)
-			failed++
-		}
-	}
-
-	// Print summary
-	if failed == 0 {
-		fmt.Printf("Test Results: %d passed. All good!\n", passed)
-	} else {
-		fmt.Printf("Test Results: %d passed, %d failed\n", passed, failed)
-	}
-
-	if failed > 0 {
+		testIdentifier := os.Args[2]
+		runProgram(config, tests, testsDir, testIdentifier)
+	default:
+		fmt.Fprintf(os.Stderr, "Error: unknown command '%s'\n", command)
+		printUsage()
 		os.Exit(1)
 	}
 }

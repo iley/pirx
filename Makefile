@@ -8,7 +8,7 @@ testrunner: always
 
 test: pirx testrunner
 	go test ./...
-	./testrunner
+	./testrunner testall
 
 always:
 

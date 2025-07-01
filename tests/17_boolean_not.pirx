@@ -1,4 +1,4 @@
-func main() {
+func main(): int {
   // Test logical NOT operator
   printf("!true: %d\n", !true);
   printf("!false: %d\n", !false);

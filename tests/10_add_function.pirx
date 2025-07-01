@@ -1,8 +1,8 @@
-func add(x: int, y: int) {
+func add(x: int, y: int): int {
   return x + y;
 }
 
-func main() {
+func main(): int {
   printf("%d\n", add(40, 2));
   return 0;
 }

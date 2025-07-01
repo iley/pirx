@@ -1,4 +1,4 @@
-func main() {
+func main(): int {
   var result: int;
   
   result = (2 + 3) * 4;

@@ -1,4 +1,4 @@
-func main() {
+func main(): int {
   printf("foo");
   printf("bar");
   printf("baz");

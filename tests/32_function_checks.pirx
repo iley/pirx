@@ -1,7 +1,7 @@
 func one_argument(a: int) {}
 func two_arguments(a: int, b: int) {}
 
-func main() : int {
+func main(): int {
   unknown_function();
 
   one_argument();

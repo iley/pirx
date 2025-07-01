@@ -1,4 +1,4 @@
-func main() {
+func main(): int {
     printf("%d\n", unknown_var);
     return 0;
 } 

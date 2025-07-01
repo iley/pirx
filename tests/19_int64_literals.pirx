@@ -1,4 +1,4 @@
-func main() {
+func main(): int {
   var x: int;
   x = 65537; // 2^16+1
   printf("x = %lld\n", x);

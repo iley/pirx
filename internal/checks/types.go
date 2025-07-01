@@ -11,6 +11,7 @@ type TypeChecker struct {
 	declaredVars  map[string]string
 	declaredFuncs map[string]functions.Proto
 	errors        []error
+	currentFunc   functions.Proto
 }
 
 func NewTypeChecker() *TypeChecker {
@@ -40,6 +41,7 @@ func (c *TypeChecker) CheckProgram(program *parser.Program) {
 }
 
 func (c *TypeChecker) CheckFunction(fn parser.Function) {
+	c.currentFunc = c.declaredFuncs[fn.Name]
 	c.declaredVars = make(map[string]string)
 	for _, arg := range fn.Args {
 		c.declaredVars[arg.Name] = arg.Type
@@ -172,8 +174,23 @@ func (c *TypeChecker) CheckVariableReference(ref *parser.VariableReference) stri
 }
 
 func (c *TypeChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
+	if stmt.Value == nil && c.currentFunc.ReturnType != "" {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s should return a value of type %s but no value was provided",
+			stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType,
+		))
+	}
+
 	if stmt.Value != nil {
-		c.CheckExpression(stmt.Value)
+		typ := c.CheckExpression(stmt.Value)
+		if c.currentFunc.ReturnType == "" {
+			c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s does not have a return type but a value was provided",
+				stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name,
+			))
+		} else if typ != c.currentFunc.ReturnType {
+			c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s has return type %s but a value of type %s was provided",
+				stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType, typ,
+			))
+		}
 	}
 }
 

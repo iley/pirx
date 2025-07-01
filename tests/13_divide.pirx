@@ -1,4 +1,4 @@
-func main() {
+func main(): int {
   var x: int;
   var y: int;
   x = 12;

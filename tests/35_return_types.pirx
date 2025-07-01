@@ -1,0 +1,11 @@
+func foo(): int {
+  return false;
+}
+
+func bar(): int {
+  return;
+}
+
+func baz() {
+  return 0;
+}

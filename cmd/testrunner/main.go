@@ -421,12 +421,114 @@ func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, te
 	cleanupFiles(generatedFiles)
 }
 
+func acceptTest(config *CompilationConfig, tests []TestCase, testsDir string, testIdentifier string) {
+	// Find .pirx file directly without requiring .out or .err files
+	var pirxFile string
+
+	// First try to find it in the discovered tests
+	for _, test := range tests {
+		if strings.HasPrefix(test.Name, testIdentifier+"_") || test.Name == testIdentifier {
+			pirxFile = test.PirxFile
+			break
+		}
+	}
+
+	// If not found in tests, try to construct the path directly
+	if pirxFile == "" {
+		// Try different patterns
+		candidates := []string{
+			filepath.Join(testsDir, testIdentifier+".pirx"),
+			filepath.Join(testsDir, testIdentifier+"_*.pirx"),
+		}
+
+		for _, pattern := range candidates {
+			matches, _ := filepath.Glob(pattern)
+			if len(matches) > 0 {
+				pirxFile = matches[0]
+				break
+			}
+		}
+	}
+
+	if pirxFile == "" {
+		fmt.Fprintf(os.Stderr, "Error: could not find test file for '%s'\n", testIdentifier)
+		os.Exit(1)
+	}
+
+	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
+	fmt.Printf("Accepting output for: %s\n", baseName)
+
+	// Compile the program directly without using the test framework
+	asmFile := filepath.Join(testsDir, baseName+".s")
+	objFile := filepath.Join(testsDir, baseName+".o")
+	binFile := filepath.Join(testsDir, baseName+config.ExecutableSuffix)
+	generatedFiles := []string{asmFile, objFile, binFile}
+
+	// Step 1: Compile .pirx to .s using pirx compiler
+	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, pirxFile)
+	if output, err := pirxCmd.CombinedOutput(); err != nil {
+		// Compilation failed - save to .err file
+		errFile := filepath.Join(testsDir, baseName+".err")
+		if err := os.WriteFile(errFile, output, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing .err file: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Compilation failed. Saved error output to %s\n", errFile)
+		cleanupFiles(generatedFiles)
+		return
+	}
+
+	// Step 2: Assemble .s to .o
+	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
+	asCmd := exec.Command(config.Assembler, asArgs...)
+	if output, err := asCmd.CombinedOutput(); err != nil {
+		// Assembly failed - save to .err file
+		errFile := filepath.Join(testsDir, baseName+".err")
+		errorMsg := fmt.Sprintf("assembly failed: %v\nOutput: %s", err, string(output))
+		if err := os.WriteFile(errFile, []byte(errorMsg), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing .err file: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Assembly failed. Saved error output to %s\n", errFile)
+		cleanupFiles(generatedFiles)
+		return
+	}
+
+	// Step 3: Link .o to executable
+	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
+	ldCmd := exec.Command(config.Linker, ldArgs...)
+	if output, err := ldCmd.CombinedOutput(); err != nil {
+		// Linking failed - save to .err file
+		errFile := filepath.Join(testsDir, baseName+".err")
+		errorMsg := fmt.Sprintf("linking failed: %v\nOutput: %s", err, string(output))
+		if err := os.WriteFile(errFile, []byte(errorMsg), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing .err file: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Linking failed. Saved error output to %s\n", errFile)
+		cleanupFiles(generatedFiles)
+		return
+	}
+
+	// Compilation successful - run the program and save output to .out file
+	output, _ := runTest(binFile)
+	outFile := filepath.Join(testsDir, baseName+".out")
+	if err := os.WriteFile(outFile, []byte(output), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing .out file: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Program executed successfully. Saved output to %s\n", outFile)
+
+	cleanupFiles(generatedFiles)
+}
+
 func printUsage() {
 	fmt.Fprintf(os.Stderr, "Usage: %s <command> [args]\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "\nCommands:\n")
 	fmt.Fprintf(os.Stderr, "  testall         Run all tests\n")
 	fmt.Fprintf(os.Stderr, "  test <test>     Run a specific test (e.g., '05' for tests/05_xxx.pirx)\n")
 	fmt.Fprintf(os.Stderr, "  run <test>      Compile and run a test program without comparison\n")
+	fmt.Fprintf(os.Stderr, "  accept <test>   Run a test and save its output to .out or .err file\n")
 }
 
 func main() {
@@ -481,6 +583,14 @@ func main() {
 		}
 		testIdentifier := os.Args[2]
 		runProgram(config, tests, testsDir, testIdentifier)
+	case "accept":
+		if len(os.Args) < 3 {
+			fmt.Fprintf(os.Stderr, "Error: 'accept' command requires a test identifier\n")
+			printUsage()
+			os.Exit(1)
+		}
+		testIdentifier := os.Args[2]
+		acceptTest(config, tests, testsDir, testIdentifier)
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown command '%s'\n", command)
 		printUsage()

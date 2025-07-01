@@ -289,6 +289,32 @@ func findTestCase(tests []TestCase, identifier string) (*TestCase, error) {
 	return nil, fmt.Errorf("test not found: %s", identifier)
 }
 
+// findPirxFile finds a .pirx file by identifier, looking in discovered tests first,
+// then trying direct file patterns
+func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, error) {
+	// First try to find it in the discovered tests
+	for _, test := range tests {
+		if strings.HasPrefix(test.Name, testIdentifier+"_") || test.Name == testIdentifier {
+			return test.PirxFile, nil
+		}
+	}
+	
+	// If not found in tests, try to construct the path directly
+	candidates := []string{
+		filepath.Join(testsDir, testIdentifier+".pirx"),
+		filepath.Join(testsDir, testIdentifier+"_*.pirx"),
+	}
+	
+	for _, pattern := range candidates {
+		matches, _ := filepath.Glob(pattern)
+		if len(matches) > 0 {
+			return matches[0], nil
+		}
+	}
+	
+	return "", fmt.Errorf("could not find test file for '%s'", testIdentifier)
+}
+
 func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string) {
 	if len(tests) == 1 {
 		fmt.Printf("Found 1 test\n")
@@ -342,36 +368,9 @@ func runSpecificTest(config *CompilationConfig, tests []TestCase, testsDir strin
 }
 
 func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, testIdentifier string) {
-	// Find .pirx file directly without requiring .out or .err files
-	var pirxFile string
-
-	// First try to find it in the discovered tests
-	for _, test := range tests {
-		if strings.HasPrefix(test.Name, testIdentifier+"_") || test.Name == testIdentifier {
-			pirxFile = test.PirxFile
-			break
-		}
-	}
-
-	// If not found in tests, try to construct the path directly
-	if pirxFile == "" {
-		// Try different patterns
-		candidates := []string{
-			filepath.Join(testsDir, testIdentifier+".pirx"),
-			filepath.Join(testsDir, testIdentifier+"_*.pirx"),
-		}
-
-		for _, pattern := range candidates {
-			matches, _ := filepath.Glob(pattern)
-			if len(matches) > 0 {
-				pirxFile = matches[0]
-				break
-			}
-		}
-	}
-
-	if pirxFile == "" {
-		fmt.Fprintf(os.Stderr, "Error: could not find test file for '%s'\n", testIdentifier)
+	pirxFile, err := findPirxFile(tests, testsDir, testIdentifier)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -422,36 +421,9 @@ func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, te
 }
 
 func acceptTest(config *CompilationConfig, tests []TestCase, testsDir string, testIdentifier string) {
-	// Find .pirx file directly without requiring .out or .err files
-	var pirxFile string
-
-	// First try to find it in the discovered tests
-	for _, test := range tests {
-		if strings.HasPrefix(test.Name, testIdentifier+"_") || test.Name == testIdentifier {
-			pirxFile = test.PirxFile
-			break
-		}
-	}
-
-	// If not found in tests, try to construct the path directly
-	if pirxFile == "" {
-		// Try different patterns
-		candidates := []string{
-			filepath.Join(testsDir, testIdentifier+".pirx"),
-			filepath.Join(testsDir, testIdentifier+"_*.pirx"),
-		}
-
-		for _, pattern := range candidates {
-			matches, _ := filepath.Glob(pattern)
-			if len(matches) > 0 {
-				pirxFile = matches[0]
-				break
-			}
-		}
-	}
-
-	if pirxFile == "" {
-		fmt.Fprintf(os.Stderr, "Error: could not find test file for '%s'\n", testIdentifier)
+	pirxFile, err := findPirxFile(tests, testsDir, testIdentifier)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 

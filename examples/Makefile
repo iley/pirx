@@ -1,4 +1,4 @@
-EXAMPLES=hello.pirx factorial.pirx fizzbuzz.pirx
+EXAMPLES=hello.pirx factorial.pirx fizzbuzz.pirx extern.pirx
 ASSEMBLY_FILES=$(EXAMPLES:.pirx=.s)
 OBJ_FILES=$(EXAMPLES:.pirx=.o)
 BIN_FILES=$(EXAMPLES:.pirx=)

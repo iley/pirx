@@ -1,0 +1,6 @@
+extern func exit(status: int);
+
+func main(): int {
+  exit(42);
+  return 0;
+}

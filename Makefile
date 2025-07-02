@@ -1,4 +1,4 @@
-default: pirx
+default: pirx testrunner
 
 pirx: always
 	go build -o pirx ./cmd/pirx

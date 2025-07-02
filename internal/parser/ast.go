@@ -18,8 +18,9 @@ type AstNode interface {
 }
 
 type Program struct {
-	Loc       Location
-	Functions []Function
+	Loc              Location
+	Functions        []Function
+	ExternFunctions  []ExternFunction
 }
 
 func (p *Program) GetLocation() Location {
@@ -29,6 +30,10 @@ func (p *Program) GetLocation() Location {
 func (p *Program) String() string {
 	var sb strings.Builder
 	sb.WriteString("(program")
+	for _, fn := range p.ExternFunctions {
+		sb.WriteString(" ")
+		sb.WriteString(fn.String())
+	}
 	for _, fn := range p.Functions {
 		sb.WriteString(" ")
 		sb.WriteString(fn.String())
@@ -65,6 +70,34 @@ func (f *Function) String() string {
 		sb.WriteString(f.ReturnType + " ")
 	}
 	sb.WriteString(f.Body.String())
+	sb.WriteString(")")
+	return sb.String()
+}
+
+type ExternFunction struct {
+	Loc        Location
+	Name       string
+	Args       []Arg
+	ReturnType string
+}
+
+func (f *ExternFunction) GetLocation() Location {
+	return f.Loc
+}
+
+func (f *ExternFunction) String() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("(extern func %s (", f.Name))
+	for i, arg := range f.Args {
+		sb.WriteString(arg.String())
+		if i != len(f.Args)-1 {
+			sb.WriteString(" ")
+		}
+	}
+	sb.WriteString(")")
+	if f.ReturnType != "" {
+		sb.WriteString(": " + f.ReturnType)
+	}
 	sb.WriteString(")")
 	return sb.String()
 }

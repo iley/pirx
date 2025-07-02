@@ -30,5 +30,17 @@ func GetFunctionTable(program *parser.Program) []Proto {
 		protos = append(protos, proto)
 	}
 
+	for _, fn := range program.ExternFunctions {
+		proto := Proto{
+			Name:       fn.Name,
+			Args:       []Arg{},
+			ReturnType: fn.ReturnType,
+		}
+		for _, p := range fn.Args {
+			proto.Args = append(proto.Args, Arg{p.Name, p.Type})
+		}
+		protos = append(protos, proto)
+	}
+
 	return protos
 }

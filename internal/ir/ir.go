@@ -3,6 +3,7 @@ package ir
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/iley/pirx/internal/util"
@@ -242,4 +243,70 @@ func (a Arg) String() string {
 		return fmt.Sprintf("\"%s\"", util.EscapeString(*a.LiteralString))
 	}
 	return "empty"
+}
+
+// Optimize runs IR optimizations on the given IR program.
+func Optimize(irp IrProgram) IrProgram {
+	irp = eliminateIneffectiveAssignments(irp)
+	return irp
+}
+
+// eliminateIneffectiveAssignments removes ineffective variable assignments.
+// An assingment is ineffective if either the variable is never used or it's not used before the next assignment happens.
+func eliminateIneffectiveAssignments(irp IrProgram) IrProgram {
+	res := IrProgram{
+		Functions: slices.Clone(irp.Functions),
+	}
+	for i := range res.Functions {
+		res.Functions[i].Ops = eliminateIneffectiveAssignmentOps(res.Functions[i].Ops)
+	}
+	return res
+}
+
+func eliminateIneffectiveAssignmentOps(ops []Op) []Op {
+	res := []Op{}
+	for i, op := range ops {
+		if !isIneffectiveAssignment(ops, i) {
+			res = append(res, op)
+		}
+	}
+	return res
+}
+
+func isIneffectiveAssignment(ops []Op, index int) bool {
+	first, ok := ops[index].(Assign)
+	if !ok {
+		return false // not an assignment
+	}
+
+	// Find the next assingment.
+	// If not found, default to end of the function.
+	nextIdx := len(ops)
+	for j := index + 1; j < len(ops); j++ {
+		if b, ok := ops[j].(Assign); ok && b.Target == first.Target {
+			nextIdx = j
+			break
+		}
+	}
+
+	for j := index + 1; j < nextIdx; j++ {
+		if _, ok := ops[j].(Jump); ok {
+			// It's a jump, all bets are off.
+			return false
+		}
+
+		if _, ok := ops[j].(JumpUnless); ok {
+			// It's a jump, all bets are off.
+			return false
+		}
+
+		args := ops[j].GetArgs()
+		for _, arg := range args {
+			if arg.Variable != "" && arg.Variable == first.Target {
+				return false
+			}
+		}
+	}
+
+	return true
 }

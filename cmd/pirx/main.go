@@ -12,7 +12,6 @@ import (
 	"github.com/iley/pirx/internal/codegen"
 	"github.com/iley/pirx/internal/ir"
 	"github.com/iley/pirx/internal/lexer"
-	"github.com/iley/pirx/internal/opt"
 	"github.com/iley/pirx/internal/parser"
 )
 
@@ -78,7 +77,7 @@ func main() {
 	programIr := ir.Generate(ast)
 
 	if !*noOptimize {
-		programIr = opt.Run(programIr)
+		programIr = ir.Optimize(programIr)
 	}
 
 	if *targetString == "ir" {

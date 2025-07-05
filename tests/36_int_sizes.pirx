@@ -1,8 +1,13 @@
 func main(): int {
-  var x: int32;
-  var y: int32;
-  x = 2147483647; // 2^31-1
-  y = x + 1;
-  printf("x = %d y = %d\n", x, y);
+  var int32val: int32;
+  var int64val: int32;
+
+  int32val = 2147483647; // 2^31-1
+  int64val = 2147483647; // 2^31-1
+
+  int32val = int32val + 1;
+  int64val = int64val + 1;
+
+  printf("int32val = %ld int64val = %lld\n", int32val, int64val);
   return 0;
 }

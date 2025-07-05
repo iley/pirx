@@ -39,11 +39,14 @@ type Op interface {
 	// GetArgs returns all Arg's used in the op.
 	// Used e.g. when we need to find all string literals used in a program.
 	GetArgs() []Arg
+	// Returns size of the operand(s) in bytes.
+	GetSize() int
 }
 
 type Assign struct {
 	Target string
 	Value  Arg
+	Size   int
 }
 
 func (a Assign) String() string {
@@ -58,10 +61,15 @@ func (a Assign) GetArgs() []Arg {
 	return []Arg{a.Value}
 }
 
+func (a Assign) GetSize() int {
+	return a.Size
+}
+
 type UnaryOp struct {
 	Result    string
 	Value     Arg
 	Operation string
+	Size      int
 }
 
 func (o UnaryOp) String() string {
@@ -75,11 +83,16 @@ func (o UnaryOp) GetArgs() []Arg {
 	return []Arg{o.Value}
 }
 
+func (o UnaryOp) GetSize() int {
+	return o.Size
+}
+
 type BinaryOp struct {
 	Result    string
 	Left      Arg
 	Right     Arg
 	Operation string
+	Size      int
 }
 
 func (o BinaryOp) String() string {
@@ -92,6 +105,10 @@ func (o BinaryOp) GetTarget() string {
 
 func (o BinaryOp) GetArgs() []Arg {
 	return []Arg{o.Left, o.Right}
+}
+
+func (o BinaryOp) GetSize() int {
+	return o.Size
 }
 
 type Call struct {
@@ -117,8 +134,13 @@ func (c Call) GetArgs() []Arg {
 	return c.Args
 }
 
+func (c Call) GetSize() int {
+	return 0
+}
+
 type Return struct {
 	Value *Arg // nil for bare returns
+	Size  int
 }
 
 func (r Return) String() string {
@@ -140,6 +162,10 @@ func (r Return) GetArgs() []Arg {
 	}
 }
 
+func (r Return) GetSize() int {
+	return r.Size
+}
+
 type Jump struct {
 	Goto string
 }
@@ -154,6 +180,10 @@ func (j Jump) GetTarget() string {
 
 func (j Jump) GetArgs() []Arg {
 	return []Arg{}
+}
+
+func (j Jump) GetSize() int {
+	return 0
 }
 
 type JumpUnless struct {
@@ -173,6 +203,10 @@ func (j JumpUnless) GetArgs() []Arg {
 	return []Arg{j.Condition}
 }
 
+func (j JumpUnless) GetSize() int {
+	return 0
+}
+
 type Anchor struct {
 	Label string
 }
@@ -187,6 +221,10 @@ func (a Anchor) GetTarget() string {
 
 func (a Anchor) GetArgs() []Arg {
 	return []Arg{}
+}
+
+func (a Anchor) GetSize() int {
+	return 0
 }
 
 type Arg struct {

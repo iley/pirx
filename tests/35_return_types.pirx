@@ -9,3 +9,7 @@ func bar(): int {
 func baz() {
   return 0;
 }
+
+func qux(): int {
+  // no return
+}

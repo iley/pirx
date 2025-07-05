@@ -12,6 +12,7 @@ type TypeChecker struct {
 	declaredFuncs map[string]functions.Proto
 	errors        []error
 	currentFunc   functions.Proto
+	hasReturn     bool
 }
 
 func NewTypeChecker() *TypeChecker {
@@ -42,12 +43,19 @@ func (c *TypeChecker) CheckProgram(program *parser.Program) {
 
 func (c *TypeChecker) CheckFunction(fn parser.Function) {
 	c.currentFunc = c.declaredFuncs[fn.Name]
+	c.hasReturn = false
 	c.declaredVars = make(map[string]string)
+
 	for _, arg := range fn.Args {
 		c.declaredVars[arg.Name] = arg.Type
 	}
 
 	c.CheckBlock(&fn.Body)
+
+	// TODO: Check that each possible execution path ends with a return.
+	if c.currentFunc.ReturnType != "" && !c.hasReturn {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s with return type %s must contain a return operator", fn.Loc.Line, fn.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType))
+	}
 }
 
 func (c *TypeChecker) CheckBlock(block *parser.Block) {
@@ -174,6 +182,8 @@ func (c *TypeChecker) CheckVariableReference(ref *parser.VariableReference) stri
 }
 
 func (c *TypeChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
+	c.hasReturn = true
+
 	if stmt.Value == nil && c.currentFunc.ReturnType != "" {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s should return a value of type %s but no value was provided",
 			stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType,

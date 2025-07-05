@@ -7,6 +7,19 @@ import (
 	"github.com/iley/pirx/internal/parser"
 )
 
+const (
+	INTLIT = "int literal"  // pseudo-type representing an untyped integer literal
+)
+
+var (
+	supportedTypes = map[string]struct{}{
+		"int": {},
+		"bool": {},
+		"string": {},
+		"int32": {},
+	}
+)
+
 type TypeChecker struct {
 	declaredVars  map[string]string
 	declaredFuncs map[string]functions.Proto
@@ -106,7 +119,7 @@ func (c *TypeChecker) CheckLiteral(lit *parser.Literal) string {
 	if lit.StringValue != nil {
 		return "string"
 	} else if lit.IntValue != nil {
-		return "int"
+		return INTLIT
 	} else if lit.BoolValue != nil {
 		return "bool"
 	}
@@ -138,7 +151,7 @@ func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) string {
 		}
 
 		expectedArgType := proto.Args[i].Typ
-		if actualArgType != expectedArgType {
+		if actualArgType != expectedArgType && !isConvertableTo(actualArgType, expectedArgType) {
 			c.errors = append(c.errors, fmt.Errorf("%d:%d: argument #%d of function %s has wrong type: expected %s but got %s",
 				call.Loc.Line, call.Loc.Col, i+1, call.FunctionName, expectedArgType, actualArgType))
 		}
@@ -159,7 +172,7 @@ func (c *TypeChecker) CheckAssignment(assignment *parser.Assignment) string {
 	}
 
 	valueType := c.CheckExpression(assignment.Value)
-	if valueType != varType {
+	if valueType != varType && !isConvertableTo(valueType, varType) {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: cannot assign value of type %s to variable %s of type %s",
 			assignment.Loc.Line,
 			assignment.Loc.Col,
@@ -196,7 +209,7 @@ func (c *TypeChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
 			c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s does not have a return type but a value was provided",
 				stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name,
 			))
-		} else if typ != c.currentFunc.ReturnType {
+		} else if typ != c.currentFunc.ReturnType && !isConvertableTo(typ, c.currentFunc.ReturnType) {
 			c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s has return type %s but a value of type %s was provided",
 				stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType, typ,
 			))
@@ -270,23 +283,39 @@ func (c *TypeChecker) CheckContinueStatement(stmt *parser.ContinueStatement) {
 }
 
 func binaryOperationResult(op, left, right string) (string, bool) {
-	if left != right {
+	if op == "==" || op == "!=" {
+		// Equality is supported for all types.
+		if left == right {
+			return "bool", true
+		} else if isIntegerType(left) && right == INTLIT {
+			return "bool", true
+		} else if isIntegerType(right) && left == INTLIT {
+			return "bool", true
+		}
 		return "", false
 	}
 
-	if op == "==" || op == "!=" {
-		// Equality is supported for all types.
-		return "bool", true
-	}
-
 	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" {
-		// These are (currently) supproted for integers only.
-		return "int", left == "int"
+		if isIntegerType(left) && isIntegerType(right) {
+			// TODO: Add support for auto-promotion.
+			// If both left and right are concrete types, they must match.
+			return left, left == right
+		} else if isIntegerType(left) && (isIntegerType(right) || right == INTLIT) {
+			// If one of the two is a literal, use the type of the other.
+			return left, true
+		} else if isIntegerType(right) && left == INTLIT {
+			// Same as above.
+			return right, true
+		} else if left == INTLIT && right == INTLIT {
+			// Two literals make a literal.
+			return INTLIT, true
+		}
+		return "", false
 	}
 
 	if op == "<" || op == ">" || op == "<=" || op == ">=" {
 		// These are (currently) supproted for integers only.
-		return "bool", left == "int"
+		return "bool", (isIntegerType(left) || left == INTLIT) && (isIntegerType(right) || right == INTLIT)
 	}
 
 	if op == "&&" || op == "||" {
@@ -304,5 +333,15 @@ func unaryOperationResult(op, val string) (string, bool) {
 }
 
 func isValidType(name string) bool {
-	return name == "int" || name == "string" || name == "bool"
+	_, ok := supportedTypes[name]
+	return ok
+}
+
+func isIntegerType(name string) bool {
+	// TODO: Add more numeric types.
+	return name == "int" || name == "int32"
+}
+
+func isConvertableTo(from, to string) bool {
+	return isIntegerType(to) && from == INTLIT
 }

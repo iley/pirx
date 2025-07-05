@@ -1,12 +1,12 @@
 11:2: cannot assign value of type string to variable x of type int
-12:5: binary operation + cannot be applied to values of types int and string
+12:5: binary operation + cannot be applied to values of types int literal and string
 15:3: cannot assign value of type int to variable s of type string
 16:3: cannot assign value of type int to variable s of type string
 18:3: argument #2 of function add has wrong type: expected int but got string
 19:3: argument #1 of function add has wrong type: expected int but got string
 21:3: unary operation ! cannot be applied to a value of type string
-24:3: cannot assign value of type int to variable flag of type bool
+24:3: cannot assign value of type int literal to variable flag of type bool
 25:3: cannot assign value of type string to variable flag of type bool
-27:3: expected an expression of type bool in if condition, got type int
+27:3: expected an expression of type bool in if condition, got type int literal
 31:3: expected an expression of type bool in while condition, got type string
 exit status 1

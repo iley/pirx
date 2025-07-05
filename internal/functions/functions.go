@@ -1,6 +1,6 @@
 package functions
 
-import "github.com/iley/pirx/internal/parser"
+import "github.com/iley/pirx/internal/ast"
 
 type Proto struct {
 	Name       string
@@ -14,7 +14,7 @@ type Arg struct {
 	Typ  string
 }
 
-func GetFunctionTable(program *parser.Program) []Proto {
+func GetFunctionTable(program *ast.Program) []Proto {
 	protos := []Proto{}
 	protos = append(protos, getBuiltins()...)
 

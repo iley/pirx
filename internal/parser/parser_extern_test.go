@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/lexer"
 )
 
@@ -11,19 +12,19 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected *Program
+		expected *ast.Program
 	}{
 		{
 			name: "simple extern function declaration",
 			src:  `extern func atoi(x: string): int;`,
-			expected: &Program{
-				Loc: Location{Line: 1, Col: 1},
-				Functions: []Function{},
-				ExternFunctions: []ExternFunction{
+			expected: &ast.Program{
+				Loc: ast.Location{Line: 1, Col: 1},
+				Functions: []ast.Function{},
+				ExternFunctions: []ast.ExternFunction{
 					{
-						Loc:        Location{Line: 1, Col: 1},
+						Loc:        ast.Location{Line: 1, Col: 1},
 						Name:       "atoi",
-						Args:       []Arg{{Name: "x", Type: "string"}},
+						Args:       []ast.Arg{{Name: "x", Type: "string"}},
 						ReturnType: "int",
 					},
 				},
@@ -32,12 +33,12 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		{
 			name: "extern function with no arguments",
 			src:  `extern func getpid(): int;`,
-			expected: &Program{
-				Functions: []Function{},
-				ExternFunctions: []ExternFunction{
+			expected: &ast.Program{
+				Functions: []ast.Function{},
+				ExternFunctions: []ast.ExternFunction{
 					{
 						Name:       "getpid",
-						Args:       []Arg{},
+						Args:       []ast.Arg{},
 						ReturnType: "int",
 					},
 				},
@@ -46,12 +47,12 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		{
 			name: "extern function with multiple arguments",
 			src:  `extern func strcmp(s1: string, s2: string): int;`,
-			expected: &Program{
-				Functions: []Function{},
-				ExternFunctions: []ExternFunction{
+			expected: &ast.Program{
+				Functions: []ast.Function{},
+				ExternFunctions: []ast.ExternFunction{
 					{
 						Name: "strcmp",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "s1", Type: "string"},
 							{Name: "s2", Type: "string"},
 						},
@@ -63,18 +64,18 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		{
 			name: "program with both extern and regular functions",
 			src:  `extern func printf(format: string): int; func main() {}`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{Statements: []Statement{}},
+						Args: []ast.Arg{},
+						Body: ast.Block{Statements: []ast.Statement{}},
 					},
 				},
-				ExternFunctions: []ExternFunction{
+				ExternFunctions: []ast.ExternFunction{
 					{
 						Name: "printf",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "format", Type: "string"},
 						},
 						ReturnType: "int",
@@ -85,19 +86,19 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		{
 			name: "multiple extern functions",
 			src:  `extern func malloc(size: int): int; extern func free(ptr: int): int;`,
-			expected: &Program{
-				Functions: []Function{},
-				ExternFunctions: []ExternFunction{
+			expected: &ast.Program{
+				Functions: []ast.Function{},
+				ExternFunctions: []ast.ExternFunction{
 					{
 						Name: "malloc",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "size", Type: "int"},
 						},
 						ReturnType: "int",
 					},
 					{
 						Name: "free",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "ptr", Type: "int"},
 						},
 						ReturnType: "int",
@@ -108,12 +109,12 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		{
 			name: "extern function with string return type",
 			src:  `extern func getenv(name: string): string;`,
-			expected: &Program{
-				Functions: []Function{},
-				ExternFunctions: []ExternFunction{
+			expected: &ast.Program{
+				Functions: []ast.Function{},
+				ExternFunctions: []ast.ExternFunction{
 					{
 						Name: "getenv",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "name", Type: "string"},
 						},
 						ReturnType: "string",
@@ -124,12 +125,12 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		{
 			name: "void extern function (no return type)",
 			src:  `extern func exit(status: int);`,
-			expected: &Program{
-				Functions: []Function{},
-				ExternFunctions: []ExternFunction{
+			expected: &ast.Program{
+				Functions: []ast.Function{},
+				ExternFunctions: []ast.ExternFunction{
 					{
 						Name: "exit",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "status", Type: "int"},
 						},
 						ReturnType: "",
@@ -140,12 +141,12 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		{
 			name: "void extern function with no arguments",
 			src:  `extern func abort();`,
-			expected: &Program{
-				Functions: []Function{},
-				ExternFunctions: []ExternFunction{
+			expected: &ast.Program{
+				Functions: []ast.Function{},
+				ExternFunctions: []ast.ExternFunction{
 					{
 						Name:       "abort",
-						Args:       []Arg{},
+						Args:       []ast.Arg{},
 						ReturnType: "",
 					},
 				},
@@ -154,19 +155,19 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		{
 			name: "mixed void and non-void extern functions",
 			src:  `extern func exit(status: int); extern func malloc(size: int): int;`,
-			expected: &Program{
-				Functions: []Function{},
-				ExternFunctions: []ExternFunction{
+			expected: &ast.Program{
+				Functions: []ast.Function{},
+				ExternFunctions: []ast.ExternFunction{
 					{
 						Name: "exit",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "status", Type: "int"},
 						},
 						ReturnType: "",
 					},
 					{
 						Name: "malloc",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "size", Type: "int"},
 						},
 						ReturnType: "int",

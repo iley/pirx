@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/lexer"
 )
 
-func locationFromLexeme(lex lexer.Lexeme) Location {
-	return Location{Line: lex.Line, Col: lex.Col}
+func locationFromLexeme(lex lexer.Lexeme) ast.Location {
+	return ast.Location{Line: lex.Line, Col: lex.Col}
 }
 
 var (
@@ -52,16 +53,16 @@ func (p *Parser) peek() (lexer.Lexeme, error) {
 	return p.lexemes[p.pos], nil
 }
 
-func (p *Parser) ParseProgram() (*Program, error) {
+func (p *Parser) ParseProgram() (*ast.Program, error) {
 	lex, err := p.peek()
 	if err != nil {
 		return nil, err
 	}
 	programLoc := locationFromLexeme(lex)
 
-	functions := []Function{}
-	externFunctions := []ExternFunction{}
-	structDeclarations := []StructDeclaration{}
+	functions := []ast.Function{}
+	externFunctions := []ast.ExternFunction{}
+	structDeclarations := []ast.StructDeclaration{}
 
 	for {
 		lex, err := p.peek()
@@ -95,53 +96,53 @@ func (p *Parser) ParseProgram() (*Program, error) {
 		}
 	}
 
-	return &Program{Loc: programLoc, Functions: functions, ExternFunctions: externFunctions, StructDeclarations: structDeclarations}, nil
+	return &ast.Program{Loc: programLoc, Functions: functions, ExternFunctions: externFunctions, StructDeclarations: structDeclarations}, nil
 }
 
-func (p *Parser) parseFunction() (Function, error) {
+func (p *Parser) parseFunction() (ast.Function, error) {
 	lex, err := p.consume()
 	if err != nil {
-		return Function{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsKeyword("func") {
-		return Function{}, fmt.Errorf("%d:%d: expected 'func', got %v", lex.Line, lex.Col, lex)
+		return ast.Function{}, fmt.Errorf("%d:%d: expected 'func', got %v", lex.Line, lex.Col, lex)
 	}
 	funcLoc := locationFromLexeme(lex)
 	// function name
 	lex, err = p.consume()
 	if err != nil {
-		return Function{}, err
+		return ast.Function{}, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return Function{}, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
+		return ast.Function{}, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 	// '('
 	lex, err = p.consume()
 	if err != nil {
-		return Function{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsPunctuation("(") {
-		return Function{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
+		return ast.Function{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
 	args, err := p.parseArguments()
 	if err != nil {
-		return Function{}, err
+		return ast.Function{}, err
 	}
 
 	// ')'
 	lex, err = p.consume()
 	if err != nil {
-		return Function{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsPunctuation(")") {
-		return Function{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
+		return ast.Function{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
 	}
 
 	lex, err = p.peek()
 	if err != nil {
-		return Function{}, err
+		return ast.Function{}, err
 	}
 
 	returnType := ""
@@ -153,11 +154,11 @@ func (p *Parser) parseFunction() (Function, error) {
 		// TODO: Support composite types.
 		lex, err = p.consume()
 		if err != nil {
-			return Function{}, err
+			return ast.Function{}, err
 		}
 
 		if lex.Type != lexer.LEX_IDENT {
-			return Function{}, fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
+			return ast.Function{}, fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
 		}
 		returnType = lex.Str
 	}
@@ -165,18 +166,18 @@ func (p *Parser) parseFunction() (Function, error) {
 	// '{'
 	lex, err = p.consume()
 	if err != nil {
-		return Function{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsPunctuation("{") {
-		return Function{}, fmt.Errorf("%d:%d: expected '{', got %v", lex.Line, lex.Col, lex)
+		return ast.Function{}, fmt.Errorf("%d:%d: expected '{', got %v", lex.Line, lex.Col, lex)
 	}
 
 	body, err := p.parseBlock()
 	if err != nil {
-		return Function{}, err
+		return ast.Function{}, err
 	}
 
-	return Function{
+	return ast.Function{
 		Loc:        funcLoc,
 		Name:       name,
 		Args:       args,
@@ -185,63 +186,63 @@ func (p *Parser) parseFunction() (Function, error) {
 	}, nil
 }
 
-func (p *Parser) parseExternFunction() (ExternFunction, error) {
+func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
 	// consume 'extern'
 	lex, err := p.consume()
 	if err != nil {
-		return ExternFunction{}, err
+		return ast.ExternFunction{}, err
 	}
 	if !lex.IsKeyword("extern") {
-		return ExternFunction{}, fmt.Errorf("%d:%d: expected 'extern', got %v", lex.Line, lex.Col, lex)
+		return ast.ExternFunction{}, fmt.Errorf("%d:%d: expected 'extern', got %v", lex.Line, lex.Col, lex)
 	}
 	externLoc := locationFromLexeme(lex)
 
 	// consume 'func'
 	lex, err = p.consume()
 	if err != nil {
-		return ExternFunction{}, err
+		return ast.ExternFunction{}, err
 	}
 	if !lex.IsKeyword("func") {
-		return ExternFunction{}, fmt.Errorf("%d:%d: expected 'func' after 'extern', got %v", lex.Line, lex.Col, lex)
+		return ast.ExternFunction{}, fmt.Errorf("%d:%d: expected 'func' after 'extern', got %v", lex.Line, lex.Col, lex)
 	}
 
 	// function name
 	lex, err = p.consume()
 	if err != nil {
-		return ExternFunction{}, err
+		return ast.ExternFunction{}, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return ExternFunction{}, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
+		return ast.ExternFunction{}, fmt.Errorf("%d:%d: expected function name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 
 	// '('
 	lex, err = p.consume()
 	if err != nil {
-		return ExternFunction{}, err
+		return ast.ExternFunction{}, err
 	}
 	if !lex.IsPunctuation("(") {
-		return ExternFunction{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
+		return ast.ExternFunction{}, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
 	args, err := p.parseArguments()
 	if err != nil {
-		return ExternFunction{}, err
+		return ast.ExternFunction{}, err
 	}
 
 	// ')'
 	lex, err = p.consume()
 	if err != nil {
-		return ExternFunction{}, err
+		return ast.ExternFunction{}, err
 	}
 	if !lex.IsPunctuation(")") {
-		return ExternFunction{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
+		return ast.ExternFunction{}, fmt.Errorf("%d:%d: expected ')', got %v", lex.Line, lex.Col, lex)
 	}
 
 	// Return type is optional for extern functions (void functions)
 	lex, err = p.peek()
 	if err != nil {
-		return ExternFunction{}, err
+		return ast.ExternFunction{}, err
 	}
 	
 	returnType := ""
@@ -252,10 +253,10 @@ func (p *Parser) parseExternFunction() (ExternFunction, error) {
 		// return type
 		lex, err = p.consume()
 		if err != nil {
-			return ExternFunction{}, err
+			return ast.ExternFunction{}, err
 		}
 		if lex.Type != lexer.LEX_IDENT {
-			return ExternFunction{}, fmt.Errorf("%d:%d: expected return type, got %v", lex.Line, lex.Col, lex)
+			return ast.ExternFunction{}, fmt.Errorf("%d:%d: expected return type, got %v", lex.Line, lex.Col, lex)
 		}
 		returnType = lex.Str
 	}
@@ -263,13 +264,13 @@ func (p *Parser) parseExternFunction() (ExternFunction, error) {
 	// Require semicolon after extern function declaration
 	lex, err = p.consume()
 	if err != nil {
-		return ExternFunction{}, err
+		return ast.ExternFunction{}, err
 	}
 	if !lex.IsPunctuation(";") {
-		return ExternFunction{}, fmt.Errorf("%d:%d: expected ';' after extern function declaration, got %v", lex.Line, lex.Col, lex)
+		return ast.ExternFunction{}, fmt.Errorf("%d:%d: expected ';' after extern function declaration, got %v", lex.Line, lex.Col, lex)
 	}
 
-	return ExternFunction{
+	return ast.ExternFunction{
 		Loc:        externLoc,
 		Name:       name,
 		Args:       args,
@@ -277,8 +278,8 @@ func (p *Parser) parseExternFunction() (ExternFunction, error) {
 	}, nil
 }
 
-func (p *Parser) parseArguments() ([]Arg, error) {
-	args := []Arg{}
+func (p *Parser) parseArguments() ([]ast.Arg, error) {
+	args := []ast.Arg{}
 
 	lex, err := p.peek()
 	if err != nil {
@@ -319,7 +320,7 @@ func (p *Parser) parseArguments() ([]Arg, error) {
 		}
 		typeStr := lex.Str
 
-		args = append(args, Arg{Loc: argLoc, Name: name, Type: typeStr})
+		args = append(args, ast.Arg{Loc: argLoc, Name: name, Type: typeStr})
 
 		lex, err = p.peek()
 		if err != nil {
@@ -342,14 +343,14 @@ func (p *Parser) parseArguments() ([]Arg, error) {
 	return args, nil
 }
 
-func (p *Parser) parseBlock() (*Block, error) {
+func (p *Parser) parseBlock() (*ast.Block, error) {
 	lex, err := p.peek()
 	if err != nil {
 		return nil, err
 	}
 	blockLoc := locationFromLexeme(lex)
 
-	statements := []Statement{}
+	statements := []ast.Statement{}
 
 	for {
 		lex, err := p.peek()
@@ -387,24 +388,24 @@ func (p *Parser) parseBlock() (*Block, error) {
 		return nil, err
 	}
 
-	return &Block{Loc: blockLoc, Statements: statements}, nil
+	return &ast.Block{Loc: blockLoc, Statements: statements}, nil
 }
 
 // statementRequiresSemicolon returns true if the statement requires a semicolon after it
-func statementRequiresSemicolon(stmt Statement) bool {
+func statementRequiresSemicolon(stmt ast.Statement) bool {
 	// If statements don't require semicolons since they end with a block
-	if _, ok := stmt.(*IfStatement); ok {
+	if _, ok := stmt.(*ast.IfStatement); ok {
 		return false
 	}
 	// While statements don't require semicolons since they end with a block
-	if _, ok := stmt.(*WhileStatement); ok {
+	if _, ok := stmt.(*ast.WhileStatement); ok {
 		return false
 	}
 	// All other statements require semicolons
 	return true
 }
 
-func (p *Parser) parseStatement() (Statement, error) {
+func (p *Parser) parseStatement() (ast.Statement, error) {
 	lex, err := p.peek()
 	if err != nil {
 		return nil, err
@@ -429,7 +430,7 @@ func (p *Parser) parseStatement() (Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &BreakStatement{Loc: locationFromLexeme(breakLex)}, nil
+		return &ast.BreakStatement{Loc: locationFromLexeme(breakLex)}, nil
 	}
 	// TODO: Validate that continue is only used inside a loop (likely a separate AST pass).
 	if lex.IsKeyword("continue") {
@@ -437,7 +438,7 @@ func (p *Parser) parseStatement() (Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &ContinueStatement{Loc: locationFromLexeme(continueLex)}, nil
+		return &ast.ContinueStatement{Loc: locationFromLexeme(continueLex)}, nil
 	}
 	if lex.IsKeyword("if") {
 		ifStmt, err := p.parseIfStatement()
@@ -457,14 +458,14 @@ func (p *Parser) parseStatement() (Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ExpressionStatement{Loc: expression.GetLocation(), Expression: expression}, nil
+	return &ast.ExpressionStatement{Loc: expression.GetLocation(), Expression: expression}, nil
 }
 
-func (p *Parser) parseExpression() (Expression, error) {
+func (p *Parser) parseExpression() (ast.Expression, error) {
 	return p.parseExpressionWithPrecedence(0)
 }
 
-func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, error) {
+func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expression, error) {
 	// Parse the left operand
 	left, err := p.parsePrimaryExpression()
 	if err != nil {
@@ -504,7 +505,7 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (Expression, e
 			return nil, err
 		}
 
-		left = &BinaryOperation{
+		left = &ast.BinaryOperation{
 			Loc:      operatorLoc,
 			Left:     left,
 			Operator: operator,
@@ -538,7 +539,7 @@ func getOperatorPrecedence(op string) int {
 	}
 }
 
-func (p *Parser) parsePrimaryExpression() (Expression, error) {
+func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 	lex, err := p.peek()
 	if err != nil {
 		return nil, err
@@ -547,10 +548,10 @@ func (p *Parser) parsePrimaryExpression() (Expression, error) {
 	case lexer.LEX_KEYWORD:
 		if lex.IsKeyword("true") {
 			p.consume()
-			return NewBoolLiteral(true), nil
+			return ast.NewBoolLiteral(true), nil
 		} else if lex.IsKeyword("false") {
 			p.consume()
-			return NewBoolLiteral(false), nil
+			return ast.NewBoolLiteral(false), nil
 		}
 		return nil, fmt.Errorf("%d:%d: unexpected keyword %s when parsing a primary expression", lex.Line, lex.Col, lex.Str)
 	case lexer.LEX_IDENT:
@@ -576,7 +577,7 @@ func (p *Parser) parsePrimaryExpression() (Expression, error) {
 	}
 }
 
-func (p *Parser) parseFunctionCall() (Expression, error) {
+func (p *Parser) parseFunctionCall() (ast.Expression, error) {
 	// function name
 	lex, err := p.consume()
 	if err != nil {
@@ -597,7 +598,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 		return nil, fmt.Errorf("%d:%d: expected '(', got %v", lex.Line, lex.Col, lex)
 	}
 
-	args := []Expression{}
+	args := []ast.Expression{}
 	_, variadic := VariadicFuncs[name]
 
 	// check for ')'
@@ -607,7 +608,7 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 	}
 	if lex.IsPunctuation(")") {
 		p.consume() // consume ')'
-		return &FunctionCall{Loc: callLoc, FunctionName: name, Args: args, Variadic: variadic}, nil
+		return &ast.FunctionCall{Loc: callLoc, FunctionName: name, Args: args, Variadic: variadic}, nil
 	}
 
 	for {
@@ -640,10 +641,10 @@ func (p *Parser) parseFunctionCall() (Expression, error) {
 		return nil, err
 	}
 
-	return &FunctionCall{Loc: callLoc, FunctionName: name, Args: args, Variadic: variadic}, nil
+	return &ast.FunctionCall{Loc: callLoc, FunctionName: name, Args: args, Variadic: variadic}, nil
 }
 
-func (p *Parser) parseIntegerLiteral() (Expression, error) {
+func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 	lex, err := p.consume()
 	if err != nil {
 		return nil, err
@@ -653,21 +654,21 @@ func (p *Parser) parseIntegerLiteral() (Expression, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
 	}
-	literal := NewIntLiteral(int64(val))
+	literal := ast.NewIntLiteral(int64(val))
 	literal.Loc = litLoc
 	return literal, nil
 }
 
-func (p *Parser) parseStringLiteral() (Expression, error) {
+func (p *Parser) parseStringLiteral() (ast.Expression, error) {
 	lex, err := p.consume()
 	if err != nil {
 		return nil, err
 	}
 	litLoc := locationFromLexeme(lex)
-	return &Literal{Loc: litLoc, StringValue: &lex.Str}, nil
+	return &ast.Literal{Loc: litLoc, StringValue: &lex.Str}, nil
 }
 
-func (p *Parser) parseParenthesizedExpression() (Expression, error) {
+func (p *Parser) parseParenthesizedExpression() (ast.Expression, error) {
 	// consume '('
 	lex, err := p.consume()
 	if err != nil {
@@ -695,7 +696,7 @@ func (p *Parser) parseParenthesizedExpression() (Expression, error) {
 	return expr, nil
 }
 
-func (p *Parser) parseUnaryExpression() (Expression, error) {
+func (p *Parser) parseUnaryExpression() (ast.Expression, error) {
 	// consume the operator
 	lex, err := p.consume()
 	if err != nil {
@@ -712,14 +713,14 @@ func (p *Parser) parseUnaryExpression() (Expression, error) {
 		return nil, err
 	}
 
-	return &UnaryOperation{
+	return &ast.UnaryOperation{
 		Loc:      unaryLoc,
 		Operator: lex.Str,
 		Operand:  operand,
 	}, nil
 }
 
-func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
+func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 	// consume 'var'
 	varLex, err := p.consume()
 	if err != nil {
@@ -757,14 +758,14 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 	}
 	typeStr := lex.Str
 
-	return &VariableDeclaration{
+	return &ast.VariableDeclaration{
 		Loc:  varLoc,
 		Name: name,
 		Type: typeStr,
 	}, nil
 }
 
-func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
+func (p *Parser) parseReturnStatement() (*ast.ReturnStatement, error) {
 	// consume 'return'
 	retLex, err := p.consume()
 	if err != nil {
@@ -780,7 +781,7 @@ func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
 
 	// If the next token is a semicolon, this is a return without a value
 	if lex.IsPunctuation(";") {
-		return &ReturnStatement{Loc: retLoc, Value: nil}, nil
+		return &ast.ReturnStatement{Loc: retLoc, Value: nil}, nil
 	}
 
 	// Otherwise, parse the return value expression
@@ -789,10 +790,10 @@ func (p *Parser) parseReturnStatement() (*ReturnStatement, error) {
 		return nil, err
 	}
 
-	return &ReturnStatement{Loc: retLoc, Value: expr}, nil
+	return &ast.ReturnStatement{Loc: retLoc, Value: expr}, nil
 }
 
-func (p *Parser) parseIdentifierExpression() (Expression, error) {
+func (p *Parser) parseIdentifierExpression() (ast.Expression, error) {
 	// Look ahead to see what follows the identifier
 	if p.pos+1 < len(p.lexemes) {
 		nextLex := p.lexemes[p.pos+1]
@@ -827,7 +828,7 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 	return p.parseVariableReference()
 }
 
-func (p *Parser) parseAssignment() (Expression, error) {
+func (p *Parser) parseAssignment() (ast.Expression, error) {
 	// variable name
 	lex, err := p.consume()
 	if err != nil {
@@ -854,14 +855,14 @@ func (p *Parser) parseAssignment() (Expression, error) {
 		return nil, err
 	}
 
-	return &Assignment{
+	return &ast.Assignment{
 		Loc:          assignLoc,
 		VariableName: varName,
 		Value:        value,
 	}, nil
 }
 
-func (p *Parser) parseVariableReference() (Expression, error) {
+func (p *Parser) parseVariableReference() (ast.Expression, error) {
 	// variable name
 	lex, err := p.consume()
 	if err != nil {
@@ -872,13 +873,13 @@ func (p *Parser) parseVariableReference() (Expression, error) {
 	}
 	varLoc := locationFromLexeme(lex)
 
-	return &VariableReference{
+	return &ast.VariableReference{
 		Loc:  varLoc,
 		Name: lex.Str,
 	}, nil
 }
 
-func (p *Parser) parseIfStatement() (*IfStatement, error) {
+func (p *Parser) parseIfStatement() (*ast.IfStatement, error) {
 	// consume 'if'
 	ifLex, err := p.consume()
 	if err != nil {
@@ -907,7 +908,7 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 	}
 
 	// check for optional else clause
-	var elseBlock *Block
+	var elseBlock *ast.Block
 	lex, err = p.peek()
 	if err != nil {
 		return nil, err
@@ -931,9 +932,9 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 				return nil, err
 			}
 
-			elseBlock = &Block{
+			elseBlock = &ast.Block{
 				Loc: locationFromLexeme(lex),
-				Statements: []Statement{
+				Statements: []ast.Statement{
 					nestedIf,
 				},
 			}
@@ -954,7 +955,7 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 		}
 	}
 
-	return &IfStatement{
+	return &ast.IfStatement{
 		Loc:       ifLoc,
 		Condition: condition,
 		ThenBlock: *thenBlock,
@@ -962,7 +963,7 @@ func (p *Parser) parseIfStatement() (*IfStatement, error) {
 	}, nil
 }
 
-func (p *Parser) parseWhileStatement() (*WhileStatement, error) {
+func (p *Parser) parseWhileStatement() (*ast.WhileStatement, error) {
 	// consume 'while'
 	whileLex, err := p.consume()
 	if err != nil {
@@ -990,46 +991,46 @@ func (p *Parser) parseWhileStatement() (*WhileStatement, error) {
 		return nil, err
 	}
 
-	return &WhileStatement{
+	return &ast.WhileStatement{
 		Loc:       whileLoc,
 		Condition: condition,
 		Body:      *body,
 	}, nil
 }
 
-func (p *Parser) parseStructDeclaration() (StructDeclaration, error) {
+func (p *Parser) parseStructDeclaration() (ast.StructDeclaration, error) {
 	// consume 'struct'
 	structLex, err := p.consume()
 	if err != nil {
-		return StructDeclaration{}, err
+		return ast.StructDeclaration{}, err
 	}
 	structLoc := locationFromLexeme(structLex)
 
 	// struct name
 	lex, err := p.consume()
 	if err != nil {
-		return StructDeclaration{}, err
+		return ast.StructDeclaration{}, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return StructDeclaration{}, fmt.Errorf("%d:%d: expected struct name, got %v", lex.Line, lex.Col, lex)
+		return ast.StructDeclaration{}, fmt.Errorf("%d:%d: expected struct name, got %v", lex.Line, lex.Col, lex)
 	}
 	name := lex.Str
 
 	// '{'
 	lex, err = p.consume()
 	if err != nil {
-		return StructDeclaration{}, err
+		return ast.StructDeclaration{}, err
 	}
 	if !lex.IsPunctuation("{") {
-		return StructDeclaration{}, fmt.Errorf("%d:%d: expected '{' after struct name, got %v", lex.Line, lex.Col, lex)
+		return ast.StructDeclaration{}, fmt.Errorf("%d:%d: expected '{' after struct name, got %v", lex.Line, lex.Col, lex)
 	}
 
 	// parse fields
-	fields := []StructField{}
+	fields := []ast.StructField{}
 	for {
 		lex, err := p.peek()
 		if err != nil {
-			return StructDeclaration{}, err
+			return ast.StructDeclaration{}, err
 		}
 		if lex.IsPunctuation("}") {
 			break
@@ -1038,10 +1039,10 @@ func (p *Parser) parseStructDeclaration() (StructDeclaration, error) {
 		// field name
 		fieldLex, err := p.consume()
 		if err != nil {
-			return StructDeclaration{}, err
+			return ast.StructDeclaration{}, err
 		}
 		if fieldLex.Type != lexer.LEX_IDENT {
-			return StructDeclaration{}, fmt.Errorf("%d:%d: expected field name, got %v", fieldLex.Line, fieldLex.Col, fieldLex)
+			return ast.StructDeclaration{}, fmt.Errorf("%d:%d: expected field name, got %v", fieldLex.Line, fieldLex.Col, fieldLex)
 		}
 		fieldLoc := locationFromLexeme(fieldLex)
 		fieldName := fieldLex.Str
@@ -1049,32 +1050,32 @@ func (p *Parser) parseStructDeclaration() (StructDeclaration, error) {
 		// ':'
 		lex, err = p.consume()
 		if err != nil {
-			return StructDeclaration{}, err
+			return ast.StructDeclaration{}, err
 		}
 		if !lex.IsPunctuation(":") {
-			return StructDeclaration{}, fmt.Errorf("%d:%d: expected ':' after field name, got %v", lex.Line, lex.Col, lex)
+			return ast.StructDeclaration{}, fmt.Errorf("%d:%d: expected ':' after field name, got %v", lex.Line, lex.Col, lex)
 		}
 
 		// field type
 		lex, err = p.consume()
 		if err != nil {
-			return StructDeclaration{}, err
+			return ast.StructDeclaration{}, err
 		}
 		if lex.Type != lexer.LEX_IDENT {
-			return StructDeclaration{}, fmt.Errorf("%d:%d: expected field type, got %v", lex.Line, lex.Col, lex)
+			return ast.StructDeclaration{}, fmt.Errorf("%d:%d: expected field type, got %v", lex.Line, lex.Col, lex)
 		}
 		fieldType := lex.Str
 
 		// ';'
 		lex, err = p.consume()
 		if err != nil {
-			return StructDeclaration{}, err
+			return ast.StructDeclaration{}, err
 		}
 		if !lex.IsPunctuation(";") {
-			return StructDeclaration{}, fmt.Errorf("%d:%d: expected ';' after field declaration, got %v", lex.Line, lex.Col, lex)
+			return ast.StructDeclaration{}, fmt.Errorf("%d:%d: expected ';' after field declaration, got %v", lex.Line, lex.Col, lex)
 		}
 
-		fields = append(fields, StructField{
+		fields = append(fields, ast.StructField{
 			Loc:  fieldLoc,
 			Name: fieldName,
 			Type: fieldType,
@@ -1084,10 +1085,10 @@ func (p *Parser) parseStructDeclaration() (StructDeclaration, error) {
 	// consume '}'
 	_, err = p.consume()
 	if err != nil {
-		return StructDeclaration{}, err
+		return ast.StructDeclaration{}, err
 	}
 
-	return StructDeclaration{
+	return ast.StructDeclaration{
 		Loc:    structLoc,
 		Name:   name,
 		Fields: fields,

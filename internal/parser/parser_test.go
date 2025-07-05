@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/lexer"
 )
 
@@ -74,19 +75,19 @@ func TestParseProgram(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected *Program
+		expected *ast.Program
 	}{
 		{
 			name: "trivial program",
 			src:  `func main() {}`,
-			expected: &Program{
-				Loc: Location{Line: 1, Col: 1},
-				Functions: []Function{
+			expected: &ast.Program{
+				Loc: ast.Location{Line: 1, Col: 1},
+				Functions: []ast.Function{
 					{
-						Loc:  Location{Line: 1, Col: 1},
+						Loc:  ast.Location{Line: 1, Col: 1},
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{Loc: Location{Line: 1, Col: 14}, Statements: []Statement{}},
+						Args: []ast.Arg{},
+						Body: ast.Block{Loc: ast.Location{Line: 1, Col: 14}, Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -94,17 +95,17 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with var declaration",
 			src:  `func main() { var x: int; }`,
-			expected: &Program{
-				Loc: Location{Line: 1, Col: 1},
-				Functions: []Function{
+			expected: &ast.Program{
+				Loc: ast.Location{Line: 1, Col: 1},
+				Functions: []ast.Function{
 					{
-						Loc:  Location{Line: 1, Col: 1},
+						Loc:  ast.Location{Line: 1, Col: 1},
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Loc: Location{Line: 1, Col: 15},
-							Statements: []Statement{
-								&VariableDeclaration{Loc: Location{Line: 1, Col: 15}, Name: "x", Type: "int"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Loc: ast.Location{Line: 1, Col: 15},
+							Statements: []ast.Statement{
+								&ast.VariableDeclaration{Loc: ast.Location{Line: 1, Col: 15}, Name: "x", Type: "int"},
 							},
 						},
 					},
@@ -114,15 +115,15 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with arguments",
 			src:  `func add(a: int, b: int) {}`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "add",
-						Args: []Arg{
+						Args: []ast.Arg{
 							{Name: "a", Type: "int"},
 							{Name: "b", Type: "int"},
 						},
-						Body: Block{Statements: []Statement{}},
+						Body: ast.Block{Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -130,19 +131,19 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with expression statements",
 			src:  `func main() { foo(1, "two"); }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&ExpressionStatement{
-									Expression: &FunctionCall{
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.ExpressionStatement{
+									Expression: &ast.FunctionCall{
 										FunctionName: "foo",
-										Args: []Expression{
-											NewIntLiteral(1),
-											NewStringLiteral("two"),
+										Args: []ast.Expression{
+											ast.NewIntLiteral(1),
+											ast.NewStringLiteral("two"),
 										},
 									},
 								},
@@ -155,15 +156,15 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with multiple statements",
 			src:  `func main() { var x: int; var y: string; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&VariableDeclaration{Name: "x", Type: "int"},
-								&VariableDeclaration{Name: "y", Type: "string"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.VariableDeclaration{Name: "x", Type: "int"},
+								&ast.VariableDeclaration{Name: "y", Type: "string"},
 							},
 						},
 					},
@@ -173,17 +174,17 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "program with two empty functions",
 			src:  `func main() {} func helper() {}`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{Statements: []Statement{}},
+						Args: []ast.Arg{},
+						Body: ast.Block{Statements: []ast.Statement{}},
 					},
 					{
 						Name: "helper",
-						Args: []Arg{},
-						Body: Block{Statements: []Statement{}},
+						Args: []ast.Arg{},
+						Body: ast.Block{Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -191,14 +192,14 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with return without value",
 			src:  `func main() { return; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&ReturnStatement{Value: nil},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.ReturnStatement{Value: nil},
 							},
 						},
 					},
@@ -208,14 +209,14 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with return with integer value",
 			src:  `func main() { return 42; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&ReturnStatement{Value: NewIntLiteral(42)},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.ReturnStatement{Value: ast.NewIntLiteral(42)},
 							},
 						},
 					},
@@ -225,15 +226,15 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with return with string value",
 			src:  `func main() { return "hello"; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&ReturnStatement{
-									Value: NewStringLiteral("hello"),
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.ReturnStatement{
+									Value: ast.NewStringLiteral("hello"),
 								},
 							},
 						},
@@ -244,17 +245,17 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with return with function call",
 			src:  `func main() { return foo(); }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&ReturnStatement{
-									Value: &FunctionCall{
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.ReturnStatement{
+									Value: &ast.FunctionCall{
 										FunctionName: "foo",
-										Args:         []Expression{},
+										Args:         []ast.Expression{},
 									},
 								},
 							},
@@ -266,20 +267,20 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with multiple return statements",
 			src:  `func main() { return 1; return "two"; return; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&ReturnStatement{
-									Value: NewIntLiteral(1),
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.ReturnStatement{
+									Value: ast.NewIntLiteral(1),
 								},
-								&ReturnStatement{
-									Value: NewStringLiteral("two"),
+								&ast.ReturnStatement{
+									Value: ast.NewStringLiteral("two"),
 								},
-								&ReturnStatement{
+								&ast.ReturnStatement{
 									Value: nil,
 								},
 							},
@@ -291,19 +292,19 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with mixed statements including return",
 			src:  `func main() { var x: int; return x; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&VariableDeclaration{
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.VariableDeclaration{
 									Name: "x",
 									Type: "int",
 								},
-								&ReturnStatement{
-									Value: &VariableReference{
+								&ast.ReturnStatement{
+									Value: &ast.VariableReference{
 										Name: "x",
 									},
 								},
@@ -316,14 +317,14 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with break statement",
 			src:  `func main() { break; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&BreakStatement{},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.BreakStatement{},
 							},
 						},
 					},
@@ -333,20 +334,20 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with multiple statements including break",
 			src:  `func main() { var x: int; break; return x; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&VariableDeclaration{
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.VariableDeclaration{
 									Name: "x",
 									Type: "int",
 								},
-								&BreakStatement{},
-								&ReturnStatement{
-									Value: &VariableReference{
+								&ast.BreakStatement{},
+								&ast.ReturnStatement{
+									Value: &ast.VariableReference{
 										Name: "x",
 									},
 								},
@@ -359,14 +360,14 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with continue statement",
 			src:  `func main() { continue; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&ContinueStatement{},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.ContinueStatement{},
 							},
 						},
 					},
@@ -376,20 +377,20 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "function with multiple statements including continue",
 			src:  `func main() { var x: int; continue; return x; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&VariableDeclaration{
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.VariableDeclaration{
 									Name: "x",
 									Type: "int",
 								},
-								&ContinueStatement{},
-								&ReturnStatement{
-									Value: &VariableReference{
+								&ast.ContinueStatement{},
+								&ast.ReturnStatement{
+									Value: &ast.VariableReference{
 										Name: "x",
 									},
 								},
@@ -402,11 +403,11 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "struct declaration with two fields",
 			src:  `struct Foo { x: int; y: string; }`,
-			expected: &Program{
-				StructDeclarations: []StructDeclaration{
+			expected: &ast.Program{
+				StructDeclarations: []ast.StructDeclaration{
 					{
 						Name: "Foo",
-						Fields: []StructField{
+						Fields: []ast.StructField{
 							{Name: "x", Type: "int"},
 							{Name: "y", Type: "string"},
 						},
@@ -417,11 +418,11 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "empty struct",
 			src:  `struct Empty { }`,
-			expected: &Program{
-				StructDeclarations: []StructDeclaration{
+			expected: &ast.Program{
+				StructDeclarations: []ast.StructDeclaration{
 					{
 						Name:   "Empty",
-						Fields: []StructField{},
+						Fields: []ast.StructField{},
 					},
 				},
 			},
@@ -429,11 +430,11 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "struct with single field",
 			src:  `struct Point { x: int; }`,
-			expected: &Program{
-				StructDeclarations: []StructDeclaration{
+			expected: &ast.Program{
+				StructDeclarations: []ast.StructDeclaration{
 					{
 						Name: "Point",
-						Fields: []StructField{
+						Fields: []ast.StructField{
 							{Name: "x", Type: "int"},
 						},
 					},
@@ -443,18 +444,18 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "multiple structs",
 			src:  `struct Point { x: int; y: int; } struct Person { name: string; age: int; }`,
-			expected: &Program{
-				StructDeclarations: []StructDeclaration{
+			expected: &ast.Program{
+				StructDeclarations: []ast.StructDeclaration{
 					{
 						Name: "Point",
-						Fields: []StructField{
+						Fields: []ast.StructField{
 							{Name: "x", Type: "int"},
 							{Name: "y", Type: "int"},
 						},
 					},
 					{
 						Name: "Person",
-						Fields: []StructField{
+						Fields: []ast.StructField{
 							{Name: "name", Type: "string"},
 							{Name: "age", Type: "int"},
 						},
@@ -465,23 +466,23 @@ func TestParseProgram(t *testing.T) {
 		{
 			name: "struct and function together",
 			src:  `struct Point { x: int; y: int; } func main() { var p: Point; }`,
-			expected: &Program{
-				StructDeclarations: []StructDeclaration{
+			expected: &ast.Program{
+				StructDeclarations: []ast.StructDeclaration{
 					{
 						Name: "Point",
-						Fields: []StructField{
+						Fields: []ast.StructField{
 							{Name: "x", Type: "int"},
 							{Name: "y", Type: "int"},
 						},
 					},
 				},
-				Functions: []Function{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&VariableDeclaration{Name: "p", Type: "Point"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.VariableDeclaration{Name: "p", Type: "Point"},
 							},
 						},
 					},
@@ -597,57 +598,57 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected Expression
+		expected ast.Expression
 	}{
 		{
 			name: "function call with no arguments",
 			src:  `func main() { foo(); }`,
-			expected: &FunctionCall{
+			expected: &ast.FunctionCall{
 				FunctionName: "foo",
-				Args:         []Expression{},
+				Args:         []ast.Expression{},
 			},
 		},
 		{
 			name: "function call with single integer argument",
 			src:  `func main() { foo(42); }`,
-			expected: &FunctionCall{
+			expected: &ast.FunctionCall{
 				FunctionName: "foo",
-				Args: []Expression{
-					NewIntLiteral(42),
+				Args: []ast.Expression{
+					ast.NewIntLiteral(42),
 				},
 			},
 		},
 		{
 			name: "function call with single string argument",
 			src:  `func main() { foo("hello"); }`,
-			expected: &FunctionCall{
+			expected: &ast.FunctionCall{
 				FunctionName: "foo",
-				Args: []Expression{
-					NewStringLiteral("hello"),
+				Args: []ast.Expression{
+					ast.NewStringLiteral("hello"),
 				},
 			},
 		},
 		{
 			name: "function call with multiple arguments",
 			src:  `func main() { foo(1, "two", 3); }`,
-			expected: &FunctionCall{
+			expected: &ast.FunctionCall{
 				FunctionName: "foo",
-				Args: []Expression{
-					NewIntLiteral(1),
-					NewStringLiteral("two"),
-					NewIntLiteral(3),
+				Args: []ast.Expression{
+					ast.NewIntLiteral(1),
+					ast.NewStringLiteral("two"),
+					ast.NewIntLiteral(3),
 				},
 			},
 		},
 		{
 			name: "nested function calls",
 			src:  `func main() { foo(bar()); }`,
-			expected: &FunctionCall{
+			expected: &ast.FunctionCall{
 				FunctionName: "foo",
-				Args: []Expression{
-					&FunctionCall{
+				Args: []ast.Expression{
+					&ast.FunctionCall{
 						FunctionName: "bar",
-						Args:         []Expression{},
+						Args:         []ast.Expression{},
 					},
 				},
 			},
@@ -671,7 +672,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
 			}
 			stmt := prog.Functions[0].Body.Statements[0]
-			exprStmt, ok := stmt.(*ExpressionStatement)
+			exprStmt, ok := stmt.(*ast.ExpressionStatement)
 			if !ok {
 				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
@@ -687,27 +688,27 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected Expression
+		expected ast.Expression
 	}{
 		{
 			name:     "zero",
 			src:      `func main() { 0; }`,
-			expected: NewIntLiteral(0),
+			expected: ast.NewIntLiteral(0),
 		},
 		{
 			name:     "positive integer",
 			src:      `func main() { 42; }`,
-			expected: NewIntLiteral(42),
+			expected: ast.NewIntLiteral(42),
 		},
 		{
 			name:     "large integer",
 			src:      `func main() { 999999; }`,
-			expected: NewIntLiteral(999999),
+			expected: ast.NewIntLiteral(999999),
 		},
 		{
 			name:     "single digit",
 			src:      `func main() { 7; }`,
-			expected: NewIntLiteral(7),
+			expected: ast.NewIntLiteral(7),
 		},
 	}
 
@@ -728,7 +729,7 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
 			}
 			stmt := prog.Functions[0].Body.Statements[0]
-			exprStmt, ok := stmt.(*ExpressionStatement)
+			exprStmt, ok := stmt.(*ast.ExpressionStatement)
 			if !ok {
 				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
@@ -744,32 +745,32 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected Expression
+		expected ast.Expression
 	}{
 		{
 			name:     "empty string",
 			src:      `func main() { ""; }`,
-			expected: NewStringLiteral(""),
+			expected: ast.NewStringLiteral(""),
 		},
 		{
 			name:     "simple string",
 			src:      `func main() { "hello"; }`,
-			expected: NewStringLiteral("hello"),
+			expected: ast.NewStringLiteral("hello"),
 		},
 		{
 			name:     "string with spaces",
 			src:      `func main() { "hello world"; }`,
-			expected: NewStringLiteral("hello world"),
+			expected: ast.NewStringLiteral("hello world"),
 		},
 		{
 			name:     "string with numbers",
 			src:      `func main() { "abc123"; }`,
-			expected: NewStringLiteral("abc123"),
+			expected: ast.NewStringLiteral("abc123"),
 		},
 		{
 			name:     "string with special characters",
 			src:      `func main() { "hello, world!"; }`,
-			expected: NewStringLiteral("hello, world!"),
+			expected: ast.NewStringLiteral("hello, world!"),
 		},
 	}
 
@@ -790,7 +791,7 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
 			}
 			stmt := prog.Functions[0].Body.Statements[0]
-			exprStmt, ok := stmt.(*ExpressionStatement)
+			exprStmt, ok := stmt.(*ast.ExpressionStatement)
 			if !ok {
 				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
@@ -854,45 +855,45 @@ func TestParseExpression_Assignment(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected Expression
+		expected ast.Expression
 	}{
 		{
 			name: "assignment with integer literal",
 			src:  `func main() { x = 42; }`,
-			expected: &Assignment{
+			expected: &ast.Assignment{
 				VariableName: "x",
-				Value:        NewIntLiteral(42),
+				Value:        ast.NewIntLiteral(42),
 			},
 		},
 		{
 			name: "assignment with string literal",
 			src:  `func main() { name = "hello"; }`,
-			expected: &Assignment{
+			expected: &ast.Assignment{
 				VariableName: "name",
-				Value:        NewStringLiteral("hello"),
+				Value:        ast.NewStringLiteral("hello"),
 			},
 		},
 		{
 			name: "assignment with function call",
 			src:  `func main() { result = foo(); }`,
-			expected: &Assignment{
+			expected: &ast.Assignment{
 				VariableName: "result",
-				Value: &FunctionCall{
+				Value: &ast.FunctionCall{
 					FunctionName: "foo",
-					Args:         []Expression{},
+					Args:         []ast.Expression{},
 				},
 			},
 		},
 		{
 			name: "assignment with function call with args",
 			src:  `func main() { result = add(1, 2); }`,
-			expected: &Assignment{
+			expected: &ast.Assignment{
 				VariableName: "result",
-				Value: &FunctionCall{
+				Value: &ast.FunctionCall{
 					FunctionName: "add",
-					Args: []Expression{
-						NewIntLiteral(1),
-						NewIntLiteral(2),
+					Args: []ast.Expression{
+						ast.NewIntLiteral(1),
+						ast.NewIntLiteral(2),
 					},
 				},
 			},
@@ -900,36 +901,36 @@ func TestParseExpression_Assignment(t *testing.T) {
 		{
 			name: "assignment with zero",
 			src:  `func main() { counter = 0; }`,
-			expected: &Assignment{
+			expected: &ast.Assignment{
 				VariableName: "counter",
-				Value:        NewIntLiteral(0),
+				Value:        ast.NewIntLiteral(0),
 			},
 		},
 		{
 			name: "assignment with empty string",
 			src:  `func main() { text = ""; }`,
-			expected: &Assignment{
+			expected: &ast.Assignment{
 				VariableName: "text",
-				Value:        NewStringLiteral(""),
+				Value:        ast.NewStringLiteral(""),
 			},
 		},
 		{
 			name: "chained assignment",
 			src:  `func main() { x = y = 1; }`,
-			expected: &Assignment{
+			expected: &ast.Assignment{
 				VariableName: "x",
-				Value: &Assignment{
+				Value: &ast.Assignment{
 					VariableName: "y",
-					Value:        NewIntLiteral(1),
+					Value:        ast.NewIntLiteral(1),
 				},
 			},
 		},
 		{
 			name: "assignment with variable",
 			src:  `func main() { x = y; }`,
-			expected: &Assignment{
+			expected: &ast.Assignment{
 				VariableName: "x",
-				Value: &VariableReference{
+				Value: &ast.VariableReference{
 					Name: "y",
 				},
 			},
@@ -953,7 +954,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
 			}
 			stmt := prog.Functions[0].Body.Statements[0]
-			exprStmt, ok := stmt.(*ExpressionStatement)
+			exprStmt, ok := stmt.(*ast.ExpressionStatement)
 			if !ok {
 				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
 			}
@@ -1007,390 +1008,390 @@ func TestParseExpression_BinaryOperation(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected Expression
+		expected ast.Expression
 	}{
 		{
 			name: "simple addition",
 			src:  "1 + 2",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(1),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(1),
 				Operator: "+",
-				Right:    NewIntLiteral(2),
+				Right:    ast.NewIntLiteral(2),
 			},
 		},
 		{
 			name: "addition with variables",
 			src:  "x + y",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "x"},
 				Operator: "+",
-				Right:    &VariableReference{Name: "y"},
+				Right:    &ast.VariableReference{Name: "y"},
 			},
 		},
 		{
 			name: "addition with mixed types",
 			src:  "5 + x",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(5),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(5),
 				Operator: "+",
-				Right:    &VariableReference{Name: "x"},
+				Right:    &ast.VariableReference{Name: "x"},
 			},
 		},
 		{
 			name: "simple subtraction",
 			src:  "10 - 3",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(10),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(10),
 				Operator: "-",
-				Right:    NewIntLiteral(3),
+				Right:    ast.NewIntLiteral(3),
 			},
 		},
 		{
 			name: "subtraction with variables",
 			src:  "x - y",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "x"},
 				Operator: "-",
-				Right:    &VariableReference{Name: "y"},
+				Right:    &ast.VariableReference{Name: "y"},
 			},
 		},
 		{
 			name: "subtraction with mixed types",
 			src:  "15 - z",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(15),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(15),
 				Operator: "-",
-				Right:    &VariableReference{Name: "z"},
+				Right:    &ast.VariableReference{Name: "z"},
 			},
 		},
 		{
 			name: "variable subtraction from literal",
 			src:  "a - 5",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "a"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "a"},
 				Operator: "-",
-				Right:    NewIntLiteral(5),
+				Right:    ast.NewIntLiteral(5),
 			},
 		},
 		{
 			name: "simple multiplication",
 			src:  "3 * 4",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(3),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(3),
 				Operator: "*",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "multiplication with variables",
 			src:  "x * y",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "x"},
 				Operator: "*",
-				Right:    &VariableReference{Name: "y"},
+				Right:    &ast.VariableReference{Name: "y"},
 			},
 		},
 		{
 			name: "multiplication with mixed types",
 			src:  "7 * z",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(7),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(7),
 				Operator: "*",
-				Right:    &VariableReference{Name: "z"},
+				Right:    &ast.VariableReference{Name: "z"},
 			},
 		},
 		{
 			name: "variable multiplication with literal",
 			src:  "b * 8",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "b"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "b"},
 				Operator: "*",
-				Right:    NewIntLiteral(8),
+				Right:    ast.NewIntLiteral(8),
 			},
 		},
 		{
 			name: "mixed addition and multiplication (correct precedence)",
 			src:  "2 + 3 * 4",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(2),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(2),
 				Operator: "+",
-				Right: &BinaryOperation{
-					Left:     NewIntLiteral(3),
+				Right: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(3),
 					Operator: "*",
-					Right:    NewIntLiteral(4),
+					Right:    ast.NewIntLiteral(4),
 				},
 			},
 		},
 		{
 			name: "mixed multiplication and addition (correct precedence)",
 			src:  "2 * 3 + 4",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(2),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(2),
 					Operator: "*",
-					Right:    NewIntLiteral(3),
+					Right:    ast.NewIntLiteral(3),
 				},
 				Operator: "+",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "multiple multiplications (left associative)",
 			src:  "2 * 3 * 4",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(2),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(2),
 					Operator: "*",
-					Right:    NewIntLiteral(3),
+					Right:    ast.NewIntLiteral(3),
 				},
 				Operator: "*",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "complex precedence test",
 			src:  "1 + 2 * 3 + 4",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(1),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(1),
 					Operator: "+",
-					Right: &BinaryOperation{
-						Left:     NewIntLiteral(2),
+					Right: &ast.BinaryOperation{
+						Left:     ast.NewIntLiteral(2),
 						Operator: "*",
-						Right:    NewIntLiteral(3),
+						Right:    ast.NewIntLiteral(3),
 					},
 				},
 				Operator: "+",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "subtraction and multiplication precedence",
 			src:  "10 - 2 * 3",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(10),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(10),
 				Operator: "-",
-				Right: &BinaryOperation{
-					Left:     NewIntLiteral(2),
+				Right: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(2),
 					Operator: "*",
-					Right:    NewIntLiteral(3),
+					Right:    ast.NewIntLiteral(3),
 				},
 			},
 		},
 		{
 			name: "simple division",
 			src:  "12 / 3",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(12),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(12),
 				Operator: "/",
-				Right:    NewIntLiteral(3),
+				Right:    ast.NewIntLiteral(3),
 			},
 		},
 		{
 			name: "division with variables",
 			src:  "x / y",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "x"},
 				Operator: "/",
-				Right:    &VariableReference{Name: "y"},
+				Right:    &ast.VariableReference{Name: "y"},
 			},
 		},
 		{
 			name: "division with mixed types",
 			src:  "20 / z",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(20),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(20),
 				Operator: "/",
-				Right:    &VariableReference{Name: "z"},
+				Right:    &ast.VariableReference{Name: "z"},
 			},
 		},
 		{
 			name: "variable division with literal",
 			src:  "w / 4",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "w"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "w"},
 				Operator: "/",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "mixed addition and division (correct precedence)",
 			src:  "2 + 8 / 4",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(2),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(2),
 				Operator: "+",
-				Right: &BinaryOperation{
-					Left:     NewIntLiteral(8),
+				Right: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(8),
 					Operator: "/",
-					Right:    NewIntLiteral(4),
+					Right:    ast.NewIntLiteral(4),
 				},
 			},
 		},
 		{
 			name: "mixed division and addition (correct precedence)",
 			src:  "12 / 3 + 4",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(12),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(12),
 					Operator: "/",
-					Right:    NewIntLiteral(3),
+					Right:    ast.NewIntLiteral(3),
 				},
 				Operator: "+",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "multiplication and division (same precedence, left associative)",
 			src:  "8 * 2 / 4",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(8),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(8),
 					Operator: "*",
-					Right:    NewIntLiteral(2),
+					Right:    ast.NewIntLiteral(2),
 				},
 				Operator: "/",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "division and multiplication (same precedence, left associative)",
 			src:  "12 / 3 * 2",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(12),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(12),
 					Operator: "/",
-					Right:    NewIntLiteral(3),
+					Right:    ast.NewIntLiteral(3),
 				},
 				Operator: "*",
-				Right:    NewIntLiteral(2),
+				Right:    ast.NewIntLiteral(2),
 			},
 		},
 		{
 			name: "multiple divisions (left associative)",
 			src:  "24 / 4 / 2",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(24),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(24),
 					Operator: "/",
-					Right:    NewIntLiteral(4),
+					Right:    ast.NewIntLiteral(4),
 				},
 				Operator: "/",
-				Right:    NewIntLiteral(2),
+				Right:    ast.NewIntLiteral(2),
 			},
 		},
 		{
 			name: "complex expression with division",
 			src:  "1 + 12 / 3 - 2",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(1),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(1),
 					Operator: "+",
-					Right: &BinaryOperation{
-						Left:     NewIntLiteral(12),
+					Right: &ast.BinaryOperation{
+						Left:     ast.NewIntLiteral(12),
 						Operator: "/",
-						Right:    NewIntLiteral(3),
+						Right:    ast.NewIntLiteral(3),
 					},
 				},
 				Operator: "-",
-				Right:    NewIntLiteral(2),
+				Right:    ast.NewIntLiteral(2),
 			},
 		},
 		{
 			name: "simple parentheses",
 			src:  "(2 + 3)",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(2),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(2),
 				Operator: "+",
-				Right:    NewIntLiteral(3),
+				Right:    ast.NewIntLiteral(3),
 			},
 		},
 		{
 			name: "parentheses changing precedence",
 			src:  "(2 + 3) * 4",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(2),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(2),
 					Operator: "+",
-					Right:    NewIntLiteral(3),
+					Right:    ast.NewIntLiteral(3),
 				},
 				Operator: "*",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "parentheses with division",
 			src:  "12 / (2 + 1)",
-			expected: &BinaryOperation{
-				Left:     NewIntLiteral(12),
+			expected: &ast.BinaryOperation{
+				Left:     ast.NewIntLiteral(12),
 				Operator: "/",
-				Right: &BinaryOperation{
-					Left:     NewIntLiteral(2),
+				Right: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(2),
 					Operator: "+",
-					Right:    NewIntLiteral(1),
+					Right:    ast.NewIntLiteral(1),
 				},
 			},
 		},
 		{
 			name: "nested parentheses",
 			src:  "((2 + 3) * 4)",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(2),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(2),
 					Operator: "+",
-					Right:    NewIntLiteral(3),
+					Right:    ast.NewIntLiteral(3),
 				},
 				Operator: "*",
-				Right:    NewIntLiteral(4),
+				Right:    ast.NewIntLiteral(4),
 			},
 		},
 		{
 			name: "complex parentheses expression",
 			src:  "(2 + 3) * (4 - 1)",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(2),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(2),
 					Operator: "+",
-					Right:    NewIntLiteral(3),
+					Right:    ast.NewIntLiteral(3),
 				},
 				Operator: "*",
-				Right: &BinaryOperation{
-					Left:     NewIntLiteral(4),
+				Right: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(4),
 					Operator: "-",
-					Right:    NewIntLiteral(1),
+					Right:    ast.NewIntLiteral(1),
 				},
 			},
 		},
 		{
 			name: "parentheses with variables",
 			src:  "(x + y) * z",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "x"},
 					Operator: "+",
-					Right:    &VariableReference{Name: "y"},
+					Right:    &ast.VariableReference{Name: "y"},
 				},
 				Operator: "*",
-				Right:    &VariableReference{Name: "z"},
+				Right:    &ast.VariableReference{Name: "z"},
 			},
 		},
 		{
 			name: "multiple operations with parentheses",
 			src:  "1 + (2 * 3) + (8 / 4)",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     NewIntLiteral(1),
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(1),
 					Operator: "+",
-					Right: &BinaryOperation{
-						Left:     NewIntLiteral(2),
+					Right: &ast.BinaryOperation{
+						Left:     ast.NewIntLiteral(2),
 						Operator: "*",
-						Right:    NewIntLiteral(3),
+						Right:    ast.NewIntLiteral(3),
 					},
 				},
 				Operator: "+",
-				Right: &BinaryOperation{
-					Left:     NewIntLiteral(8),
+				Right: &ast.BinaryOperation{
+					Left:     ast.NewIntLiteral(8),
 					Operator: "/",
-					Right:    NewIntLiteral(4),
+					Right:    ast.NewIntLiteral(4),
 				},
 			},
 		},
@@ -1415,95 +1416,95 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected Expression
+		expected ast.Expression
 	}{
 		// Comparison operators
 		{
 			name: "equality comparison",
 			src:  "x == 42",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "x"},
 				Operator: "==",
-				Right:    NewIntLiteral(42),
+				Right:    ast.NewIntLiteral(42),
 			},
 		},
 		{
 			name: "inequality comparison",
 			src:  "y != 0",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "y"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "y"},
 				Operator: "!=",
-				Right:    NewIntLiteral(0),
+				Right:    ast.NewIntLiteral(0),
 			},
 		},
 		{
 			name: "less than comparison",
 			src:  "a < b",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "a"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "a"},
 				Operator: "<",
-				Right:    &VariableReference{Name: "b"},
+				Right:    &ast.VariableReference{Name: "b"},
 			},
 		},
 		{
 			name: "greater than comparison",
 			src:  "x > 10",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "x"},
 				Operator: ">",
-				Right:    NewIntLiteral(10),
+				Right:    ast.NewIntLiteral(10),
 			},
 		},
 		{
 			name: "less than or equal comparison",
 			src:  "score <= max",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "score"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "score"},
 				Operator: "<=",
-				Right:    &VariableReference{Name: "max"},
+				Right:    &ast.VariableReference{Name: "max"},
 			},
 		},
 		{
 			name: "greater than or equal comparison",
 			src:  "age >= 18",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "age"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "age"},
 				Operator: ">=",
-				Right:    NewIntLiteral(18),
+				Right:    ast.NewIntLiteral(18),
 			},
 		},
 		// Logical operators
 		{
 			name: "logical AND",
 			src:  "x > 0 && y > 0",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "x"},
 					Operator: ">",
-					Right:    NewIntLiteral(0),
+					Right:    ast.NewIntLiteral(0),
 				},
 				Operator: "&&",
-				Right: &BinaryOperation{
-					Left:     &VariableReference{Name: "y"},
+				Right: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "y"},
 					Operator: ">",
-					Right:    NewIntLiteral(0),
+					Right:    ast.NewIntLiteral(0),
 				},
 			},
 		},
 		{
 			name: "logical OR",
 			src:  "x == 0 || y == 0",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "x"},
 					Operator: "==",
-					Right:    NewIntLiteral(0),
+					Right:    ast.NewIntLiteral(0),
 				},
 				Operator: "||",
-				Right: &BinaryOperation{
-					Left:     &VariableReference{Name: "y"},
+				Right: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "y"},
 					Operator: "==",
-					Right:    NewIntLiteral(0),
+					Right:    ast.NewIntLiteral(0),
 				},
 			},
 		},
@@ -1511,20 +1512,20 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 		{
 			name: "logical NOT",
 			src:  "!found",
-			expected: &UnaryOperation{
+			expected: &ast.UnaryOperation{
 				Operator: "!",
-				Operand:  &VariableReference{Name: "found"},
+				Operand:  &ast.VariableReference{Name: "found"},
 			},
 		},
 		{
 			name: "logical NOT with parentheses",
 			src:  "!(x > 0)",
-			expected: &UnaryOperation{
+			expected: &ast.UnaryOperation{
 				Operator: "!",
-				Operand: &BinaryOperation{
-					Left:     &VariableReference{Name: "x"},
+				Operand: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "x"},
 					Operator: ">",
-					Right:    NewIntLiteral(0),
+					Right:    ast.NewIntLiteral(0),
 				},
 			},
 		},
@@ -1532,67 +1533,67 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 		{
 			name: "comparison with arithmetic (correct precedence)",
 			src:  "x + 1 == y * 2",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "x"},
 					Operator: "+",
-					Right:    NewIntLiteral(1),
+					Right:    ast.NewIntLiteral(1),
 				},
 				Operator: "==",
-				Right: &BinaryOperation{
-					Left:     &VariableReference{Name: "y"},
+				Right: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "y"},
 					Operator: "*",
-					Right:    NewIntLiteral(2),
+					Right:    ast.NewIntLiteral(2),
 				},
 			},
 		},
 		{
 			name: "logical AND with higher precedence than OR",
 			src:  "a || b && c",
-			expected: &BinaryOperation{
-				Left:     &VariableReference{Name: "a"},
+			expected: &ast.BinaryOperation{
+				Left:     &ast.VariableReference{Name: "a"},
 				Operator: "||",
-				Right: &BinaryOperation{
-					Left:     &VariableReference{Name: "b"},
+				Right: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "b"},
 					Operator: "&&",
-					Right:    &VariableReference{Name: "c"},
+					Right:    &ast.VariableReference{Name: "c"},
 				},
 			},
 		},
 		{
 			name: "negation with comparison",
 			src:  "!x == 0",
-			expected: &BinaryOperation{
-				Left: &UnaryOperation{
+			expected: &ast.BinaryOperation{
+				Left: &ast.UnaryOperation{
 					Operator: "!",
-					Operand:  &VariableReference{Name: "x"},
+					Operand:  &ast.VariableReference{Name: "x"},
 				},
 				Operator: "==",
-				Right:    NewIntLiteral(0),
+				Right:    ast.NewIntLiteral(0),
 			},
 		},
 		{
 			name: "complex boolean expression",
 			src:  "x > 0 && y < 10 || z == 42",
-			expected: &BinaryOperation{
-				Left: &BinaryOperation{
-					Left: &BinaryOperation{
-						Left:     &VariableReference{Name: "x"},
+			expected: &ast.BinaryOperation{
+				Left: &ast.BinaryOperation{
+					Left: &ast.BinaryOperation{
+						Left:     &ast.VariableReference{Name: "x"},
 						Operator: ">",
-						Right:    NewIntLiteral(0),
+						Right:    ast.NewIntLiteral(0),
 					},
 					Operator: "&&",
-					Right: &BinaryOperation{
-						Left:     &VariableReference{Name: "y"},
+					Right: &ast.BinaryOperation{
+						Left:     &ast.VariableReference{Name: "y"},
 						Operator: "<",
-						Right:    NewIntLiteral(10),
+						Right:    ast.NewIntLiteral(10),
 					},
 				},
 				Operator: "||",
-				Right: &BinaryOperation{
-					Left:     &VariableReference{Name: "z"},
+				Right: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "z"},
 					Operator: "==",
-					Right:    NewIntLiteral(42),
+					Right:    ast.NewIntLiteral(42),
 				},
 			},
 		},
@@ -1617,27 +1618,27 @@ func TestParseStatement_IfStatement(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected *Program
+		expected *ast.Program
 	}{
 		{
 			name: "simple if statement without else",
 			src:  `func main() { if x == 5 { return; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: "==",
-										Right:    NewIntLiteral(5),
+										Right:    ast.NewIntLiteral(5),
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&ReturnStatement{Value: nil},
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ReturnStatement{Value: nil},
 										},
 									},
 									ElseBlock: nil,
@@ -1651,35 +1652,35 @@ func TestParseStatement_IfStatement(t *testing.T) {
 		{
 			name: "if statement with else",
 			src:  `func main() { if x > 0 { y = 1; } else { y = 0; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&ExpressionStatement{
-												Expression: &Assignment{
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ExpressionStatement{
+												Expression: &ast.Assignment{
 													VariableName: "y",
-													Value:        NewIntLiteral(1),
+													Value:        ast.NewIntLiteral(1),
 												},
 											},
 										},
 									},
-									ElseBlock: &Block{
-										Statements: []Statement{
-											&ExpressionStatement{
-												Expression: &Assignment{
+									ElseBlock: &ast.Block{
+										Statements: []ast.Statement{
+											&ast.ExpressionStatement{
+												Expression: &ast.Assignment{
 													VariableName: "y",
-													Value:        NewIntLiteral(0),
+													Value:        ast.NewIntLiteral(0),
 												},
 											},
 										},
@@ -1694,31 +1695,31 @@ func TestParseStatement_IfStatement(t *testing.T) {
 		{
 			name: "if statement with complex boolean condition",
 			src:  `func main() { if (x > 0) && (y < 10) { return x; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &BinaryOperation{
-										Left: &BinaryOperation{
-											Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.BinaryOperation{
+										Left: &ast.BinaryOperation{
+											Left:     &ast.VariableReference{Name: "x"},
 											Operator: ">",
-											Right:    NewIntLiteral(0),
+											Right:    ast.NewIntLiteral(0),
 										},
 										Operator: "&&",
-										Right: &BinaryOperation{
-											Left:     &VariableReference{Name: "y"},
+										Right: &ast.BinaryOperation{
+											Left:     &ast.VariableReference{Name: "y"},
 											Operator: "<",
-											Right:    NewIntLiteral(10),
+											Right:    ast.NewIntLiteral(10),
 										},
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&ReturnStatement{
-												Value: &VariableReference{Name: "x"},
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ReturnStatement{
+												Value: &ast.VariableReference{Name: "x"},
 											},
 										},
 									},
@@ -1733,21 +1734,21 @@ func TestParseStatement_IfStatement(t *testing.T) {
 		{
 			name: "if statement with unary not condition",
 			src:  `func main() { if !flag { return; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &UnaryOperation{
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.UnaryOperation{
 										Operator: "!",
-										Operand:  &VariableReference{Name: "flag"},
+										Operand:  &ast.VariableReference{Name: "flag"},
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&ReturnStatement{Value: nil},
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ReturnStatement{Value: nil},
 										},
 									},
 									ElseBlock: nil,
@@ -1761,31 +1762,31 @@ func TestParseStatement_IfStatement(t *testing.T) {
 		{
 			name: "nested if statements",
 			src:  `func main() { if x > 0 { if y > 0 { return 1; } } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&IfStatement{
-												Condition: &BinaryOperation{
-													Left:     &VariableReference{Name: "y"},
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.IfStatement{
+												Condition: &ast.BinaryOperation{
+													Left:     &ast.VariableReference{Name: "y"},
 													Operator: ">",
-													Right:    NewIntLiteral(0),
+													Right:    ast.NewIntLiteral(0),
 												},
-												ThenBlock: Block{
-													Statements: []Statement{
-														&ReturnStatement{
-															Value: NewIntLiteral(1),
+												ThenBlock: ast.Block{
+													Statements: []ast.Statement{
+														&ast.ReturnStatement{
+															Value: ast.NewIntLiteral(1),
 														},
 													},
 												},
@@ -1861,43 +1862,43 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected *Program
+		expected *ast.Program
 	}{
 		{
 			name: "simple else if",
 			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: "==",
-										Right:    NewIntLiteral(1),
+										Right:    ast.NewIntLiteral(1),
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&ReturnStatement{
-												Value: NewIntLiteral(1),
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ReturnStatement{
+												Value: ast.NewIntLiteral(1),
 											},
 										},
 									},
-									ElseBlock: &Block{
-										Statements: []Statement{
-											&IfStatement{
-												Condition: &BinaryOperation{
-													Left:     &VariableReference{Name: "x"},
+									ElseBlock: &ast.Block{
+										Statements: []ast.Statement{
+											&ast.IfStatement{
+												Condition: &ast.BinaryOperation{
+													Left:     &ast.VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    NewIntLiteral(2),
+													Right:    ast.NewIntLiteral(2),
 												},
-												ThenBlock: Block{
-													Statements: []Statement{
-														&ReturnStatement{
-															Value: NewIntLiteral(2),
+												ThenBlock: ast.Block{
+													Statements: []ast.Statement{
+														&ast.ReturnStatement{
+															Value: ast.NewIntLiteral(2),
 														},
 													},
 												},
@@ -1915,45 +1916,45 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 		{
 			name: "else if with final else",
 			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else { return 0; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: "==",
-										Right:    NewIntLiteral(1),
+										Right:    ast.NewIntLiteral(1),
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&ReturnStatement{
-												Value: NewIntLiteral(1),
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ReturnStatement{
+												Value: ast.NewIntLiteral(1),
 											},
 										},
 									},
-									ElseBlock: &Block{
-										Statements: []Statement{
-											&IfStatement{
-												Condition: &BinaryOperation{
-													Left:     &VariableReference{Name: "x"},
+									ElseBlock: &ast.Block{
+										Statements: []ast.Statement{
+											&ast.IfStatement{
+												Condition: &ast.BinaryOperation{
+													Left:     &ast.VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    NewIntLiteral(2),
+													Right:    ast.NewIntLiteral(2),
 												},
-												ThenBlock: Block{
-													Statements: []Statement{
-														&ReturnStatement{
-															Value: NewIntLiteral(2),
+												ThenBlock: ast.Block{
+													Statements: []ast.Statement{
+														&ast.ReturnStatement{
+															Value: ast.NewIntLiteral(2),
 														},
 													},
 												},
-												ElseBlock: &Block{
-													Statements: []Statement{
-														&ReturnStatement{
-															Value: NewIntLiteral(0),
+												ElseBlock: &ast.Block{
+													Statements: []ast.Statement{
+														&ast.ReturnStatement{
+															Value: ast.NewIntLiteral(0),
 														},
 													},
 												},
@@ -1970,60 +1971,60 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 		{
 			name: "multiple else if chain",
 			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else if x == 3 { return 3; } else { return 0; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: "==",
-										Right:    NewIntLiteral(1),
+										Right:    ast.NewIntLiteral(1),
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&ReturnStatement{
-												Value: NewIntLiteral(1),
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ReturnStatement{
+												Value: ast.NewIntLiteral(1),
 											},
 										},
 									},
-									ElseBlock: &Block{
-										Statements: []Statement{
-											&IfStatement{
-												Condition: &BinaryOperation{
-													Left:     &VariableReference{Name: "x"},
+									ElseBlock: &ast.Block{
+										Statements: []ast.Statement{
+											&ast.IfStatement{
+												Condition: &ast.BinaryOperation{
+													Left:     &ast.VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    NewIntLiteral(2),
+													Right:    ast.NewIntLiteral(2),
 												},
-												ThenBlock: Block{
-													Statements: []Statement{
-														&ReturnStatement{
-															Value: NewIntLiteral(2),
+												ThenBlock: ast.Block{
+													Statements: []ast.Statement{
+														&ast.ReturnStatement{
+															Value: ast.NewIntLiteral(2),
 														},
 													},
 												},
-												ElseBlock: &Block{
-													Statements: []Statement{
-														&IfStatement{
-															Condition: &BinaryOperation{
-																Left:     &VariableReference{Name: "x"},
+												ElseBlock: &ast.Block{
+													Statements: []ast.Statement{
+														&ast.IfStatement{
+															Condition: &ast.BinaryOperation{
+																Left:     &ast.VariableReference{Name: "x"},
 																Operator: "==",
-																Right:    NewIntLiteral(3),
+																Right:    ast.NewIntLiteral(3),
 															},
-															ThenBlock: Block{
-																Statements: []Statement{
-																	&ReturnStatement{
-																		Value: NewIntLiteral(3),
+															ThenBlock: ast.Block{
+																Statements: []ast.Statement{
+																	&ast.ReturnStatement{
+																		Value: ast.NewIntLiteral(3),
 																	},
 																},
 															},
-															ElseBlock: &Block{
-																Statements: []Statement{
-																	&ReturnStatement{
-																		Value: NewIntLiteral(0),
+															ElseBlock: &ast.Block{
+																Statements: []ast.Statement{
+																	&ast.ReturnStatement{
+																		Value: ast.NewIntLiteral(0),
 																	},
 																},
 															},
@@ -2043,53 +2044,53 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 		{
 			name: "else if with complex condition",
 			src:  `func main() { if x > 10 { return 1; } else if (x > 5) && (x <= 10) { return 2; } else { return 0; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&IfStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.IfStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(10),
+										Right:    ast.NewIntLiteral(10),
 									},
-									ThenBlock: Block{
-										Statements: []Statement{
-											&ReturnStatement{
-												Value: NewIntLiteral(1),
+									ThenBlock: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ReturnStatement{
+												Value: ast.NewIntLiteral(1),
 											},
 										},
 									},
-									ElseBlock: &Block{
-										Statements: []Statement{
-											&IfStatement{
-												Condition: &BinaryOperation{
-													Left: &BinaryOperation{
-														Left:     &VariableReference{Name: "x"},
+									ElseBlock: &ast.Block{
+										Statements: []ast.Statement{
+											&ast.IfStatement{
+												Condition: &ast.BinaryOperation{
+													Left: &ast.BinaryOperation{
+														Left:     &ast.VariableReference{Name: "x"},
 														Operator: ">",
-														Right:    NewIntLiteral(5),
+														Right:    ast.NewIntLiteral(5),
 													},
 													Operator: "&&",
-													Right: &BinaryOperation{
-														Left:     &VariableReference{Name: "x"},
+													Right: &ast.BinaryOperation{
+														Left:     &ast.VariableReference{Name: "x"},
 														Operator: "<=",
-														Right:    NewIntLiteral(10),
+														Right:    ast.NewIntLiteral(10),
 													},
 												},
-												ThenBlock: Block{
-													Statements: []Statement{
-														&ReturnStatement{
-															Value: NewIntLiteral(2),
+												ThenBlock: ast.Block{
+													Statements: []ast.Statement{
+														&ast.ReturnStatement{
+															Value: ast.NewIntLiteral(2),
 														},
 													},
 												},
-												ElseBlock: &Block{
-													Statements: []Statement{
-														&ReturnStatement{
-															Value: NewIntLiteral(0),
+												ElseBlock: &ast.Block{
+													Statements: []ast.Statement{
+														&ast.ReturnStatement{
+															Value: ast.NewIntLiteral(0),
 														},
 													},
 												},
@@ -2124,33 +2125,33 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected *Program
+		expected *ast.Program
 	}{
 		{
 			name: "simple while loop",
 			src:  `func main() { while x > 0 { x = x - 1; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&ExpressionStatement{
-												Expression: &Assignment{
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ExpressionStatement{
+												Expression: &ast.Assignment{
 													VariableName: "x",
-													Value: &BinaryOperation{
-														Left:     &VariableReference{Name: "x"},
+													Value: &ast.BinaryOperation{
+														Left:     &ast.VariableReference{Name: "x"},
 														Operator: "-",
-														Right:    NewIntLiteral(1),
+														Right:    ast.NewIntLiteral(1),
 													},
 												},
 											},
@@ -2166,34 +2167,34 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 		{
 			name: "while loop with complex condition",
 			src:  `func main() { while (x > 0) && (y < 10) { printf("loop\n"); } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left: &BinaryOperation{
-											Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left: &ast.BinaryOperation{
+											Left:     &ast.VariableReference{Name: "x"},
 											Operator: ">",
-											Right:    NewIntLiteral(0),
+											Right:    ast.NewIntLiteral(0),
 										},
 										Operator: "&&",
-										Right: &BinaryOperation{
-											Left:     &VariableReference{Name: "y"},
+										Right: &ast.BinaryOperation{
+											Left:     &ast.VariableReference{Name: "y"},
 											Operator: "<",
-											Right:    NewIntLiteral(10),
+											Right:    ast.NewIntLiteral(10),
 										},
 									},
-									Body: Block{
-										Statements: []Statement{
-											&ExpressionStatement{
-												Expression: &FunctionCall{
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ExpressionStatement{
+												Expression: &ast.FunctionCall{
 													FunctionName: "printf",
-													Args: []Expression{
-														NewStringLiteral("loop\n"),
+													Args: []ast.Expression{
+														ast.NewStringLiteral("loop\n"),
 													},
 													Variadic: true,
 												},
@@ -2210,26 +2211,26 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 		{
 			name: "while loop with unary not condition",
 			src:  `func main() { while !done { done = check(); } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &UnaryOperation{
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.UnaryOperation{
 										Operator: "!",
-										Operand:  &VariableReference{Name: "done"},
+										Operand:  &ast.VariableReference{Name: "done"},
 									},
-									Body: Block{
-										Statements: []Statement{
-											&ExpressionStatement{
-												Expression: &Assignment{
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ExpressionStatement{
+												Expression: &ast.Assignment{
 													VariableName: "done",
-													Value: &FunctionCall{
+													Value: &ast.FunctionCall{
 														FunctionName: "check",
-														Args:         []Expression{},
+														Args:         []ast.Expression{},
 													},
 												},
 											},
@@ -2245,49 +2246,49 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 		{
 			name: "nested while loops",
 			src:  `func main() { while x > 0 { while y > 0 { y = y - 1; } x = x - 1; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&WhileStatement{
-												Condition: &BinaryOperation{
-													Left:     &VariableReference{Name: "y"},
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.WhileStatement{
+												Condition: &ast.BinaryOperation{
+													Left:     &ast.VariableReference{Name: "y"},
 													Operator: ">",
-													Right:    NewIntLiteral(0),
+													Right:    ast.NewIntLiteral(0),
 												},
-												Body: Block{
-													Statements: []Statement{
-														&ExpressionStatement{
-															Expression: &Assignment{
+												Body: ast.Block{
+													Statements: []ast.Statement{
+														&ast.ExpressionStatement{
+															Expression: &ast.Assignment{
 																VariableName: "y",
-																Value: &BinaryOperation{
-																	Left:     &VariableReference{Name: "y"},
+																Value: &ast.BinaryOperation{
+																	Left:     &ast.VariableReference{Name: "y"},
 																	Operator: "-",
-																	Right:    NewIntLiteral(1),
+																	Right:    ast.NewIntLiteral(1),
 																},
 															},
 														},
 													},
 												},
 											},
-											&ExpressionStatement{
-												Expression: &Assignment{
+											&ast.ExpressionStatement{
+												Expression: &ast.Assignment{
 													VariableName: "x",
-													Value: &BinaryOperation{
-														Left:     &VariableReference{Name: "x"},
+													Value: &ast.BinaryOperation{
+														Left:     &ast.VariableReference{Name: "x"},
 														Operator: "-",
-														Right:    NewIntLiteral(1),
+														Right:    ast.NewIntLiteral(1),
 													},
 												},
 											},
@@ -2303,38 +2304,38 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 		{
 			name: "while loop with multiple statements in body",
 			src:  `func main() { while i < 10 { printf("i = %d\n", i); i = i + 1; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "i"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "i"},
 										Operator: "<",
-										Right:    NewIntLiteral(10),
+										Right:    ast.NewIntLiteral(10),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&ExpressionStatement{
-												Expression: &FunctionCall{
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ExpressionStatement{
+												Expression: &ast.FunctionCall{
 													FunctionName: "printf",
-													Args: []Expression{
-														NewStringLiteral("i = %d\n"),
-														&VariableReference{Name: "i"},
+													Args: []ast.Expression{
+														ast.NewStringLiteral("i = %d\n"),
+														&ast.VariableReference{Name: "i"},
 													},
 													Variadic: true,
 												},
 											},
-											&ExpressionStatement{
-												Expression: &Assignment{
+											&ast.ExpressionStatement{
+												Expression: &ast.Assignment{
 													VariableName: "i",
-													Value: &BinaryOperation{
-														Left:     &VariableReference{Name: "i"},
+													Value: &ast.BinaryOperation{
+														Left:     &ast.VariableReference{Name: "i"},
 														Operator: "+",
-														Right:    NewIntLiteral(1),
+														Right:    ast.NewIntLiteral(1),
 													},
 												},
 											},
@@ -2399,19 +2400,19 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected *Program
+		expected *ast.Program
 	}{
 		{
 			name: "simple break statement",
 			src:  `func main() { break; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&BreakStatement{},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.BreakStatement{},
 							},
 						},
 					},
@@ -2421,22 +2422,22 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 		{
 			name: "break statement in while loop",
 			src:  `func main() { while x > 0 { break; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&BreakStatement{},
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.BreakStatement{},
 										},
 									},
 								},
@@ -2449,36 +2450,36 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 		{
 			name: "break statement with other statements",
 			src:  `func main() { while x > 0 { printf("before break\n"); break; printf("after break\n"); } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&ExpressionStatement{
-												Expression: &FunctionCall{
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ExpressionStatement{
+												Expression: &ast.FunctionCall{
 													FunctionName: "printf",
-													Args: []Expression{
-														NewStringLiteral("before break\n"),
+													Args: []ast.Expression{
+														ast.NewStringLiteral("before break\n"),
 													},
 													Variadic: true,
 												},
 											},
-											&BreakStatement{},
-											&ExpressionStatement{
-												Expression: &FunctionCall{
+											&ast.BreakStatement{},
+											&ast.ExpressionStatement{
+												Expression: &ast.FunctionCall{
 													FunctionName: "printf",
-													Args: []Expression{
-														NewStringLiteral("after break\n"),
+													Args: []ast.Expression{
+														ast.NewStringLiteral("after break\n"),
 													},
 													Variadic: true,
 												},
@@ -2495,35 +2496,35 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 		{
 			name: "multiple break statements",
 			src:  `func main() { while x > 0 { if x == 5 { break; } break; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&IfStatement{
-												Condition: &BinaryOperation{
-													Left:     &VariableReference{Name: "x"},
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.IfStatement{
+												Condition: &ast.BinaryOperation{
+													Left:     &ast.VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    NewIntLiteral(5),
+													Right:    ast.NewIntLiteral(5),
 												},
-												ThenBlock: Block{
-													Statements: []Statement{
-														&BreakStatement{},
+												ThenBlock: ast.Block{
+													Statements: []ast.Statement{
+														&ast.BreakStatement{},
 													},
 												},
 												ElseBlock: nil,
 											},
-											&BreakStatement{},
+											&ast.BreakStatement{},
 										},
 									},
 								},
@@ -2554,19 +2555,19 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 	testCases := []struct {
 		name     string
 		src      string
-		expected *Program
+		expected *ast.Program
 	}{
 		{
 			name: "simple continue statement",
 			src:  `func main() { continue; }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&ContinueStatement{},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.ContinueStatement{},
 							},
 						},
 					},
@@ -2576,22 +2577,22 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 		{
 			name: "continue statement in while loop",
 			src:  `func main() { while x > 0 { continue; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&ContinueStatement{},
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ContinueStatement{},
 										},
 									},
 								},
@@ -2604,36 +2605,36 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 		{
 			name: "continue statement with other statements",
 			src:  `func main() { while x > 0 { printf("before continue\n"); continue; printf("after continue\n"); } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&ExpressionStatement{
-												Expression: &FunctionCall{
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.ExpressionStatement{
+												Expression: &ast.FunctionCall{
 													FunctionName: "printf",
-													Args: []Expression{
-														NewStringLiteral("before continue\n"),
+													Args: []ast.Expression{
+														ast.NewStringLiteral("before continue\n"),
 													},
 													Variadic: true,
 												},
 											},
-											&ContinueStatement{},
-											&ExpressionStatement{
-												Expression: &FunctionCall{
+											&ast.ContinueStatement{},
+											&ast.ExpressionStatement{
+												Expression: &ast.FunctionCall{
 													FunctionName: "printf",
-													Args: []Expression{
-														NewStringLiteral("after continue\n"),
+													Args: []ast.Expression{
+														ast.NewStringLiteral("after continue\n"),
 													},
 													Variadic: true,
 												},
@@ -2650,35 +2651,35 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 		{
 			name: "continue and break statements together",
 			src:  `func main() { while x > 0 { if x == 5 { continue; } break; } }`,
-			expected: &Program{
-				Functions: []Function{
+			expected: &ast.Program{
+				Functions: []ast.Function{
 					{
 						Name: "main",
-						Args: []Arg{},
-						Body: Block{
-							Statements: []Statement{
-								&WhileStatement{
-									Condition: &BinaryOperation{
-										Left:     &VariableReference{Name: "x"},
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.WhileStatement{
+									Condition: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "x"},
 										Operator: ">",
-										Right:    NewIntLiteral(0),
+										Right:    ast.NewIntLiteral(0),
 									},
-									Body: Block{
-										Statements: []Statement{
-											&IfStatement{
-												Condition: &BinaryOperation{
-													Left:     &VariableReference{Name: "x"},
+									Body: ast.Block{
+										Statements: []ast.Statement{
+											&ast.IfStatement{
+												Condition: &ast.BinaryOperation{
+													Left:     &ast.VariableReference{Name: "x"},
 													Operator: "==",
-													Right:    NewIntLiteral(5),
+													Right:    ast.NewIntLiteral(5),
 												},
-												ThenBlock: Block{
-													Statements: []Statement{
-														&ContinueStatement{},
+												ThenBlock: ast.Block{
+													Statements: []ast.Statement{
+														&ast.ContinueStatement{},
 													},
 												},
 												ElseBlock: nil,
 											},
-											&BreakStatement{},
+											&ast.BreakStatement{},
 										},
 									},
 								},

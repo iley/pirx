@@ -1,8 +1,8 @@
 package checks
 
-import "github.com/iley/pirx/internal/parser"
+import "github.com/iley/pirx/internal/ast"
 
-func Run(program *parser.Program) []error {
+func Run(program *ast.Program) []error {
 	typeChecker := NewTypeChecker()
 	typeChecker.CheckProgram(program)
 	return typeChecker.Errors()

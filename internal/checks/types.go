@@ -3,8 +3,8 @@ package checks
 import (
 	"fmt"
 
+	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/functions"
-	"github.com/iley/pirx/internal/parser"
 )
 
 const (
@@ -40,7 +40,7 @@ func (c *TypeChecker) Errors() []error {
 	return c.errors
 }
 
-func (c *TypeChecker) CheckProgram(program *parser.Program) {
+func (c *TypeChecker) CheckProgram(program *ast.Program) {
 	// TODO: Check that function declarations use valid types.
 
 	// Gather function prototypes so we can check arguments and types later.
@@ -54,7 +54,7 @@ func (c *TypeChecker) CheckProgram(program *parser.Program) {
 	}
 }
 
-func (c *TypeChecker) CheckFunction(fn parser.Function) {
+func (c *TypeChecker) CheckFunction(fn ast.Function) {
 	c.currentFunc = c.declaredFuncs[fn.Name]
 	c.hasReturn = false
 	c.declaredVars = make(map[string]string)
@@ -71,51 +71,51 @@ func (c *TypeChecker) CheckFunction(fn parser.Function) {
 	}
 }
 
-func (c *TypeChecker) CheckBlock(block *parser.Block) {
+func (c *TypeChecker) CheckBlock(block *ast.Block) {
 	for _, stmt := range block.Statements {
 		c.CheckStatement(stmt)
 	}
 }
 
-func (c *TypeChecker) CheckStatement(stmt parser.Statement) {
-	if varDecl, ok := stmt.(*parser.VariableDeclaration); ok {
+func (c *TypeChecker) CheckStatement(stmt ast.Statement) {
+	if varDecl, ok := stmt.(*ast.VariableDeclaration); ok {
 		c.CheckVariableDeclaration(varDecl)
-	} else if exprStmt, ok := stmt.(*parser.ExpressionStatement); ok {
+	} else if exprStmt, ok := stmt.(*ast.ExpressionStatement); ok {
 		c.CheckExpressionStatement(exprStmt)
-	} else if retStmt, ok := stmt.(*parser.ReturnStatement); ok {
+	} else if retStmt, ok := stmt.(*ast.ReturnStatement); ok {
 		c.CheckReturnStatement(retStmt)
-	} else if ifStmt, ok := stmt.(*parser.IfStatement); ok {
+	} else if ifStmt, ok := stmt.(*ast.IfStatement); ok {
 		c.CheckIfStatement(ifStmt)
-	} else if whileStmt, ok := stmt.(*parser.WhileStatement); ok {
+	} else if whileStmt, ok := stmt.(*ast.WhileStatement); ok {
 		c.CheckWhileStatement(whileStmt)
-	} else if breakStmt, ok := stmt.(*parser.BreakStatement); ok {
+	} else if breakStmt, ok := stmt.(*ast.BreakStatement); ok {
 		c.CheckBreakStatement(breakStmt)
-	} else if contStmt, ok := stmt.(*parser.ContinueStatement); ok {
+	} else if contStmt, ok := stmt.(*ast.ContinueStatement); ok {
 		c.CheckContinueStatement(contStmt)
 	} else {
 		panic(fmt.Sprintf("unsupported statement type: %v", stmt))
 	}
 }
 
-func (c *TypeChecker) CheckExpression(expr parser.Expression) string {
-	if literal, ok := expr.(*parser.Literal); ok {
+func (c *TypeChecker) CheckExpression(expr ast.Expression) string {
+	if literal, ok := expr.(*ast.Literal); ok {
 		return c.CheckLiteral(literal)
-	} else if assignment, ok := expr.(*parser.Assignment); ok {
+	} else if assignment, ok := expr.(*ast.Assignment); ok {
 		return c.CheckAssignment(assignment)
-	} else if functionCall, ok := expr.(*parser.FunctionCall); ok {
+	} else if functionCall, ok := expr.(*ast.FunctionCall); ok {
 		return c.CheckFunctionCall(functionCall)
-	} else if variableReference, ok := expr.(*parser.VariableReference); ok {
+	} else if variableReference, ok := expr.(*ast.VariableReference); ok {
 		return c.CheckVariableReference(variableReference)
-	} else if binaryOperation, ok := expr.(*parser.BinaryOperation); ok {
+	} else if binaryOperation, ok := expr.(*ast.BinaryOperation); ok {
 		return c.CheckBinaryOperation(binaryOperation)
-	} else if unaryOperation, ok := expr.(*parser.UnaryOperation); ok {
+	} else if unaryOperation, ok := expr.(*ast.UnaryOperation); ok {
 		return c.CheckUnaryOperation(unaryOperation)
 	} else {
 		panic(fmt.Sprintf("Invalid expression type: %v", expr))
 	}
 }
 
-func (c *TypeChecker) CheckLiteral(lit *parser.Literal) string {
+func (c *TypeChecker) CheckLiteral(lit *ast.Literal) string {
 	if lit.StringValue != nil {
 		return "string"
 	} else if lit.IntValue != nil {
@@ -126,14 +126,14 @@ func (c *TypeChecker) CheckLiteral(lit *parser.Literal) string {
 	panic(fmt.Sprintf("unknown literal type: %v", *lit))
 }
 
-func (c *TypeChecker) CheckVariableDeclaration(decl *parser.VariableDeclaration) {
+func (c *TypeChecker) CheckVariableDeclaration(decl *ast.VariableDeclaration) {
 	if !isValidType(decl.Type) {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: unknown type %s", decl.Loc.Line, decl.Loc.Col, decl.Type))
 	}
 	c.declaredVars[decl.Name] = decl.Type
 }
 
-func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) string {
+func (c *TypeChecker) CheckFunctionCall(call *ast.FunctionCall) string {
 	proto, declared := c.declaredFuncs[call.FunctionName]
 	if !declared {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s is not declared", call.Loc.Line, call.Loc.Col, call.FunctionName))
@@ -160,11 +160,11 @@ func (c *TypeChecker) CheckFunctionCall(call *parser.FunctionCall) string {
 	return proto.ReturnType
 }
 
-func (c *TypeChecker) CheckExpressionStatement(e *parser.ExpressionStatement) {
+func (c *TypeChecker) CheckExpressionStatement(e *ast.ExpressionStatement) {
 	c.CheckExpression(e.Expression)
 }
 
-func (c *TypeChecker) CheckAssignment(assignment *parser.Assignment) string {
+func (c *TypeChecker) CheckAssignment(assignment *ast.Assignment) string {
 	target := assignment.VariableName
 	varType, declared := c.declaredVars[target]
 	if !declared {
@@ -185,7 +185,7 @@ func (c *TypeChecker) CheckAssignment(assignment *parser.Assignment) string {
 	return varType
 }
 
-func (c *TypeChecker) CheckVariableReference(ref *parser.VariableReference) string {
+func (c *TypeChecker) CheckVariableReference(ref *ast.VariableReference) string {
 	varType, declared := c.declaredVars[ref.Name]
 	if !declared {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before reference", ref.Loc.Line, ref.Loc.Col, ref.Name))
@@ -194,7 +194,7 @@ func (c *TypeChecker) CheckVariableReference(ref *parser.VariableReference) stri
 	return varType
 }
 
-func (c *TypeChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
+func (c *TypeChecker) CheckReturnStatement(stmt *ast.ReturnStatement) {
 	c.hasReturn = true
 
 	if stmt.Value == nil && c.currentFunc.ReturnType != "" {
@@ -217,7 +217,7 @@ func (c *TypeChecker) CheckReturnStatement(stmt *parser.ReturnStatement) {
 	}
 }
 
-func (c *TypeChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) string {
+func (c *TypeChecker) CheckBinaryOperation(binOp *ast.BinaryOperation) string {
 	leftType := c.CheckExpression(binOp.Left)
 	rightType := c.CheckExpression(binOp.Right)
 	resultType, ok := binaryOperationResult(binOp.Operator, leftType, rightType)
@@ -233,7 +233,7 @@ func (c *TypeChecker) CheckBinaryOperation(binOp *parser.BinaryOperation) string
 	return resultType
 }
 
-func (c *TypeChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) string {
+func (c *TypeChecker) CheckUnaryOperation(unaryOp *ast.UnaryOperation) string {
 	operandType := c.CheckExpression(unaryOp.Operand)
 	resultType, ok := unaryOperationResult(unaryOp.Operator, operandType)
 	if !ok {
@@ -247,7 +247,7 @@ func (c *TypeChecker) CheckUnaryOperation(unaryOp *parser.UnaryOperation) string
 	return resultType
 }
 
-func (c *TypeChecker) CheckIfStatement(stmt *parser.IfStatement) {
+func (c *TypeChecker) CheckIfStatement(stmt *ast.IfStatement) {
 	exprType := c.CheckExpression(stmt.Condition)
 	if exprType != "bool" {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in if condition, got type %s",
@@ -262,7 +262,7 @@ func (c *TypeChecker) CheckIfStatement(stmt *parser.IfStatement) {
 	}
 }
 
-func (c *TypeChecker) CheckWhileStatement(stmt *parser.WhileStatement) {
+func (c *TypeChecker) CheckWhileStatement(stmt *ast.WhileStatement) {
 	exprType := c.CheckExpression(stmt.Condition)
 	if exprType != "bool" {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in while condition, got type %s",
@@ -274,11 +274,11 @@ func (c *TypeChecker) CheckWhileStatement(stmt *parser.WhileStatement) {
 	c.CheckBlock(&stmt.Body)
 }
 
-func (c *TypeChecker) CheckBreakStatement(stmt *parser.BreakStatement) {
+func (c *TypeChecker) CheckBreakStatement(stmt *ast.BreakStatement) {
 	// noop
 }
 
-func (c *TypeChecker) CheckContinueStatement(stmt *parser.ContinueStatement) {
+func (c *TypeChecker) CheckContinueStatement(stmt *ast.ContinueStatement) {
 	// noop
 }
 

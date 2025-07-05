@@ -21,6 +21,7 @@ type Program struct {
 	Loc              Location
 	Functions        []Function
 	ExternFunctions  []ExternFunction
+	StructDeclarations []StructDeclaration
 }
 
 func (p *Program) GetLocation() Location {
@@ -30,6 +31,10 @@ func (p *Program) GetLocation() Location {
 func (p *Program) String() string {
 	var sb strings.Builder
 	sb.WriteString("(program")
+	for _, structDecl := range p.StructDeclarations {
+		sb.WriteString(" ")
+		sb.WriteString(structDecl.String())
+	}
 	for _, fn := range p.ExternFunctions {
 		sb.WriteString(" ")
 		sb.WriteString(fn.String())
@@ -100,6 +105,43 @@ func (f *ExternFunction) String() string {
 	}
 	sb.WriteString(")")
 	return sb.String()
+}
+
+type StructDeclaration struct {
+	Loc    Location
+	Name   string
+	Fields []StructField
+}
+
+func (s *StructDeclaration) GetLocation() Location {
+	return s.Loc
+}
+
+func (s *StructDeclaration) String() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("(struct %s (", s.Name))
+	for i, field := range s.Fields {
+		sb.WriteString(field.String())
+		if i != len(s.Fields)-1 {
+			sb.WriteString(" ")
+		}
+	}
+	sb.WriteString("))")
+	return sb.String()
+}
+
+type StructField struct {
+	Loc  Location
+	Name string
+	Type string
+}
+
+func (f StructField) GetLocation() Location {
+	return f.Loc
+}
+
+func (f StructField) String() string {
+	return fmt.Sprintf("(%s %s)", f.Name, f.Type)
 }
 
 type Arg struct {

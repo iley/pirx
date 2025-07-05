@@ -41,6 +41,33 @@ func TestLexer(t *testing.T) {
 			},
 		},
 		{
+			name:  "struct keyword",
+			input: "struct",
+			expected: []Lexeme{
+				{Type: LEX_KEYWORD, Str: "struct", Line: 1, Col: 1},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "struct declaration",
+			input: "struct Foo { x: int; y: string; }",
+			expected: []Lexeme{
+				{Type: LEX_KEYWORD, Str: "struct", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "Foo", Line: 1, Col: 8},
+				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 12},
+				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 14},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 15},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 17},
+				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 20},
+				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 22},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 23},
+				{Type: LEX_IDENT, Str: "string", Line: 1, Col: 25},
+				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 31},
+				{Type: LEX_PUNCTUATION, Str: "}", Line: 1, Col: 33},
+				{Type: LEX_EOF},
+			},
+		},
+		{
 			name:  "numbers",
 			input: "42 123 0",
 			expected: []Lexeme{

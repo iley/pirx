@@ -61,6 +61,7 @@ func (p *Parser) ParseProgram() (*Program, error) {
 
 	functions := []Function{}
 	externFunctions := []ExternFunction{}
+	structDeclarations := []StructDeclaration{}
 
 	for {
 		lex, err := p.peek()
@@ -71,7 +72,13 @@ func (p *Parser) ParseProgram() (*Program, error) {
 			break
 		}
 
-		if lex.IsKeyword("extern") {
+		if lex.IsKeyword("struct") {
+			structDecl, err := p.parseStructDeclaration()
+			if err != nil {
+				return nil, err
+			}
+			structDeclarations = append(structDeclarations, structDecl)
+		} else if lex.IsKeyword("extern") {
 			externFn, err := p.parseExternFunction()
 			if err != nil {
 				return nil, err
@@ -84,11 +91,11 @@ func (p *Parser) ParseProgram() (*Program, error) {
 			}
 			functions = append(functions, fn)
 		} else {
-			return nil, fmt.Errorf("%d:%d: expected 'func' or 'extern', got %v", lex.Line, lex.Col, lex)
+			return nil, fmt.Errorf("%d:%d: expected 'struct', 'func' or 'extern', got %v", lex.Line, lex.Col, lex)
 		}
 	}
 
-	return &Program{Loc: programLoc, Functions: functions, ExternFunctions: externFunctions}, nil
+	return &Program{Loc: programLoc, Functions: functions, ExternFunctions: externFunctions, StructDeclarations: structDeclarations}, nil
 }
 
 func (p *Parser) parseFunction() (Function, error) {
@@ -987,5 +994,102 @@ func (p *Parser) parseWhileStatement() (*WhileStatement, error) {
 		Loc:       whileLoc,
 		Condition: condition,
 		Body:      *body,
+	}, nil
+}
+
+func (p *Parser) parseStructDeclaration() (StructDeclaration, error) {
+	// consume 'struct'
+	structLex, err := p.consume()
+	if err != nil {
+		return StructDeclaration{}, err
+	}
+	structLoc := locationFromLexeme(structLex)
+
+	// struct name
+	lex, err := p.consume()
+	if err != nil {
+		return StructDeclaration{}, err
+	}
+	if lex.Type != lexer.LEX_IDENT {
+		return StructDeclaration{}, fmt.Errorf("%d:%d: expected struct name, got %v", lex.Line, lex.Col, lex)
+	}
+	name := lex.Str
+
+	// '{'
+	lex, err = p.consume()
+	if err != nil {
+		return StructDeclaration{}, err
+	}
+	if !lex.IsPunctuation("{") {
+		return StructDeclaration{}, fmt.Errorf("%d:%d: expected '{' after struct name, got %v", lex.Line, lex.Col, lex)
+	}
+
+	// parse fields
+	fields := []StructField{}
+	for {
+		lex, err := p.peek()
+		if err != nil {
+			return StructDeclaration{}, err
+		}
+		if lex.IsPunctuation("}") {
+			break
+		}
+
+		// field name
+		fieldLex, err := p.consume()
+		if err != nil {
+			return StructDeclaration{}, err
+		}
+		if fieldLex.Type != lexer.LEX_IDENT {
+			return StructDeclaration{}, fmt.Errorf("%d:%d: expected field name, got %v", fieldLex.Line, fieldLex.Col, fieldLex)
+		}
+		fieldLoc := locationFromLexeme(fieldLex)
+		fieldName := fieldLex.Str
+
+		// ':'
+		lex, err = p.consume()
+		if err != nil {
+			return StructDeclaration{}, err
+		}
+		if !lex.IsPunctuation(":") {
+			return StructDeclaration{}, fmt.Errorf("%d:%d: expected ':' after field name, got %v", lex.Line, lex.Col, lex)
+		}
+
+		// field type
+		lex, err = p.consume()
+		if err != nil {
+			return StructDeclaration{}, err
+		}
+		if lex.Type != lexer.LEX_IDENT {
+			return StructDeclaration{}, fmt.Errorf("%d:%d: expected field type, got %v", lex.Line, lex.Col, lex)
+		}
+		fieldType := lex.Str
+
+		// ';'
+		lex, err = p.consume()
+		if err != nil {
+			return StructDeclaration{}, err
+		}
+		if !lex.IsPunctuation(";") {
+			return StructDeclaration{}, fmt.Errorf("%d:%d: expected ';' after field declaration, got %v", lex.Line, lex.Col, lex)
+		}
+
+		fields = append(fields, StructField{
+			Loc:  fieldLoc,
+			Name: fieldName,
+			Type: fieldType,
+		})
+	}
+
+	// consume '}'
+	_, err = p.consume()
+	if err != nil {
+		return StructDeclaration{}, err
+	}
+
+	return StructDeclaration{
+		Loc:    structLoc,
+		Name:   name,
+		Fields: fields,
 	}, nil
 }

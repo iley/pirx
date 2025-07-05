@@ -399,6 +399,95 @@ func TestParseProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "struct declaration with two fields",
+			src:  `struct Foo { x: int; y: string; }`,
+			expected: &Program{
+				StructDeclarations: []StructDeclaration{
+					{
+						Name: "Foo",
+						Fields: []StructField{
+							{Name: "x", Type: "int"},
+							{Name: "y", Type: "string"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "empty struct",
+			src:  `struct Empty { }`,
+			expected: &Program{
+				StructDeclarations: []StructDeclaration{
+					{
+						Name:   "Empty",
+						Fields: []StructField{},
+					},
+				},
+			},
+		},
+		{
+			name: "struct with single field",
+			src:  `struct Point { x: int; }`,
+			expected: &Program{
+				StructDeclarations: []StructDeclaration{
+					{
+						Name: "Point",
+						Fields: []StructField{
+							{Name: "x", Type: "int"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple structs",
+			src:  `struct Point { x: int; y: int; } struct Person { name: string; age: int; }`,
+			expected: &Program{
+				StructDeclarations: []StructDeclaration{
+					{
+						Name: "Point",
+						Fields: []StructField{
+							{Name: "x", Type: "int"},
+							{Name: "y", Type: "int"},
+						},
+					},
+					{
+						Name: "Person",
+						Fields: []StructField{
+							{Name: "name", Type: "string"},
+							{Name: "age", Type: "int"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "struct and function together",
+			src:  `struct Point { x: int; y: int; } func main() { var p: Point; }`,
+			expected: &Program{
+				StructDeclarations: []StructDeclaration{
+					{
+						Name: "Point",
+						Fields: []StructField{
+							{Name: "x", Type: "int"},
+							{Name: "y", Type: "int"},
+						},
+					},
+				},
+				Functions: []Function{
+					{
+						Name: "main",
+						Args: []Arg{},
+						Body: Block{
+							Statements: []Statement{
+								&VariableDeclaration{Name: "p", Type: "Point"},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -425,7 +514,7 @@ func TestParseProgram_Error(t *testing.T) {
 		{
 			name:          "missing func keyword",
 			src:           `main() {}`,
-			expectedError: "1:1: expected 'func'",
+			expectedError: "1:1: expected 'struct', 'func' or 'extern'",
 		},
 		{
 			name:          "missing function name",
@@ -461,6 +550,31 @@ func TestParseProgram_Error(t *testing.T) {
 			name:          "missing colon in var declaration",
 			src:           `func main() { var x int; }`,
 			expectedError: "1:21: expected ':' after variable name",
+		},
+		{
+			name:          "missing struct name",
+			src:           `struct { x: int; }`,
+			expectedError: "1:8: expected struct name",
+		},
+		{
+			name:          "missing opening brace in struct",
+			src:           `struct Foo x: int; }`,
+			expectedError: "1:12: expected '{' after struct name",
+		},
+		{
+			name:          "missing colon in struct field",
+			src:           `struct Foo { x int; }`,
+			expectedError: "1:16: expected ':' after field name",
+		},
+		{
+			name:          "missing semicolon in struct field",
+			src:           `struct Foo { x: int }`,
+			expectedError: "1:21: expected ';' after field declaration",
+		},
+		{
+			name:          "missing closing brace in struct",
+			src:           `struct Foo { x: int;`,
+			expectedError: "expected field name, got <EOF>",
 		},
 	}
 

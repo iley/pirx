@@ -227,14 +227,19 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 
 		// Then generate stack pushes for the arguments except the first one.
 		for i, arg := range call.Args[call.NamedArgs:] {
-			argSize := call.ArgSizes[i]
+			argSize := call.ArgSizes[i+call.NamedArgs]
 			generateRegisterLoad(cc, 0, argSize, arg)
 			// We extend all arguments to 64 bit.
+			if argSize == 4 {
+				// Sign extend 32-bit values to 64-bit
+				fmt.Fprintf(cc.output, "  sxtw x0, w0\n")
+			}
 			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*WORD_SIZE-int(spShift))
 		}
 
 		for i, arg := range call.Args[0:call.NamedArgs] {
-			generateRegisterLoad(cc, i, 8, arg)
+			argSize := call.ArgSizes[i]
+			generateRegisterLoad(cc, i, argSize, arg)
 		}
 
 		if spShift > 0 {

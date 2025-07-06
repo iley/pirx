@@ -1,0 +1,4 @@
+add(-5, -3) = -8
+negate(-10) = 10
+add(negate(5), negate(3)) = -8
+Direct call: -3

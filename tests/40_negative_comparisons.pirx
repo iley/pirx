@@ -1,0 +1,17 @@
+func main(): int {
+  var a: int;
+  var b: int;
+  a = -5;
+  b = -10;
+  printf("a = %d, b = %d\n", a, b);
+  printf("a > b: %d\n", a > b);
+  printf("a < b: %d\n", a < b);
+  printf("a >= b: %d\n", a >= b);
+  printf("a <= b: %d\n", a <= b);
+  printf("a == b: %d\n", a == b);
+  printf("a != b: %d\n", a != b);
+  printf("-5 > -10: %d\n", -5 > -10);
+  printf("-10 < -5: %d\n", -10 < -5);
+  printf("-5 == -5: %d\n", -5 == -5);
+  return 0;
+}

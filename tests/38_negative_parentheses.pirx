@@ -1,0 +1,12 @@
+func main(): int {
+  var x: int;
+  var y: int;
+  x = -(5 + 3);
+  y = (-2) * (-4);
+  printf("x = %d\n", x);
+  printf("y = %d\n", y);
+  printf("-(x + y) = %d\n", -(x + y));
+  printf("(-x) + (-y) = %d\n", (-x) + (-y));
+  printf("-(-(x)) = %d\n", -(-(x)));
+  return 0;
+}

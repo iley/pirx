@@ -18,9 +18,9 @@ type AstNode interface {
 }
 
 type Program struct {
-	Loc              Location
-	Functions        []Function
-	ExternFunctions  []ExternFunction
+	Loc                Location
+	Functions          []Function
+	ExternFunctions    []ExternFunction
 	StructDeclarations []StructDeclaration
 }
 
@@ -310,7 +310,8 @@ type Expression interface {
 type Literal struct {
 	Loc         Location
 	StringValue *string
-	IntValue    *int64
+	IntValue    *int32
+	Int64Value  *int64
 	BoolValue   *bool
 }
 
@@ -325,6 +326,8 @@ func (l *Literal) String() string {
 		return fmt.Sprintf("\"%s\"", util.EscapeString(*l.StringValue))
 	} else if l.IntValue != nil {
 		return fmt.Sprintf("%d", *l.IntValue)
+	} else if l.Int64Value != nil {
+		return fmt.Sprintf("%d", *l.Int64Value)
 	} else if l.BoolValue != nil {
 		return fmt.Sprintf("%v", *l.BoolValue)
 	}
@@ -332,8 +335,12 @@ func (l *Literal) String() string {
 }
 
 // Helper functions for creating Literal values
-func NewIntLiteral(value int64) *Literal {
+func NewIntLiteral(value int32) *Literal {
 	return &Literal{IntValue: &value}
+}
+
+func NewInt64Literal(value int64) *Literal {
+	return &Literal{Int64Value: &value}
 }
 
 func NewStringLiteral(value string) *Literal {
@@ -431,3 +438,4 @@ func (u *UnaryOperation) isExpression() {}
 func (u *UnaryOperation) String() string {
 	return fmt.Sprintf("(%s %s)", u.Operator, u.Operand.String())
 }
+

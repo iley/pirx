@@ -230,7 +230,8 @@ func (a Anchor) GetSize() int {
 
 type Arg struct {
 	Variable      string
-	LiteralInt    *int64
+	LiteralInt    *int32
+	LiteralInt64  *int64
 	LiteralString *string
 }
 

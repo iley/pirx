@@ -155,6 +155,11 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 			generateRegisterStore(cc, "x0", assign.Target)
 		} else if assign.Value.LiteralInt != nil {
 			// Assign integer constant to variable.
+			// TODO: Generate 32-bit code.
+			generateRegisterLoad(cc, "x0", assign.Value)
+			generateRegisterStore(cc, "x0", assign.Target)
+		} else if assign.Value.LiteralInt64 != nil {
+			// Assign integer constant to variable.
 			generateRegisterLoad(cc, "x0", assign.Value)
 			generateRegisterStore(cc, "x0", assign.Target)
 		} else {
@@ -316,7 +321,10 @@ func generateRegisterLoad(cc *CodegenContext, reg string, arg ir.Arg) {
 			fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
 		}
 	} else if arg.LiteralInt != nil {
-		generateLiteralLoad(cc, reg, *arg.LiteralInt)
+		// TODO: Generate 32-bit code.
+		generateLiteralLoad(cc, reg, int64(*arg.LiteralInt))
+	} else if arg.LiteralInt64 != nil {
+		generateLiteralLoad(cc, reg, *arg.LiteralInt64)
 	} else if arg.LiteralString != nil {
 		label := cc.stringLiterals[*arg.LiteralString]
 		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)

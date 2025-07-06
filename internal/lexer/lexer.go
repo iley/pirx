@@ -560,6 +560,12 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 			return Lexeme{}, err
 		}
 
+		// "l" suffix indicates an int64 literal
+		if r == 'l' {
+			num += string(r)
+			break
+		}
+
 		if !unicode.IsDigit(r) {
 			l.unreadRune()
 			break

@@ -90,9 +90,17 @@ func generateBlockOps(ic *IrContext, block ast.Block) []Op {
 func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 	ops := []Op{}
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
-		// TODO: types.
-		zero := int64(0)
-		ops = append(ops, Assign{Target: varDecl.Name, Value: Arg{LiteralInt: &zero}})
+		// TODO: Handle more types.
+		switch varDecl.Type {
+		case "int", "bool":
+			zero := int32(0)
+			ops = append(ops, Assign{Target: varDecl.Name, Value: Arg{LiteralInt: &zero}})
+		case "int64", "string":
+			zero := int64(0)
+			ops = append(ops, Assign{Target: varDecl.Name, Value: Arg{LiteralInt64: &zero}})
+		default:
+			panic(fmt.Sprintf("unknown type when generating IR for variable declaration: %s", varDecl.Type))
+		}
 	} else if exprStmt, ok := node.(*ast.ExpressionStatement); ok {
 		// We ignore the result of the expression.
 		exprOps, _ := generateExpressionOps(ic, exprStmt.Expression)
@@ -125,10 +133,12 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
 	if literal, ok := node.(*ast.Literal); ok {
 		if literal.IntValue != nil {
 			return []Op{}, Arg{LiteralInt: literal.IntValue}
+		} else if literal.Int64Value != nil {
+			return []Op{}, Arg{LiteralInt64: literal.Int64Value}
 		} else if literal.StringValue != nil {
 			return []Op{}, Arg{LiteralString: literal.StringValue}
 		} else if literal.BoolValue != nil {
-			var intValue int64
+			var intValue int32
 			if *literal.BoolValue == true {
 				intValue = 1
 			} else {
@@ -140,6 +150,7 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
 		}
 	} else if assignment, ok := node.(*ast.Assignment); ok {
 		ops, rvalueArg := generateExpressionOps(ic, assignment.Value)
+		// TODO: Size???
 		ops = append(ops, Assign{Target: assignment.VariableName, Value: rvalueArg})
 		return ops, rvalueArg
 	} else if call, ok := node.(*ast.FunctionCall); ok {

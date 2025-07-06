@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/lexer"
@@ -650,11 +651,26 @@ func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 		return nil, err
 	}
 	litLoc := locationFromLexeme(lex)
-	val, err := strconv.Atoi(lex.Str)
-	if err != nil {
-		return nil, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
+	var literal *ast.Literal
+
+	// TODO: Support base16 and base2.
+	if strings.HasSuffix(lex.Str, "l") {
+		// int64 literal
+		str, _ := strings.CutSuffix(lex.Str, "l")
+		val, err := strconv.ParseInt(str, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%d:%d: could not parse 64-bit integer: %w", lex.Line, lex.Col, err)
+		}
+		literal = ast.NewInt64Literal(val)
+	} else {
+		// int literal (32 bit)
+		val, err := strconv.ParseInt(lex.Str, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
+		}
+		literal = ast.NewIntLiteral(int32(val))
 	}
-	literal := ast.NewIntLiteral(int64(val))
+
 	literal.Loc = litLoc
 	return literal, nil
 }

@@ -107,6 +107,8 @@ func (c *TypeChecker) CheckLiteral(lit *ast.Literal) string {
 		return "string"
 	} else if lit.IntValue != nil {
 		return "int"
+	} else if lit.Int64Value != nil {
+		return "int64"
 	} else if lit.BoolValue != nil {
 		return "bool"
 	}
@@ -304,5 +306,5 @@ func unaryOperationResult(op, val string) (string, bool) {
 }
 
 func isValidType(name string) bool {
-	return name == "int" || name == "string" || name == "bool"
+	return name == "int" || name == "int64" || name == "string" || name == "bool"
 }

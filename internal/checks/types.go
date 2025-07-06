@@ -283,12 +283,12 @@ func binaryOperationResult(op, left, right string) (string, bool) {
 
 	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" {
 		// These are (currently) supproted for integers only.
-		return "int", left == "int"
+		return left, left == "int" || left == "int64"
 	}
 
 	if op == "<" || op == ">" || op == "<=" || op == ">=" {
 		// These are (currently) supproted for integers only.
-		return "bool", left == "int"
+		return "bool", left == "int" || left == "int64"
 	}
 
 	if op == "&&" || op == "||" {

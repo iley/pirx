@@ -21,9 +21,10 @@ func (irp IrProgram) Print(writer io.Writer) {
 }
 
 type IrFunction struct {
-	Name   string
-	Params []string // TODO: Types.
-	Ops    []Op
+	Name     string
+	Args     []string
+	ArgSizes []int
+	Ops      []Op
 }
 
 func (irf IrFunction) Print(writer io.Writer) {

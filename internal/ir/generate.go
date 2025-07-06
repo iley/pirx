@@ -51,9 +51,10 @@ func Generate(node *ast.Program) IrProgram {
 
 func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 	irfunc := IrFunction{
-		Name:   node.Name,
-		Params: []string{},
-		Ops:    []Op{},
+		Name:     node.Name,
+		Args:     []string{},
+		ArgSizes: []int{},
+		Ops:      []Op{},
 	}
 
 	// Create a new context for this function
@@ -63,7 +64,8 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 
 	for _, arg := range node.Args {
 		fic.vars[arg.Name] = getTypeSize(arg.Type)
-		irfunc.Params = append(irfunc.Params, arg.Name)
+		irfunc.Args = append(irfunc.Args, arg.Name)
+		irfunc.ArgSizes = append(irfunc.ArgSizes, getTypeSize(arg.Type))
 	}
 
 	irfunc.Ops = generateBlockOps(&fic, node.Body)

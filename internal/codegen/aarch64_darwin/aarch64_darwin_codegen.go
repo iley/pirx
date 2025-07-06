@@ -77,7 +77,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	locals := make(map[string]int)
 
 	// Add args to locals.
-	for _, arg := range f.Params {
+	for _, arg := range f.Args {
 		locals[arg] = -1
 	}
 
@@ -109,7 +109,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 
 	// Offset from SP for locals.
 	offset := 0
-	for i, arg := range f.Params {
+	for i, arg := range f.Args {
 		if offset > MAX_SP_OFFSET {
 			panic(fmt.Sprintf("too many locals: maximum offset supported is %d", MAX_SP_OFFSET))
 		}

@@ -51,7 +51,7 @@ type Assign struct {
 }
 
 func (a Assign) String() string {
-	return fmt.Sprintf("Assign(%s, %s)", a.Target, a.Value)
+	return fmt.Sprintf("Assign%d(%s, %s)", a.Size, a.Target, a.Value)
 }
 
 func (a Assign) GetTarget() string {
@@ -74,7 +74,7 @@ type UnaryOp struct {
 }
 
 func (o UnaryOp) String() string {
-	return fmt.Sprintf("UnaryOp(%s = %s %s)", o.Result, o.Operation, o.Value)
+	return fmt.Sprintf("UnaryOp%d(%s = %s %s)", o.Size, o.Result, o.Operation, o.Value)
 }
 func (o UnaryOp) GetTarget() string {
 	return o.Result
@@ -97,7 +97,7 @@ type BinaryOp struct {
 }
 
 func (o BinaryOp) String() string {
-	return fmt.Sprintf("BinaryOp(%s = %s %s %s)", o.Result, o.Left, o.Operation, o.Right)
+	return fmt.Sprintf("BinaryOp%d(%s = %s %s %s)", o.Size, o.Result, o.Left, o.Operation, o.Right)
 }
 
 func (o BinaryOp) GetTarget() string {
@@ -116,13 +116,14 @@ type Call struct {
 	Result    string
 	Function  string
 	Args      []Arg
+	Sizes     []int
 	NamedArgs int // How many of the provided arguments correspond to named arguments. Everything else are treated as variadic args.
 }
 
 func (c Call) String() string {
 	args := []string{}
-	for _, arg := range c.Args {
-		args = append(args, arg.String())
+	for i := 0; i < len(c.Args); i++ {
+		args = append(args, fmt.Sprintf("%s/%d", c.Args[i], c.Sizes[i]))
 	}
 	return fmt.Sprintf("Call(%s = %s(%s))", c.Result, c.Function, strings.Join(args, ", "))
 }
@@ -146,7 +147,7 @@ type Return struct {
 
 func (r Return) String() string {
 	if r.Value != nil {
-		return fmt.Sprintf("Return(%s)", r.Value)
+		return fmt.Sprintf("Return%d(%s)", r.Size, r.Value)
 	}
 	return "Return()"
 }
@@ -188,12 +189,13 @@ func (j Jump) GetSize() int {
 }
 
 type JumpUnless struct {
+	Size      int
 	Condition Arg
 	Goto      string
 }
 
 func (j JumpUnless) String() string {
-	return fmt.Sprintf("JumpUnless(%s, %s)", j.Condition.String(), j.Goto)
+	return fmt.Sprintf("JumpUnless%d(%s, %s)", j.Size, j.Condition.String(), j.Goto)
 }
 
 func (j JumpUnless) GetTarget() string {
@@ -205,7 +207,7 @@ func (j JumpUnless) GetArgs() []Arg {
 }
 
 func (j JumpUnless) GetSize() int {
-	return 0
+	return j.Size
 }
 
 type Anchor struct {

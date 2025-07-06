@@ -13,12 +13,16 @@ type IrContext struct {
 	breakLabel     string
 	continueLabel  string
 	funcs          map[string]functions.Proto
+	// Local variables: name -> size in bytes.
+	vars map[string]int
 }
 
-func (ic *IrContext) allocTemp() string {
+func (ic *IrContext) allocTemp(size int) string {
 	idx := ic.nextTempIndex
 	ic.nextTempIndex++
-	return fmt.Sprintf("$%d", idx)
+	name := fmt.Sprintf("$%d", idx)
+	ic.vars[name] = size
+	return name
 }
 
 func (ic *IrContext) allocLabel() string {
@@ -52,17 +56,20 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 		Ops:    []Op{},
 	}
 
-	for _, arg := range node.Args {
-		irfunc.Params = append(irfunc.Params, arg.Name)
-	}
-
 	// Create a new context for this function
 	fic := *ic
 	fic.nextTempIndex = 1
+	fic.vars = make(map[string]int)
+
+	for _, arg := range node.Args {
+		fic.vars[arg.Name] = getTypeSize(arg.Type)
+		irfunc.Params = append(irfunc.Params, arg.Name)
+	}
 
 	irfunc.Ops = generateBlockOps(&fic, node.Body)
 
 	// Add implicit return if the function doesn't end with a return
+	// We assume that presence of return with the right type is checked upstream.
 	if len(irfunc.Ops) == 0 {
 		// Empty function - add bare return
 		irfunc.Ops = append(irfunc.Ops, Return{Value: nil})
@@ -90,27 +97,30 @@ func generateBlockOps(ic *IrContext, block ast.Block) []Op {
 func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 	ops := []Op{}
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
-		// TODO: Handle more types.
-		switch varDecl.Type {
-		case "int", "bool":
+		size := getTypeSize(varDecl.Type)
+		ic.vars[varDecl.Name] = size
+		// TODO: Handle more type sizes.
+		switch size {
+		case 4: // 32-bit values.
 			zero := int32(0)
-			ops = append(ops, Assign{Target: varDecl.Name, Value: Arg{LiteralInt: &zero}})
-		case "int64", "string":
+			ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: Arg{LiteralInt: &zero}})
+		case 8: // 64-bit values.
+			ic.vars[varDecl.Name] = 8
 			zero := int64(0)
-			ops = append(ops, Assign{Target: varDecl.Name, Value: Arg{LiteralInt64: &zero}})
+			ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: Arg{LiteralInt64: &zero}})
 		default:
-			panic(fmt.Sprintf("unknown type when generating IR for variable declaration: %s", varDecl.Type))
+			panic(fmt.Sprintf("unsupported size %d, type %s", size, varDecl.Type))
 		}
 	} else if exprStmt, ok := node.(*ast.ExpressionStatement); ok {
 		// We ignore the result of the expression.
-		exprOps, _ := generateExpressionOps(ic, exprStmt.Expression)
+		exprOps, _, _ := generateExpressionOps(ic, exprStmt.Expression)
 		ops = append(ops, exprOps...)
 	} else if retStmt, ok := node.(*ast.ReturnStatement); ok {
 		if retStmt.Value != nil {
 			// Return with value
-			exprOps, resultArg := generateExpressionOps(ic, retStmt.Value)
+			exprOps, resultArg, resultSize := generateExpressionOps(ic, retStmt.Value)
 			ops = append(ops, exprOps...)
-			ops = append(ops, Return{Value: &resultArg})
+			ops = append(ops, Return{Size: resultSize, Value: &resultArg})
 		} else {
 			// Bare return
 			ops = append(ops, Return{Value: nil})
@@ -129,46 +139,51 @@ func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 	return ops
 }
 
-func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
+// generateExpressionOps generates a seequence of ops for a given expression.
+// Returns a slice of ops, Arg representing the value (typically an intermediary), and the size of the value in bytes.
+func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) {
 	if literal, ok := node.(*ast.Literal); ok {
 		if literal.IntValue != nil {
-			return []Op{}, Arg{LiteralInt: literal.IntValue}
+			return []Op{}, Arg{LiteralInt: literal.IntValue}, 4
 		} else if literal.Int64Value != nil {
-			return []Op{}, Arg{LiteralInt64: literal.Int64Value}
+			return []Op{}, Arg{LiteralInt64: literal.Int64Value}, 8
 		} else if literal.StringValue != nil {
-			return []Op{}, Arg{LiteralString: literal.StringValue}
+			return []Op{}, Arg{LiteralString: literal.StringValue}, 8
 		} else if literal.BoolValue != nil {
+			// Translate booleans into 32-bit integers.
 			var intValue int32
 			if *literal.BoolValue == true {
 				intValue = 1
 			} else {
 				intValue = 0
 			}
-			return []Op{}, Arg{LiteralInt: &intValue}
+			return []Op{}, Arg{LiteralInt: &intValue}, 4
 		} else {
 			panic(fmt.Sprintf("Invalid literal: %v. Only int and string are currently supported", literal))
 		}
 	} else if assignment, ok := node.(*ast.Assignment); ok {
-		ops, rvalueArg := generateExpressionOps(ic, assignment.Value)
-		// TODO: Size???
-		ops = append(ops, Assign{Target: assignment.VariableName, Value: rvalueArg})
-		return ops, rvalueArg
+		ops, rvalueArg, rvalueSize := generateExpressionOps(ic, assignment.Value)
+		ops = append(ops, Assign{Target: assignment.VariableName, Value: rvalueArg, Size: rvalueSize})
+		return ops, rvalueArg, rvalueSize
 	} else if call, ok := node.(*ast.FunctionCall); ok {
 		return generateFunctionCallOps(ic, call)
-	} else if variableReference, ok := node.(*ast.VariableReference); ok {
-		return []Op{}, Arg{Variable: variableReference.Name}
-	} else if binaryOperation, ok := node.(*ast.BinaryOperation); ok {
-		leftOps, leftArg := generateExpressionOps(ic, binaryOperation.Left)
-		rightOps, rightArg := generateExpressionOps(ic, binaryOperation.Right)
+	} else if ref, ok := node.(*ast.VariableReference); ok {
+		return []Op{}, Arg{Variable: ref.Name}, ic.vars[ref.Name]
+	} else if binOp, ok := node.(*ast.BinaryOperation); ok {
+		leftOps, leftArg, leftSize := generateExpressionOps(ic, binOp.Left)
+		rightOps, rightArg, rightSize := generateExpressionOps(ic, binOp.Right)
+		if leftSize != rightSize {
+			panic(fmt.Sprintf("%d:%d: size mismatch between operands of %s", binOp.Loc.Line, binOp.Loc.Col, binOp.Operator))
+		}
 		ops := append(leftOps, rightOps...)
-		temp := ic.allocTemp()
-		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: binaryOperation.Operator})
-		return ops, Arg{Variable: temp}
+		temp := ic.allocTemp(leftSize)
+		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: binOp.Operator, Size: leftSize})
+		return ops, Arg{Variable: temp}, leftSize
 	} else if unaryOperation, ok := node.(*ast.UnaryOperation); ok {
-		ops, arg := generateExpressionOps(ic, unaryOperation.Operand)
-		temp := ic.allocTemp()
-		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: unaryOperation.Operator})
-		return ops, Arg{Variable: temp}
+		ops, arg, size := generateExpressionOps(ic, unaryOperation.Operand)
+		temp := ic.allocTemp(size)
+		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: unaryOperation.Operator, Size: size})
+		return ops, Arg{Variable: temp}, size
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }
@@ -178,18 +193,18 @@ func generateIfOps(ic *IrContext, stmt ast.IfStatement) []Op {
 
 	if stmt.ElseBlock == nil {
 		endLabel := ic.allocLabel()
-		condOps, condArg := generateExpressionOps(ic, stmt.Condition)
+		condOps, condArg, condSize := generateExpressionOps(ic, stmt.Condition)
 		ops = append(ops, condOps...)
-		ops = append(ops, JumpUnless{Condition: condArg, Goto: endLabel})
+		ops = append(ops, JumpUnless{Condition: condArg, Goto: endLabel, Size: condSize})
 		blockOps := generateBlockOps(ic, stmt.ThenBlock)
 		ops = append(ops, blockOps...)
 		ops = append(ops, Anchor{Label: endLabel})
 	} else {
 		elseLabel := ic.allocLabel()
 		endLabel := ic.allocLabel()
-		condOps, condArg := generateExpressionOps(ic, stmt.Condition)
+		condOps, condArg, condSize := generateExpressionOps(ic, stmt.Condition)
 		ops = append(ops, condOps...)
-		ops = append(ops, JumpUnless{Condition: condArg, Goto: elseLabel})
+		ops = append(ops, JumpUnless{Condition: condArg, Goto: elseLabel, Size: condSize})
 		thenOps := generateBlockOps(ic, stmt.ThenBlock)
 		ops = append(ops, thenOps...)
 		ops = append(ops, Jump{Goto: endLabel})
@@ -211,9 +226,9 @@ func generateWhileOps(ic *IrContext, stmt ast.WhileStatement) []Op {
 	ic.breakLabel = ic.allocLabel()
 
 	ops = append(ops, Anchor{Label: ic.continueLabel})
-	condOps, condArg := generateExpressionOps(ic, stmt.Condition)
+	condOps, condArg, condSize := generateExpressionOps(ic, stmt.Condition)
 	ops = append(ops, condOps...)
-	ops = append(ops, JumpUnless{Condition: condArg, Goto: ic.breakLabel})
+	ops = append(ops, JumpUnless{Condition: condArg, Goto: ic.breakLabel, Size: condSize})
 	blockOps := generateBlockOps(ic, stmt.Body)
 	ops = append(ops, blockOps...)
 	ops = append(ops, Jump{Goto: ic.continueLabel})
@@ -225,13 +240,18 @@ func generateWhileOps(ic *IrContext, stmt ast.WhileStatement) []Op {
 	return ops
 }
 
-func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg) {
+// generateFunctionCallOps generates ops for a function.
+// Returns a slice of ops, an Arg representing the return value, and the size of the return type in bytes.
+func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, int) {
 	ops := []Op{}
 	args := []Arg{}
+	sizes := []int{}
 	for _, argNode := range call.Args {
-		subOps, subArg := generateExpressionOps(ic, argNode)
+		// TODO: What to do with the size of the argument?
+		subOps, subArg, subSize := generateExpressionOps(ic, argNode)
 		ops = append(ops, subOps...)
 		args = append(args, subArg)
+		sizes = append(sizes, subSize)
 	}
 
 	funcProto, ok := ic.funcs[call.FunctionName]
@@ -243,13 +263,26 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg) 
 		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Args)))
 	}
 
-	temp := ic.allocTemp()
+	size := getTypeSize(funcProto.ReturnType)
+	temp := ic.allocTemp(size)
 	ops = append(ops, Call{
 		Result:    temp,
 		Function:  call.FunctionName,
 		Args:      args,
+		Sizes:     sizes,
 		NamedArgs: len(funcProto.Args),
 	})
 
-	return ops, Arg{Variable: temp}
+	return ops, Arg{Variable: temp}, size
+}
+
+func getTypeSize(typ string) int {
+	switch typ {
+	case "int", "bool":
+		return 4
+	case "int64", "string":
+		return 8
+	default:
+		panic(fmt.Sprintf("unknown type %s", typ))
+	}
 }

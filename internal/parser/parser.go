@@ -563,8 +563,7 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 	case lexer.LEX_STRING:
 		return p.parseStringLiteral()
 	case lexer.LEX_OPERATOR:
-		// TODO: Add support for unary minus.
-		if lex.Str == "!" {
+		if lex.Str == "!" || lex.Str == "-" {
 			return p.parseUnaryExpression()
 		}
 		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
@@ -718,8 +717,8 @@ func (p *Parser) parseUnaryExpression() (ast.Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !lex.IsOperator("!") {
-		return nil, fmt.Errorf("%d:%d: expected '!', got %v", lex.Line, lex.Col, lex)
+	if !lex.IsOperator("!") && !lex.IsOperator("-") {
+		return nil, fmt.Errorf("%d:%d: expected '!' or '-', got %v", lex.Line, lex.Col, lex)
 	}
 	unaryLoc := locationFromLexeme(lex)
 

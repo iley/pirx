@@ -299,8 +299,11 @@ func binaryOperationResult(op, left, right string) (string, bool) {
 }
 
 func unaryOperationResult(op, val string) (string, bool) {
-	if op == "!" {
+	switch op {
+	case "!":
 		return "bool", val == "bool"
+	case "-":
+		return val, val == "int" || val == "int64"
 	}
 	panic(fmt.Sprintf("unknown binary operation %s", op))
 }

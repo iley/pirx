@@ -321,15 +321,22 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	return nil
 }
 
-func generateUnaryOp(cc *CodegenContext, unaryOp ir.UnaryOp) error {
-	if unaryOp.Operation == "!" {
-		generateRegisterLoad(cc, 0, unaryOp.Size, unaryOp.Value)
+func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
+	switch op.Operation {
+	case "!":
+		generateRegisterLoad(cc, 0, op.Size, op.Value)
 		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
 		fmt.Fprintf(cc.output, "  cset x0, eq\n")
-		generateRegisterStore(cc, 0, unaryOp.Size, unaryOp.Result)
-		return nil
+		generateRegisterStore(cc, 0, op.Size, op.Result)
+	case "-":
+		generateRegisterLoad(cc, 0, op.Size, op.Value)
+		reg := registerByIndex(0, op.Size)
+		fmt.Fprintf(cc.output, "  neg %s, %s\n", reg, reg)
+		generateRegisterStore(cc, 0, op.Size, op.Result)
+	default:
+		panic(fmt.Errorf("unsupported unary operation %s", op.Operation))
 	}
-	panic(fmt.Errorf("unsupported unary operation %s", unaryOp.Operation))
+	return nil
 }
 
 // generateRegisterLoad generates code for loading a value into a register by its index and size.

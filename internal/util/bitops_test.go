@@ -5,9 +5,9 @@ import "testing"
 func TestAlign(t *testing.T) {
 	tests := []struct {
 		name      string
-		addr      int64
+		addr      int
 		alignment int
-		expected  int64
+		expected  int
 	}{
 		{
 			name:      "already aligned address",

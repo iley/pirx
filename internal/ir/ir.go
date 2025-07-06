@@ -117,16 +117,17 @@ type Call struct {
 	Result    string
 	Function  string
 	Args      []Arg
-	Sizes     []int
+	ArgSizes  []int
 	NamedArgs int // How many of the provided arguments correspond to named arguments. Everything else are treated as variadic args.
+	Size      int // Return type size.
 }
 
 func (c Call) String() string {
 	args := []string{}
 	for i := 0; i < len(c.Args); i++ {
-		args = append(args, fmt.Sprintf("%s/%d", c.Args[i], c.Sizes[i]))
+		args = append(args, fmt.Sprintf("%s/%d", c.Args[i], c.ArgSizes[i]))
 	}
-	return fmt.Sprintf("Call(%s = %s(%s))", c.Result, c.Function, strings.Join(args, ", "))
+	return fmt.Sprintf("Call%d(%s = %s(%s))", c.Size, c.Result, c.Function, strings.Join(args, ", "))
 }
 
 func (c Call) GetTarget() string {
@@ -138,7 +139,7 @@ func (c Call) GetArgs() []Arg {
 }
 
 func (c Call) GetSize() int {
-	return 0
+	return c.Size
 }
 
 type Return struct {

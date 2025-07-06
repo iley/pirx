@@ -271,8 +271,9 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 		Result:    temp,
 		Function:  call.FunctionName,
 		Args:      args,
-		Sizes:     sizes,
+		ArgSizes:  sizes,
 		NamedArgs: len(funcProto.Args),
+		Size:      size,
 	})
 
 	return ops, Arg{Variable: temp}, size

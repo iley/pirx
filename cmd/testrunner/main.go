@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 )
 
@@ -205,6 +207,13 @@ func cleanupFiles(files []string) {
 	}
 }
 
+// TestResult represents the result of running a single test
+type TestResult struct {
+	TestCase TestCase
+	Passed   bool
+	Message  string
+}
+
 // runSingleTest runs a single test case and returns pass/fail status
 func runSingleTest(config *CompilationConfig, testCase TestCase, testsDir string) (bool, string) {
 	fmt.Printf("Running test %s... ", testCase.Name)
@@ -369,13 +378,23 @@ func compileProgram(config *CompilationConfig, pirxFile, testsDir, baseName stri
 	return binFile, true, generatedFiles
 }
 
-func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string) {
+func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string, parallelism int) {
 	if len(tests) == 1 {
-		fmt.Printf("Found 1 test\n")
+		fmt.Printf("Running 1 test\n")
 	} else {
-		fmt.Printf("Found %d tests\n", len(tests))
+		fmt.Printf("Running %d tests\n", len(tests))
 	}
 
+	if parallelism <= 1 {
+		// Sequential execution
+		runAllTestsSequential(config, tests, testsDir)
+	} else {
+		// Parallel execution
+		runAllTestsParallel(config, tests, testsDir, parallelism)
+	}
+}
+
+func runAllTestsSequential(config *CompilationConfig, tests []TestCase, testsDir string) {
 	passed := 0
 	failed := 0
 
@@ -398,6 +417,116 @@ func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string) {
 
 	if failed > 0 {
 		os.Exit(1)
+	}
+}
+
+func runAllTestsParallel(config *CompilationConfig, tests []TestCase, testsDir string, parallelism int) {
+	results := make([]TestResult, len(tests))
+	testChan := make(chan int, len(tests))
+	var wg sync.WaitGroup
+
+	// Start workers
+	for range parallelism {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for testIndex := range testChan {
+				test := tests[testIndex]
+				success, errorMsg := runSingleTestQuiet(config, test, testsDir)
+				results[testIndex] = TestResult{
+					TestCase: test,
+					Passed:   success,
+					Message:  errorMsg,
+				}
+			}
+		}()
+	}
+
+	// Queue all tests
+	for i := range tests {
+		testChan <- i
+	}
+	close(testChan)
+
+	// Wait for all tests to complete
+	wg.Wait()
+
+	// Print results in order
+	passed := 0
+	failed := 0
+	for _, result := range results {
+		if result.Passed {
+			fmt.Printf("Running test %s... PASS\n", result.TestCase.Name)
+			passed++
+		} else {
+			fmt.Printf("Running test %s... FAIL - %s\n", result.TestCase.Name, result.Message)
+			failed++
+		}
+	}
+
+	if failed == 0 {
+		fmt.Printf("Test Results: %d passed. All good!\n", passed)
+	} else {
+		fmt.Printf("Test Results: %d passed, %d failed\n", passed, failed)
+	}
+
+	if failed > 0 {
+		os.Exit(1)
+	}
+}
+
+// runSingleTestQuiet runs a single test case without printing progress
+func runSingleTestQuiet(config *CompilationConfig, testCase TestCase, testsDir string) (bool, string) {
+	if testCase.IsErrorTest {
+		// Handle error tests
+		actualError, generatedFiles, err := compileTest(config, testCase, testsDir)
+		if err != nil {
+			return false, fmt.Sprintf("error during compilation test: %v", err)
+		}
+
+		// Read expected error
+		expectedError, err := readExpectedError(testCase.ExpectedErrorFile)
+		if err != nil {
+			return false, fmt.Sprintf("error reading expected error: %v", err)
+		}
+
+		// Compare error messages
+		if actualError == expectedError {
+			// Test passed - clean up generated files
+			cleanupFiles(generatedFiles)
+			return true, ""
+		}
+
+		// Test failed - leave files for inspection
+		return false, fmt.Sprintf("error mismatch:\nExpected: %q\nActual:   %q", expectedError, actualError)
+	} else {
+		// Handle success tests
+		binaryPath, generatedFiles, err := compileTest(config, testCase, testsDir)
+		if err != nil {
+			return false, fmt.Sprintf("compilation error: %v", err)
+		}
+
+		// Run test
+		actualOutput, err := runTest(binaryPath)
+		if err != nil {
+			return false, fmt.Sprintf("runtime error: %v", err)
+		}
+
+		// Read expected output
+		expectedOutput, err := readExpectedOutput(testCase.ExpectedFile)
+		if err != nil {
+			return false, fmt.Sprintf("error reading expected output: %v", err)
+		}
+
+		// Compare outputs
+		if actualOutput == expectedOutput {
+			// Test passed - clean up generated files
+			cleanupFiles(generatedFiles)
+			return true, ""
+		}
+
+		// Test failed - leave files for inspection
+		return false, fmt.Sprintf("output mismatch:\nExpected: %q\nActual:   %q", expectedOutput, actualOutput)
 	}
 }
 
@@ -487,7 +616,9 @@ func acceptTest(config *CompilationConfig, tests []TestCase, testsDir string, te
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, "Usage: %s <command> [args]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Usage: %s [options] <command> [args]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "\nOptions:\n")
+	fmt.Fprintf(os.Stderr, "  -j <num>        Number of parallel jobs (default: 1)\n")
 	fmt.Fprintf(os.Stderr, "\nCommands:\n")
 	fmt.Fprintf(os.Stderr, "  testall         Run all tests\n")
 	fmt.Fprintf(os.Stderr, "  test <test>     Run a specific test (e.g., '05' for tests/05_xxx.pirx)\n")
@@ -496,12 +627,19 @@ func printUsage() {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	// Parse command line flags
+	var parallelism int
+	flag.IntVar(&parallelism, "j", 1, "Number of parallel jobs")
+	flag.Usage = printUsage
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) < 1 {
 		printUsage()
 		os.Exit(1)
 	}
 
-	command := os.Args[1]
+	command := args[0]
 
 	// Get compilation configuration for current platform
 	config, err := getCompilationConfig()
@@ -530,30 +668,30 @@ func main() {
 
 	switch command {
 	case "testall":
-		runAllTests(config, tests, testsDir)
+		runAllTests(config, tests, testsDir, parallelism)
 	case "test":
-		if len(os.Args) < 3 {
+		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Error: 'test' command requires a test identifier\n")
 			printUsage()
 			os.Exit(1)
 		}
-		testIdentifier := os.Args[2]
+		testIdentifier := args[1]
 		runSpecificTest(config, tests, testsDir, testIdentifier)
 	case "run":
-		if len(os.Args) < 3 {
+		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Error: 'run' command requires a test identifier\n")
 			printUsage()
 			os.Exit(1)
 		}
-		testIdentifier := os.Args[2]
+		testIdentifier := args[1]
 		runProgram(config, tests, testsDir, testIdentifier)
 	case "accept":
-		if len(os.Args) < 3 {
+		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Error: 'accept' command requires a test identifier\n")
 			printUsage()
 			os.Exit(1)
 		}
-		testIdentifier := os.Args[2]
+		testIdentifier := args[1]
 		acceptTest(config, tests, testsDir, testIdentifier)
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown command '%s'\n", command)

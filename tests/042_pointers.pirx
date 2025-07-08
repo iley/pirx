@@ -2,8 +2,7 @@ func main(): int {
   var x: int;
   var p: *int;
   p = &x;
-  // *p = 42;
-  printf("p = %ld\n", p);
+  *p = 42;
   printf("x = %d\n", x);
   return 0;
 }

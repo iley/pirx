@@ -1759,6 +1759,48 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 				Operand:  &ast.VariableReference{Name: "x"},
 			},
 		},
+		{
+			name: "pointer dereference operator",
+			src:  "*p",
+			expected: &ast.UnaryOperation{
+				Operator: "*",
+				Operand:  &ast.VariableReference{Name: "p"},
+			},
+		},
+		{
+			name: "pointer dereference with parentheses",
+			src:  "*(p + 1)",
+			expected: &ast.UnaryOperation{
+				Operator: "*",
+				Operand: &ast.BinaryOperation{
+					Left:     &ast.VariableReference{Name: "p"},
+					Operator: "+",
+					Right:    ast.NewIntLiteral(1),
+				},
+			},
+		},
+		{
+			name: "negation of dereference",
+			src:  "-*p",
+			expected: &ast.UnaryOperation{
+				Operator: "-",
+				Operand: &ast.UnaryOperation{
+					Operator: "*",
+					Operand:  &ast.VariableReference{Name: "p"},
+				},
+			},
+		},
+		{
+			name: "dereference of address-of",
+			src:  "*&x",
+			expected: &ast.UnaryOperation{
+				Operator: "*",
+				Operand: &ast.UnaryOperation{
+					Operator: "&",
+					Operand:  &ast.VariableReference{Name: "x"},
+				},
+			},
+		},
 		// Complex expressions with mixed precedence
 		{
 			name: "comparison with arithmetic (correct precedence)",

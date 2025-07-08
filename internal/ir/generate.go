@@ -171,9 +171,7 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 			panic(fmt.Sprintf("Invalid literal: %v. Only int and string are currently supported", literal))
 		}
 	} else if assignment, ok := node.(*ast.Assignment); ok {
-		ops, rvalueArg, rvalueSize := generateExpressionOps(ic, assignment.Value)
-		ops = append(ops, Assign{Target: assignment.VariableName, Value: rvalueArg, Size: rvalueSize})
-		return ops, rvalueArg, rvalueSize
+		return generateAssignmentOps(ic, assignment)
 	} else if call, ok := node.(*ast.FunctionCall); ok {
 		return generateFunctionCallOps(ic, call)
 	} else if ref, ok := node.(*ast.VariableReference); ok {
@@ -249,6 +247,23 @@ func generateWhileOps(ic *IrContext, stmt ast.WhileStatement) []Op {
 	ic.continueLabel = prevContinueLabel
 
 	return ops
+}
+
+func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int) {
+	if targetVar, ok := assgn.Target.(*ast.VariableLValue); ok {
+		ops, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
+		ops = append(ops, Assign{Target: targetVar.Name, Value: rvalueArg, Size: rvalueSize})
+		return ops, rvalueArg, rvalueSize
+	} else if targetRef, ok := assgn.Target.(*ast.DereferenceLValue); ok {
+		ops, lvalueArg, lvalueSize := generateExpressionOps(ic, targetRef.Expression)
+		rvalueOps, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
+		ops = append(ops, rvalueOps...)
+		addrTemp := ic.allocTemp(lvalueSize)
+		ops = append(ops, Assign{Target: addrTemp, Value: lvalueArg, Size: lvalueSize})
+		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
+		return ops, rvalueArg, rvalueSize
+	}
+	panic(fmt.Errorf("invalid assignment: %s", assgn))
 }
 
 // generateFunctionCallOps generates ops for a function.

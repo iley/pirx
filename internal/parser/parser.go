@@ -522,9 +522,13 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 		}
 
 		if operator == "=" {
+			target, err := p.convertExpressionToLValue(left)
+			if err != nil {
+				return nil, err
+			}
 			left = &ast.Assignment{
 				Loc:    operatorLoc,
-				Target: left,
+				Target: target,
 				Value:  right,
 			}
 		} else {
@@ -898,6 +902,27 @@ func (p *Parser) parseVariableReference() (ast.Expression, error) {
 		Loc:  varLoc,
 		Name: lex.Str,
 	}, nil
+}
+
+// convertExpressionToLValue converts an expression to an lvalue for assignment targets
+func (p *Parser) convertExpressionToLValue(expr ast.Expression) (ast.LValue, error) {
+	switch e := expr.(type) {
+	case *ast.VariableReference:
+		return &ast.VariableLValue{
+			Loc:  e.GetLocation(),
+			Name: e.Name,
+		}, nil
+	case *ast.UnaryOperation:
+		if e.Operator == "*" {
+			return &ast.DereferenceLValue{
+				Loc:        e.GetLocation(),
+				Expression: e.Operand,
+			}, nil
+		}
+		return nil, fmt.Errorf("%d:%d: invalid assignment target: %s", e.GetLocation().Line, e.GetLocation().Col, e.String())
+	default:
+		return nil, fmt.Errorf("%d:%d: invalid assignment target: %s", expr.GetLocation().Line, expr.GetLocation().Col, expr.String())
+	}
 }
 
 func (p *Parser) parseIfStatement() (*ast.IfStatement, error) {

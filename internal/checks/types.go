@@ -152,24 +152,38 @@ func (c *TypeChecker) CheckExpressionStatement(e *ast.ExpressionStatement) {
 }
 
 func (c *TypeChecker) CheckAssignment(assignment *ast.Assignment) types.Type {
-	target := assignment.VariableName
-	varType, declared := c.declaredVars[target]
-	if !declared {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before assignment", assignment.Loc.Line, assignment.Loc.Col, target))
+	var targetType types.Type
+	if targetVar, ok := assignment.Target.(*ast.VariableLValue); ok {
+		varName := targetVar.Name
+		var declared bool
+		targetType, declared = c.declaredVars[varName]
+		if !declared {
+			c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before assignment", assignment.Loc.Line, assignment.Loc.Col, varName))
+			return nil
+		}
+	} else if deref, ok := assignment.Target.(*ast.DereferenceLValue); ok {
+		refType := c.CheckExpression(deref.Expression)
+		ptrType, ok := refType.(*types.PointerType)
+		if !ok {
+			c.errors = append(c.errors, fmt.Errorf("%d:%d: dereference of a non-pointer type %s", assignment.Loc.Line, assignment.Loc.Col, refType))
+			return nil
+		}
+		targetType = ptrType.ElementType
+	} else {
+		panic(fmt.Errorf("%d: %d: invalid lvalue %s in assignment", assignment.Loc.Line, assignment.Loc.Col, assignment.Target))
 	}
 
 	valueType := c.CheckExpression(assignment.Value)
-	if !valueType.Equals(varType) {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: cannot assign value of type %s to variable %s of type %s",
+	if !valueType.Equals(targetType) {
+		c.errors = append(c.errors, fmt.Errorf("%d:%d: cannot assign value of type %s to lvalue of type %s",
 			assignment.Loc.Line,
 			assignment.Loc.Col,
 			valueType,
-			target,
-			varType,
+			targetType,
 		))
 	}
 
-	return varType
+	return targetType
 }
 
 func (c *TypeChecker) CheckVariableReference(ref *ast.VariableReference) types.Type {

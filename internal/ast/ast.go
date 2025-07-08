@@ -308,6 +308,42 @@ type Expression interface {
 	isExpression()
 }
 
+// LValue types for assignment targets
+type LValue interface {
+	AstNode
+	isLValue()
+}
+
+type VariableLValue struct {
+	Loc  Location
+	Name string
+}
+
+func (v *VariableLValue) GetLocation() Location {
+	return v.Loc
+}
+
+func (v *VariableLValue) isLValue() {}
+
+func (v *VariableLValue) String() string {
+	return v.Name
+}
+
+type DereferenceLValue struct {
+	Loc        Location
+	Expression Expression
+}
+
+func (d *DereferenceLValue) GetLocation() Location {
+	return d.Loc
+}
+
+func (d *DereferenceLValue) isLValue() {}
+
+func (d *DereferenceLValue) String() string {
+	return fmt.Sprintf("(* %s)", d.Expression.String())
+}
+
 type Literal struct {
 	Loc         Location
 	StringValue *string
@@ -354,7 +390,7 @@ func NewBoolLiteral(value bool) *Literal {
 
 type Assignment struct {
 	Loc    Location
-	Target Expression
+	Target LValue
 	Value  Expression
 }
 

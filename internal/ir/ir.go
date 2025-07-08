@@ -67,6 +67,28 @@ func (a Assign) GetSize() int {
 	return a.Size
 }
 
+type AssignByAddr struct {
+	Target Arg
+	Value  Arg
+	Size   int
+}
+
+func (a AssignByAddr) String() string {
+	return fmt.Sprintf("AssignByAddr%d(%s, %s)", a.Size, a.Target, a.Value)
+}
+
+func (a AssignByAddr) GetTarget() string {
+	return ""
+}
+
+func (a AssignByAddr) GetArgs() []Arg {
+	return []Arg{a.Target, a.Value}
+}
+
+func (a AssignByAddr) GetSize() int {
+	return a.Size
+}
+
 type UnaryOp struct {
 	Result    string
 	Value     Arg

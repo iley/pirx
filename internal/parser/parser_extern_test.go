@@ -18,7 +18,7 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 			name: "simple extern function declaration",
 			src:  `extern func atoi(x: string): int;`,
 			expected: &ast.Program{
-				Loc: ast.Location{Line: 1, Col: 1},
+				Loc:       ast.Location{Line: 1, Col: 1},
 				Functions: []ast.Function{},
 				ExternFunctions: []ast.ExternFunction{
 					{
@@ -221,7 +221,7 @@ func TestParseProgram_ExternFunction_Error(t *testing.T) {
 		{
 			name:          "extern func without return type",
 			src:           `extern func atoi(x: string):;`,
-			expectedError: "expected return type",
+			expectedError: "expected type",
 		},
 		{
 			name:          "extern func missing argument type",

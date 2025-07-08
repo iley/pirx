@@ -438,4 +438,3 @@ func (u *UnaryOperation) isExpression() {}
 func (u *UnaryOperation) String() string {
 	return fmt.Sprintf("(%s %s)", u.Operator, u.Operand.String())
 }
-

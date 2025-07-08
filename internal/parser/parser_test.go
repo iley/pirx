@@ -506,6 +506,189 @@ func TestParseProgram(t *testing.T) {
 	}
 }
 
+func TestParseProgram_PointerTypes(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected *ast.Program
+	}{
+		{
+			name: "function with pointer parameter",
+			src:  `func test(ptr: *int) {}`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "test",
+						Args: []ast.Arg{
+							{Name: "ptr", Type: "*int"},
+						},
+						Body: ast.Block{Statements: []ast.Statement{}},
+					},
+				},
+			},
+		},
+		{
+			name: "function with pointer return type",
+			src:  `func getPtr(): *string {}`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name:       "getPtr",
+						Args:       []ast.Arg{},
+						Body:       ast.Block{Statements: []ast.Statement{}},
+						ReturnType: "*string",
+					},
+				},
+			},
+		},
+		{
+			name: "function with pointer to pointer parameter",
+			src:  `func test(ptr: **int) {}`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "test",
+						Args: []ast.Arg{
+							{Name: "ptr", Type: "**int"},
+						},
+						Body: ast.Block{Statements: []ast.Statement{}},
+					},
+				},
+			},
+		},
+		{
+			name: "function with multiple pointer parameters",
+			src:  `func test(x: *int, y: *string, z: **bool) {}`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "test",
+						Args: []ast.Arg{
+							{Name: "x", Type: "*int"},
+							{Name: "y", Type: "*string"},
+							{Name: "z", Type: "**bool"},
+						},
+						Body: ast.Block{Statements: []ast.Statement{}},
+					},
+				},
+			},
+		},
+		{
+			name: "variable declaration with pointer type",
+			src:  `func main() { var ptr: *int; }`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "main",
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.VariableDeclaration{Name: "ptr", Type: "*int"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "variable declaration with pointer to pointer type",
+			src:  `func main() { var ptr: **string; }`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "main",
+						Args: []ast.Arg{},
+						Body: ast.Block{
+							Statements: []ast.Statement{
+								&ast.VariableDeclaration{Name: "ptr", Type: "**string"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "extern function with pointer parameter",
+			src:  `extern func malloc(size: *int): *int;`,
+			expected: &ast.Program{
+				ExternFunctions: []ast.ExternFunction{
+					{
+						Name: "malloc",
+						Args: []ast.Arg{
+							{Name: "size", Type: "*int"},
+						},
+						ReturnType: "*int",
+					},
+				},
+			},
+		},
+		{
+			name: "struct with pointer field",
+			src:  `struct Node { data: int; next: *Node; }`,
+			expected: &ast.Program{
+				StructDeclarations: []ast.StructDeclaration{
+					{
+						Name: "Node",
+						Fields: []ast.StructField{
+							{Name: "data", Type: "int"},
+							{Name: "next", Type: "*Node"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "struct with multiple pointer fields",
+			src:  `struct Complex { value: *int; name: *string; parent: **Complex; }`,
+			expected: &ast.Program{
+				StructDeclarations: []ast.StructDeclaration{
+					{
+						Name: "Complex",
+						Fields: []ast.StructField{
+							{Name: "value", Type: "*int"},
+							{Name: "name", Type: "*string"},
+							{Name: "parent", Type: "**Complex"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "mixed pointer types and regular types",
+			src:  `func process(x: int, ptr: *int, y: string, ptrptr: **bool): *string {}`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "process",
+						Args: []ast.Arg{
+							{Name: "x", Type: "int"},
+							{Name: "ptr", Type: "*int"},
+							{Name: "y", Type: "string"},
+							{Name: "ptrptr", Type: "**bool"},
+						},
+						Body:       ast.Block{Statements: []ast.Statement{}},
+						ReturnType: "*string",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			prog, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("ParseProgram() error = %v", err)
+			}
+			if !compareASTIgnoreLocation(prog, tc.expected) {
+				t.Errorf("ParseProgram() got = %#v, want %#v", prog, tc.expected)
+			}
+		})
+	}
+}
+
 func TestParseProgram_Error(t *testing.T) {
 	testCases := []struct {
 		name          string

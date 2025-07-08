@@ -589,6 +589,134 @@ func TestLexerInvalidEscapeSequenceErrors(t *testing.T) {
 	}
 }
 
+func TestLexerPointerTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []Lexeme
+	}{
+		{
+			name:  "simple pointer type",
+			input: "*int",
+			expected: []Lexeme{
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 2},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "pointer to pointer type",
+			input: "**int",
+			expected: []Lexeme{
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 1},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 2},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 3},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "pointer type in variable declaration",
+			input: "var ptr: *int",
+			expected: []Lexeme{
+				{Type: LEX_KEYWORD, Str: "var", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "ptr", Line: 1, Col: 5},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 8},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 10},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 11},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "pointer type in function signature",
+			input: "func test(x: *int, y: **string): *bool",
+			expected: []Lexeme{
+				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "test", Line: 1, Col: 6},
+				{Type: LEX_PUNCTUATION, Str: "(", Line: 1, Col: 10},
+				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 11},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 12},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 14},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 15},
+				{Type: LEX_PUNCTUATION, Str: ",", Line: 1, Col: 18},
+				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 20},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 21},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 23},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 24},
+				{Type: LEX_IDENT, Str: "string", Line: 1, Col: 25},
+				{Type: LEX_PUNCTUATION, Str: ")", Line: 1, Col: 31},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 32},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 34},
+				{Type: LEX_IDENT, Str: "bool", Line: 1, Col: 35},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "mixed pointer types and multiplication",
+			input: "var x: *int; y = 2 * 3",
+			expected: []Lexeme{
+				{Type: LEX_KEYWORD, Str: "var", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 5},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 6},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 8},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 9},
+				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 12},
+				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 14},
+				{Type: LEX_OPERATOR, Str: "=", Line: 1, Col: 16},
+				{Type: LEX_NUMBER, Str: "2", Line: 1, Col: 18},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 20},
+				{Type: LEX_NUMBER, Str: "3", Line: 1, Col: 22},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "pointer type with struct",
+			input: "struct Node { data: int; next: *Node; }",
+			expected: []Lexeme{
+				{Type: LEX_KEYWORD, Str: "struct", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "Node", Line: 1, Col: 8},
+				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 13},
+				{Type: LEX_IDENT, Str: "data", Line: 1, Col: 15},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 19},
+				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 21},
+				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 24},
+				{Type: LEX_IDENT, Str: "next", Line: 1, Col: 26},
+				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 30},
+				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 32},
+				{Type: LEX_IDENT, Str: "Node", Line: 1, Col: 33},
+				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 37},
+				{Type: LEX_PUNCTUATION, Str: "}", Line: 1, Col: 39},
+				{Type: LEX_EOF},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(strings.NewReader(tt.input))
+			for i, expected := range tt.expected {
+				got, err := l.Next()
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+					return
+				}
+
+				if got.Type != expected.Type {
+					t.Errorf("token %d: expected type %s, got %s", i, expected.Type, got.Type)
+				}
+				if got.Str != expected.Str {
+					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
+				}
+				if got.Line != expected.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				}
+				if got.Col != expected.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				}
+			}
+		})
+	}
+}
+
 func TestLexerBooleanOperators(t *testing.T) {
 	tests := []struct {
 		name     string

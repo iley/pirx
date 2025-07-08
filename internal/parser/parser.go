@@ -145,16 +145,10 @@ func (p *Parser) parseFunction() (ast.Function, error) {
 		p.consume() // ":"
 
 		// return type
-		// TODO: Support composite types.
-		lex, err = p.consume()
+		returnType, err = p.parseType()
 		if err != nil {
 			return ast.Function{}, err
 		}
-
-		if lex.Type != lexer.LEX_IDENT {
-			return ast.Function{}, fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
-		}
-		returnType = lex.Str
 	}
 
 	// '{'
@@ -238,21 +232,17 @@ func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
 	if err != nil {
 		return ast.ExternFunction{}, err
 	}
-	
+
 	returnType := ""
 	if lex.IsPunctuation(":") {
 		// consume ":"
 		p.consume()
-		
+
 		// return type
-		lex, err = p.consume()
+		returnType, err = p.parseType()
 		if err != nil {
 			return ast.ExternFunction{}, err
 		}
-		if lex.Type != lexer.LEX_IDENT {
-			return ast.ExternFunction{}, fmt.Errorf("%d:%d: expected return type, got %v", lex.Line, lex.Col, lex)
-		}
-		returnType = lex.Str
 	}
 
 	// Require semicolon after extern function declaration
@@ -270,6 +260,37 @@ func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
 		Args:       args,
 		ReturnType: returnType,
 	}, nil
+}
+
+func (p *Parser) parseType() (string, error) {
+	lex, err := p.peek()
+	if err != nil {
+		return "", err
+	}
+
+	// Check for pointer type (starts with '*')
+	if lex.IsOperator("*") {
+		p.consume() // consume '*'
+
+		// Parse the underlying type
+		underlyingType, err := p.parseType()
+		if err != nil {
+			return "", err
+		}
+
+		return "*" + underlyingType, nil
+	}
+
+	// Parse base type (identifier)
+	lex, err = p.consume()
+	if err != nil {
+		return "", err
+	}
+	if lex.Type != lexer.LEX_IDENT {
+		return "", fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
+	}
+
+	return lex.Str, nil
 }
 
 func (p *Parser) parseArguments() ([]ast.Arg, error) {
@@ -305,14 +326,10 @@ func (p *Parser) parseArguments() ([]ast.Arg, error) {
 		}
 
 		// arg type
-		lex, err = p.consume()
+		typeStr, err := p.parseType()
 		if err != nil {
 			return nil, err
 		}
-		if lex.Type != lexer.LEX_IDENT {
-			return nil, fmt.Errorf("%d:%d: expected arg type, got %v", lex.Line, lex.Col, lex)
-		}
-		typeStr := lex.Str
 
 		args = append(args, ast.Arg{Loc: argLoc, Name: name, Type: typeStr})
 
@@ -755,15 +772,10 @@ func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 	}
 
 	// type
-	// TODO: Support composite types.
-	lex, err = p.consume()
+	typeStr, err := p.parseType()
 	if err != nil {
 		return nil, err
 	}
-	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
-	}
-	typeStr := lex.Str
 
 	return &ast.VariableDeclaration{
 		Loc:  varLoc,
@@ -1064,14 +1076,10 @@ func (p *Parser) parseStructDeclaration() (ast.StructDeclaration, error) {
 		}
 
 		// field type
-		lex, err = p.consume()
+		fieldType, err := p.parseType()
 		if err != nil {
 			return ast.StructDeclaration{}, err
 		}
-		if lex.Type != lexer.LEX_IDENT {
-			return ast.StructDeclaration{}, fmt.Errorf("%d:%d: expected field type, got %v", lex.Line, lex.Col, lex)
-		}
-		fieldType := lex.Str
 
 		// ';'
 		lex, err = p.consume()

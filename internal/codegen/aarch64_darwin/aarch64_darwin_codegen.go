@@ -338,6 +338,9 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 		reg := registerByIndex(0, op.Size)
 		fmt.Fprintf(cc.output, "  neg %s, %s\n", reg, reg)
 		generateRegisterStore(cc, 0, op.Size, op.Result)
+	case "&":
+		generateAddressLoad(cc, 0, op.Size, op.Value)
+		generateRegisterStore(cc, 0, op.Size, op.Result)
 	default:
 		panic(fmt.Errorf("unsupported unary operation %s", op.Operation))
 	}
@@ -373,6 +376,16 @@ func generateRegisterLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg)
 	} else {
 		panic(fmt.Errorf("invalid arg in code generation: %v", arg))
 	}
+}
+
+func generateAddressLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) {
+	// TODO: Support for non-local variables.
+	if arg.Variable == "" {
+		panic(fmt.Errorf("can only load address of variables, got %s", arg))
+	}
+	reg := registerByIndex(regIndex, regSize)
+	offset := int64(cc.locals[arg.Variable])
+	fmt.Fprintf(cc.output, "  add %s, sp, #%d\n", reg, offset)
 }
 
 // generateRegisterStore generates code for storing a register into a local variable by the register index and size.

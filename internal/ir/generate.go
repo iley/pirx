@@ -8,6 +8,12 @@ import (
 	"github.com/iley/pirx/internal/types"
 )
 
+const (
+	// TODO: Do we need to pass this in as a parameter?
+	WORD_SIZE = 8
+	BOOL_SIZE = 4
+)
+
 type IrContext struct {
 	nextTempIndex  int
 	nextLabelIndex int
@@ -180,13 +186,15 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 		}
 		ops := append(leftOps, rightOps...)
 		temp := ic.allocTemp(leftSize)
-		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: binOp.Operator, Size: leftSize})
+		resultSize := binaryOperationSize(binOp.Operator, leftSize)
+		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: binOp.Operator, Size: resultSize})
 		return ops, Arg{Variable: temp}, leftSize
-	} else if unaryOperation, ok := node.(*ast.UnaryOperation); ok {
-		ops, arg, size := generateExpressionOps(ic, unaryOperation.Operand)
-		temp := ic.allocTemp(size)
-		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: unaryOperation.Operator, Size: size})
-		return ops, Arg{Variable: temp}, size
+	} else if op, ok := node.(*ast.UnaryOperation); ok {
+		ops, arg, operandSize := generateExpressionOps(ic, op.Operand)
+		resultSize := unaryOperationSize(op.Operator, operandSize)
+		temp := ic.allocTemp(resultSize)
+		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
+		return ops, Arg{Variable: temp}, resultSize
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }
@@ -289,4 +297,19 @@ func getTypeSize(typ types.Type) int {
 		return 8
 	}
 	panic(fmt.Sprintf("unknown type %s", typ))
+}
+
+func unaryOperationSize(op string, operandSize int) int {
+	if op == "&" {
+		return WORD_SIZE
+	}
+	return operandSize
+}
+
+func binaryOperationSize(operator string, operandSize int) int {
+	switch operator {
+	case "==", "!=", "<", ">", "<=", ">=":
+		return BOOL_SIZE
+	}
+	return operandSize
 }

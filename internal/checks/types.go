@@ -302,6 +302,9 @@ func unaryOperationResult(op string, val types.Type) (types.Type, bool) {
 		return types.Bool, val == types.Bool
 	case "-":
 		return val, val == types.Int || val == types.Int64
+	case "&":
+		// We can make a pointer to any type.
+		return types.NewPointerType(val), true
 	}
-	panic(fmt.Sprintf("unknown binary operation %s", op))
+	panic(fmt.Sprintf("unknown unary operation %s", op))
 }

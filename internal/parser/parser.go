@@ -577,6 +577,9 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		if lex.Str == "!" || lex.Str == "-" {
 			return p.parseUnaryExpression()
 		}
+		if lex.Str == "&" {
+			return p.parseAddressOfExpression()
+		}
 		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	case lexer.LEX_PUNCTUATION:
 		if lex.Str == "(" {
@@ -741,6 +744,30 @@ func (p *Parser) parseUnaryExpression() (ast.Expression, error) {
 	return &ast.UnaryOperation{
 		Loc:      unaryLoc,
 		Operator: lex.Str,
+		Operand:  operand,
+	}, nil
+}
+
+func (p *Parser) parseAddressOfExpression() (ast.Expression, error) {
+	// consume the '&' operator
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsOperator("&") {
+		return nil, fmt.Errorf("%d:%d: expected '&', got %v", lex.Line, lex.Col, lex)
+	}
+	addrLoc := locationFromLexeme(lex)
+
+	// parse the operand - must be an lvalue (variable reference)
+	operand, err := p.parseVariableReference()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.UnaryOperation{
+		Loc:      addrLoc,
+		Operator: "&",
 		Operand:  operand,
 	}, nil
 }

@@ -1188,6 +1188,44 @@ func TestParseExpression_Assignment_Error(t *testing.T) {
 	}
 }
 
+func TestParseExpression_AddressOf_Error(t *testing.T) {
+	testCases := []struct {
+		name          string
+		src           string
+		expectedError string
+	}{
+		{
+			name:          "address-of with function call",
+			src:           `func main() { &foo(); }`,
+			expectedError: "expected ';' after statement",
+		},
+		{
+			name:          "address-of with literal",
+			src:           `func main() { &42; }`,
+			expectedError: "expected variable name",
+		},
+		{
+			name:          "address-of with string literal",
+			src:           `func main() { &"hello"; }`,
+			expectedError: "expected variable name",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src))
+			parser := New(lex)
+			_, err := parser.ParseProgram()
+			if err == nil {
+				t.Fatalf("ParseProgram() expected error, but got nil")
+			}
+			if !strings.Contains(err.Error(), tc.expectedError) {
+				t.Errorf("ParseProgram() error = %q, want error containing %q", err.Error(), tc.expectedError)
+			}
+		})
+	}
+}
+
 func TestParseExpression_BinaryOperation(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -1711,6 +1749,14 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 					Operator: ">",
 					Right:    ast.NewIntLiteral(0),
 				},
+			},
+		},
+		{
+			name: "address-of operator",
+			src:  "&x",
+			expected: &ast.UnaryOperation{
+				Operator: "&",
+				Operand:  &ast.VariableReference{Name: "x"},
 			},
 		},
 		// Complex expressions with mixed precedence

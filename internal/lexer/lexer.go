@@ -389,12 +389,17 @@ func (l *Lexer) Next() (Lexeme, error) {
 			}, nil
 		}
 	case r == '&':
-		// Check for logical AND operator
+		// Check for logical AND operator or address-of operator
 		nextR, _, err := l.readRune()
 		if err != nil {
 			if err == io.EOF {
-				// Single '&' at EOF - not a valid operator, return EOF
-				return Lexeme{Type: LEX_EOF}, nil
+				// Single '&' at EOF - address-of operator
+				return Lexeme{
+					Type: LEX_OPERATOR,
+					Str:  "&",
+					Line: startLine,
+					Col:  startCol,
+				}, nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
@@ -407,9 +412,14 @@ func (l *Lexer) Next() (Lexeme, error) {
 				Col:  startCol,
 			}, nil
 		} else {
-			// Single '&' is not supported, return EOF for unknown character
+			// Single '&' is address-of operator
 			l.unreadRune()
-			return Lexeme{Type: LEX_EOF}, nil
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "&",
+				Line: startLine,
+				Col:  startCol,
+			}, nil
 		}
 	case r == '|':
 		// Check for logical OR operator

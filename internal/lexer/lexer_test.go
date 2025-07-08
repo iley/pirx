@@ -754,6 +754,29 @@ func TestLexerBooleanOperators(t *testing.T) {
 			},
 		},
 		{
+			name:  "address-of operator",
+			input: "&x &y",
+			expected: []Lexeme{
+				{Type: LEX_OPERATOR, Str: "&", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 2},
+				{Type: LEX_OPERATOR, Str: "&", Line: 1, Col: 4},
+				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 5},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "mixed address-of and logical operators",
+			input: "&x && &y",
+			expected: []Lexeme{
+				{Type: LEX_OPERATOR, Str: "&", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 2},
+				{Type: LEX_OPERATOR, Str: "&&", Line: 1, Col: 4},
+				{Type: LEX_OPERATOR, Str: "&", Line: 1, Col: 7},
+				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 8},
+				{Type: LEX_EOF},
+			},
+		},
+		{
 			name:  "mixed boolean operations",
 			input: "x == 42 && y != 0",
 			expected: []Lexeme{

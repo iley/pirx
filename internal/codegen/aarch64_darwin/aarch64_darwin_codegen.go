@@ -164,27 +164,9 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 
 func generateOp(cc *CodegenContext, op ir.Op) error {
 	if assign, ok := op.(ir.Assign); ok {
-		if assign.Value.Variable != "" {
-			// Assign value to variable.
-			generateRegisterLoad(cc, 0, assign.Size, assign.Value)
-			generateRegisterStore(cc, 0, assign.Size, assign.Target)
-		} else if assign.Value.LiteralInt != nil {
-			// Assign integer constant to variable.
-			if assign.Size != 4 {
-				panic(fmt.Errorf("invalid size %d for 32-bit literal %v", assign.Size, assign.Value))
-			}
-			generateRegisterLoad(cc, 0, 4, assign.Value)
-			generateRegisterStore(cc, 0, 4, assign.Target)
-		} else if assign.Value.LiteralInt64 != nil {
-			// Assign integer constant to variable.
-			if assign.Size != 8 {
-				panic(fmt.Errorf("invalid size %d for 64-bit literal %v", assign.Size, assign.Value))
-			}
-			generateRegisterLoad(cc, 0, 8, assign.Value)
-			generateRegisterStore(cc, 0, 8, assign.Target)
-		} else {
-			panic(fmt.Errorf("Invalid rvalue in assignment: %v", assign.Value))
-		}
+		return generateAssignment(cc, assign)
+	} else if assign, ok := op.(ir.AssignByAddr); ok {
+		return generateAssignmentByAddr(cc, assign)
 	} else if call, ok := op.(ir.Call); ok {
 		return generateFunctionCall(cc, call)
 	} else if binop, ok := op.(ir.BinaryOp); ok {
@@ -206,6 +188,60 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 		fmt.Fprintf(cc.output, ".L%s:\n", anchor.Label)
 	} else {
 		panic(fmt.Errorf("unknown op type: %v", op))
+	}
+	return nil
+}
+
+func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
+	if assign.Value.Variable != "" {
+		// Assign value to variable.
+		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
+		generateRegisterStore(cc, 0, assign.Size, assign.Target)
+	} else if assign.Value.LiteralInt != nil {
+		// Assign integer constant to variable.
+		if assign.Size != 4 {
+			panic(fmt.Errorf("invalid size %d for 32-bit literal %v", assign.Size, assign.Value))
+		}
+		generateRegisterLoad(cc, 0, 4, assign.Value)
+		generateRegisterStore(cc, 0, 4, assign.Target)
+	} else if assign.Value.LiteralInt64 != nil {
+		// Assign integer constant to variable.
+		if assign.Size != 8 {
+			panic(fmt.Errorf("invalid size %d for 64-bit literal %v", assign.Size, assign.Value))
+		}
+		generateRegisterLoad(cc, 0, 8, assign.Value)
+		generateRegisterStore(cc, 0, 8, assign.Target)
+	} else {
+		panic(fmt.Errorf("Invalid rvalue in assignment: %v", assign.Value))
+	}
+	return nil
+}
+
+func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error {
+	if assign.Value.Variable != "" {
+		// Assign value to variable.
+		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
+		// TODO: Factor these two lines into a function.
+		generateRegisterLoad(cc, 1, WORD_SIZE, assign.Target)
+		fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(0, assign.Size), registerByIndex(1, WORD_SIZE))
+	} else if assign.Value.LiteralInt != nil {
+		// Assign integer constant to variable.
+		if assign.Size != 4 {
+			panic(fmt.Errorf("invalid size %d for 32-bit literal %v", assign.Size, assign.Value))
+		}
+		generateRegisterLoad(cc, 0, 4, assign.Value)
+		generateRegisterLoad(cc, 1, WORD_SIZE, assign.Target)
+		fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(0, assign.Size), registerByIndex(1, WORD_SIZE))
+	} else if assign.Value.LiteralInt64 != nil {
+		// Assign integer constant to variable.
+		if assign.Size != 8 {
+			panic(fmt.Errorf("invalid size %d for 64-bit literal %v", assign.Size, assign.Value))
+		}
+		generateRegisterLoad(cc, 0, 8, assign.Value)
+		generateRegisterLoad(cc, 1, WORD_SIZE, assign.Target)
+		fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(0, assign.Size), registerByIndex(1, WORD_SIZE))
+	} else {
+		panic(fmt.Errorf("Invalid rvalue in assignment: %v", assign.Value))
 	}
 	return nil
 }

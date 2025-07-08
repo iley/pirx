@@ -19,6 +19,11 @@ func TestBaseType(t *testing.T) {
 		t.Errorf("expected int types to be equal")
 	}
 
+	// Test that primitive types can be compared with ==
+	if intType != intType2 {
+		t.Errorf("expected int types to be the same instance")
+	}
+
 	if intType.Equals(stringType) {
 		t.Errorf("expected int and string types to be different")
 	}
@@ -92,5 +97,47 @@ func TestComplexTypeEquality(t *testing.T) {
 
 	if intPtr.Equals(intPtrPtr) {
 		t.Errorf("*int and **int should not be equal")
+	}
+}
+
+func TestSingletonInstances(t *testing.T) {
+	// Test that NewBaseType returns singleton instances for common types
+	int1 := NewBaseType("int")
+	int2 := NewBaseType("int")
+	if int1 != int2 {
+		t.Errorf("NewBaseType should return the same instance for 'int'")
+	}
+	if int1 != Int {
+		t.Errorf("NewBaseType('int') should return the same instance as Int")
+	}
+
+	string1 := NewBaseType("string")
+	string2 := NewBaseType("string")
+	if string1 != string2 {
+		t.Errorf("NewBaseType should return the same instance for 'string'")
+	}
+	if string1 != String {
+		t.Errorf("NewBaseType('string') should return the same instance as String")
+	}
+
+	// Test that custom types are different instances
+	custom1 := NewBaseType("custom")
+	custom2 := NewBaseType("custom")
+	if custom1 == custom2 {
+		t.Errorf("NewBaseType should return different instances for custom types")
+	}
+
+	// Test that primitive types can be compared with ==
+	if Int != NewBaseType("int") {
+		t.Errorf("Int should be equal to NewBaseType('int') using ==''")
+	}
+	if String != NewBaseType("string") {
+		t.Errorf("String should be equal to NewBaseType('string') using ==''")
+	}
+	if Bool != NewBaseType("bool") {
+		t.Errorf("Bool should be equal to NewBaseType('bool') using ==''")
+	}
+	if Int64 != NewBaseType("int64") {
+		t.Errorf("Int64 should be equal to NewBaseType('int64') using ==''")
 	}
 }

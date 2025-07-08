@@ -48,23 +48,36 @@ func (p *PointerType) Equals(other Type) bool {
 	return false
 }
 
-// Helper functions for creating common types
+// Common base types - singleton instances
+var (
+	Int    = &BaseType{Name: "int"}
+	Int64  = &BaseType{Name: "int64"}
+	String = &BaseType{Name: "string"}
+	Bool   = &BaseType{Name: "bool"}
+	Void   = &BaseType{Name: "void"}
+)
 
-// NewBaseType creates a new base type
+// Helper functions for creating types
+
+// NewBaseType creates a base type, returning singleton instances for common types
 func NewBaseType(name string) *BaseType {
-	return &BaseType{Name: name}
+	switch name {
+	case "int":
+		return Int
+	case "int64":
+		return Int64
+	case "string":
+		return String
+	case "bool":
+		return Bool
+	case "void":
+		return Void
+	default:
+		return &BaseType{Name: name}
+	}
 }
 
 // NewPointerType creates a new pointer type
 func NewPointerType(elementType Type) *PointerType {
 	return &PointerType{ElementType: elementType}
 }
-
-// Common base types
-var (
-	Int    = NewBaseType("int")
-	Int64  = NewBaseType("int64")
-	String = NewBaseType("string")
-	Bool   = NewBaseType("bool")
-	Void   = NewBaseType("void")
-)

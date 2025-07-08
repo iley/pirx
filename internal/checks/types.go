@@ -236,7 +236,7 @@ func (c *TypeChecker) CheckUnaryOperation(unaryOp *ast.UnaryOperation) types.Typ
 
 func (c *TypeChecker) CheckIfStatement(stmt *ast.IfStatement) {
 	exprType := c.CheckExpression(stmt.Condition)
-	if !exprType.Equals(types.Bool) {
+	if exprType != types.Bool {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in if condition, got type %s",
 			stmt.Loc.Line,
 			stmt.Loc.Col,
@@ -251,7 +251,7 @@ func (c *TypeChecker) CheckIfStatement(stmt *ast.IfStatement) {
 
 func (c *TypeChecker) CheckWhileStatement(stmt *ast.WhileStatement) {
 	exprType := c.CheckExpression(stmt.Condition)
-	if !exprType.Equals(types.Bool) {
+	if exprType != types.Bool {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in while condition, got type %s",
 			stmt.Loc.Line,
 			stmt.Loc.Col,
@@ -281,16 +281,16 @@ func binaryOperationResult(op string, left, right types.Type) (types.Type, bool)
 
 	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" {
 		// These are (currently) supproted for integers only.
-		return left, left.Equals(types.Int) || left.Equals(types.Int64)
+		return left, left == types.Int || left == types.Int64
 	}
 
 	if op == "<" || op == ">" || op == "<=" || op == ">=" {
 		// These are (currently) supproted for integers only.
-		return types.Bool, left.Equals(types.Int) || left.Equals(types.Int64)
+		return types.Bool, left == types.Int || left == types.Int64
 	}
 
 	if op == "&&" || op == "||" {
-		return types.Bool, left.Equals(types.Bool)
+		return types.Bool, left == types.Bool
 	}
 
 	panic(fmt.Sprintf("unknown binary operation %s", op))
@@ -299,9 +299,9 @@ func binaryOperationResult(op string, left, right types.Type) (types.Type, bool)
 func unaryOperationResult(op string, val types.Type) (types.Type, bool) {
 	switch op {
 	case "!":
-		return types.Bool, val.Equals(types.Bool)
+		return types.Bool, val == types.Bool
 	case "-":
-		return val, val.Equals(types.Int) || val.Equals(types.Int64)
+		return val, val == types.Int || val == types.Int64
 	}
 	panic(fmt.Sprintf("unknown binary operation %s", op))
 }

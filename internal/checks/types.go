@@ -5,10 +5,11 @@ import (
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/functions"
+	"github.com/iley/pirx/internal/types"
 )
 
 type TypeChecker struct {
-	declaredVars  map[string]string
+	declaredVars  map[string]types.Type
 	declaredFuncs map[string]functions.Proto
 	errors        []error
 	currentFunc   functions.Proto
@@ -17,7 +18,7 @@ type TypeChecker struct {
 
 func NewTypeChecker() *TypeChecker {
 	return &TypeChecker{
-		declaredVars:  make(map[string]string),
+		declaredVars:  make(map[string]types.Type),
 		declaredFuncs: make(map[string]functions.Proto),
 		errors:        []error{},
 	}
@@ -44,7 +45,7 @@ func (c *TypeChecker) CheckProgram(program *ast.Program) {
 func (c *TypeChecker) CheckFunction(fn ast.Function) {
 	c.currentFunc = c.declaredFuncs[fn.Name]
 	c.hasReturn = false
-	c.declaredVars = make(map[string]string)
+	c.declaredVars = make(map[string]types.Type)
 
 	for _, arg := range fn.Args {
 		c.declaredVars[arg.Name] = arg.Type
@@ -53,7 +54,7 @@ func (c *TypeChecker) CheckFunction(fn ast.Function) {
 	c.CheckBlock(&fn.Body)
 
 	// TODO: Check that each possible execution path ends with a return.
-	if c.currentFunc.ReturnType != "" && !c.hasReturn {
+	if c.currentFunc.ReturnType != nil && !c.hasReturn {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s with return type %s must contain a return operator", fn.Loc.Line, fn.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType))
 	}
 }
@@ -84,7 +85,7 @@ func (c *TypeChecker) CheckStatement(stmt ast.Statement) {
 	}
 }
 
-func (c *TypeChecker) CheckExpression(expr ast.Expression) string {
+func (c *TypeChecker) CheckExpression(expr ast.Expression) types.Type {
 	if literal, ok := expr.(*ast.Literal); ok {
 		return c.CheckLiteral(literal)
 	} else if assignment, ok := expr.(*ast.Assignment); ok {
@@ -102,27 +103,24 @@ func (c *TypeChecker) CheckExpression(expr ast.Expression) string {
 	}
 }
 
-func (c *TypeChecker) CheckLiteral(lit *ast.Literal) string {
+func (c *TypeChecker) CheckLiteral(lit *ast.Literal) types.Type {
 	if lit.StringValue != nil {
-		return "string"
+		return types.String
 	} else if lit.IntValue != nil {
-		return "int"
+		return types.Int
 	} else if lit.Int64Value != nil {
-		return "int64"
+		return types.Int64
 	} else if lit.BoolValue != nil {
-		return "bool"
+		return types.Bool
 	}
 	panic(fmt.Sprintf("unknown literal type: %v", *lit))
 }
 
 func (c *TypeChecker) CheckVariableDeclaration(decl *ast.VariableDeclaration) {
-	if !isValidType(decl.Type) {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: unknown type %s", decl.Loc.Line, decl.Loc.Col, decl.Type))
-	}
 	c.declaredVars[decl.Name] = decl.Type
 }
 
-func (c *TypeChecker) CheckFunctionCall(call *ast.FunctionCall) string {
+func (c *TypeChecker) CheckFunctionCall(call *ast.FunctionCall) types.Type {
 	proto, declared := c.declaredFuncs[call.FunctionName]
 	if !declared {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s is not declared", call.Loc.Line, call.Loc.Col, call.FunctionName))
@@ -140,7 +138,7 @@ func (c *TypeChecker) CheckFunctionCall(call *ast.FunctionCall) string {
 		}
 
 		expectedArgType := proto.Args[i].Typ
-		if actualArgType != expectedArgType {
+		if !actualArgType.Equals(expectedArgType) {
 			c.errors = append(c.errors, fmt.Errorf("%d:%d: argument #%d of function %s has wrong type: expected %s but got %s",
 				call.Loc.Line, call.Loc.Col, i+1, call.FunctionName, expectedArgType, actualArgType))
 		}
@@ -153,7 +151,7 @@ func (c *TypeChecker) CheckExpressionStatement(e *ast.ExpressionStatement) {
 	c.CheckExpression(e.Expression)
 }
 
-func (c *TypeChecker) CheckAssignment(assignment *ast.Assignment) string {
+func (c *TypeChecker) CheckAssignment(assignment *ast.Assignment) types.Type {
 	target := assignment.VariableName
 	varType, declared := c.declaredVars[target]
 	if !declared {
@@ -161,7 +159,7 @@ func (c *TypeChecker) CheckAssignment(assignment *ast.Assignment) string {
 	}
 
 	valueType := c.CheckExpression(assignment.Value)
-	if valueType != varType {
+	if !valueType.Equals(varType) {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: cannot assign value of type %s to variable %s of type %s",
 			assignment.Loc.Line,
 			assignment.Loc.Col,
@@ -174,7 +172,7 @@ func (c *TypeChecker) CheckAssignment(assignment *ast.Assignment) string {
 	return varType
 }
 
-func (c *TypeChecker) CheckVariableReference(ref *ast.VariableReference) string {
+func (c *TypeChecker) CheckVariableReference(ref *ast.VariableReference) types.Type {
 	varType, declared := c.declaredVars[ref.Name]
 	if !declared {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before reference", ref.Loc.Line, ref.Loc.Col, ref.Name))
@@ -186,7 +184,7 @@ func (c *TypeChecker) CheckVariableReference(ref *ast.VariableReference) string 
 func (c *TypeChecker) CheckReturnStatement(stmt *ast.ReturnStatement) {
 	c.hasReturn = true
 
-	if stmt.Value == nil && c.currentFunc.ReturnType != "" {
+	if stmt.Value == nil && c.currentFunc.ReturnType != nil {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s should return a value of type %s but no value was provided",
 			stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType,
 		))
@@ -194,11 +192,11 @@ func (c *TypeChecker) CheckReturnStatement(stmt *ast.ReturnStatement) {
 
 	if stmt.Value != nil {
 		typ := c.CheckExpression(stmt.Value)
-		if c.currentFunc.ReturnType == "" {
+		if c.currentFunc.ReturnType == nil {
 			c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s does not have a return type but a value was provided",
 				stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name,
 			))
-		} else if typ != c.currentFunc.ReturnType {
+		} else if !typ.Equals(c.currentFunc.ReturnType) {
 			c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s has return type %s but a value of type %s was provided",
 				stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType, typ,
 			))
@@ -206,7 +204,7 @@ func (c *TypeChecker) CheckReturnStatement(stmt *ast.ReturnStatement) {
 	}
 }
 
-func (c *TypeChecker) CheckBinaryOperation(binOp *ast.BinaryOperation) string {
+func (c *TypeChecker) CheckBinaryOperation(binOp *ast.BinaryOperation) types.Type {
 	leftType := c.CheckExpression(binOp.Left)
 	rightType := c.CheckExpression(binOp.Right)
 	resultType, ok := binaryOperationResult(binOp.Operator, leftType, rightType)
@@ -222,7 +220,7 @@ func (c *TypeChecker) CheckBinaryOperation(binOp *ast.BinaryOperation) string {
 	return resultType
 }
 
-func (c *TypeChecker) CheckUnaryOperation(unaryOp *ast.UnaryOperation) string {
+func (c *TypeChecker) CheckUnaryOperation(unaryOp *ast.UnaryOperation) types.Type {
 	operandType := c.CheckExpression(unaryOp.Operand)
 	resultType, ok := unaryOperationResult(unaryOp.Operator, operandType)
 	if !ok {
@@ -238,7 +236,7 @@ func (c *TypeChecker) CheckUnaryOperation(unaryOp *ast.UnaryOperation) string {
 
 func (c *TypeChecker) CheckIfStatement(stmt *ast.IfStatement) {
 	exprType := c.CheckExpression(stmt.Condition)
-	if exprType != "bool" {
+	if !exprType.Equals(types.Bool) {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in if condition, got type %s",
 			stmt.Loc.Line,
 			stmt.Loc.Col,
@@ -253,7 +251,7 @@ func (c *TypeChecker) CheckIfStatement(stmt *ast.IfStatement) {
 
 func (c *TypeChecker) CheckWhileStatement(stmt *ast.WhileStatement) {
 	exprType := c.CheckExpression(stmt.Condition)
-	if exprType != "bool" {
+	if !exprType.Equals(types.Bool) {
 		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in while condition, got type %s",
 			stmt.Loc.Line,
 			stmt.Loc.Col,
@@ -271,43 +269,39 @@ func (c *TypeChecker) CheckContinueStatement(stmt *ast.ContinueStatement) {
 	// noop
 }
 
-func binaryOperationResult(op, left, right string) (string, bool) {
-	if left != right {
-		return "", false
+func binaryOperationResult(op string, left, right types.Type) (types.Type, bool) {
+	if !left.Equals(right) {
+		return nil, false
 	}
 
 	if op == "==" || op == "!=" {
 		// Equality is supported for all types.
-		return "bool", true
+		return types.Bool, true
 	}
 
 	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" {
 		// These are (currently) supproted for integers only.
-		return left, left == "int" || left == "int64"
+		return left, left.Equals(types.Int) || left.Equals(types.Int64)
 	}
 
 	if op == "<" || op == ">" || op == "<=" || op == ">=" {
 		// These are (currently) supproted for integers only.
-		return "bool", left == "int" || left == "int64"
+		return types.Bool, left.Equals(types.Int) || left.Equals(types.Int64)
 	}
 
 	if op == "&&" || op == "||" {
-		return "bool", left == "bool"
+		return types.Bool, left.Equals(types.Bool)
 	}
 
 	panic(fmt.Sprintf("unknown binary operation %s", op))
 }
 
-func unaryOperationResult(op, val string) (string, bool) {
+func unaryOperationResult(op string, val types.Type) (types.Type, bool) {
 	switch op {
 	case "!":
-		return "bool", val == "bool"
+		return types.Bool, val.Equals(types.Bool)
 	case "-":
-		return val, val == "int" || val == "int64"
+		return val, val.Equals(types.Int) || val.Equals(types.Int64)
 	}
 	panic(fmt.Sprintf("unknown binary operation %s", op))
-}
-
-func isValidType(name string) bool {
-	return name == "int" || name == "int64" || name == "string" || name == "bool"
 }

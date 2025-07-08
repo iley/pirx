@@ -7,6 +7,7 @@ import (
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/lexer"
+	"github.com/iley/pirx/internal/types"
 )
 
 func locationFromLexeme(lex lexer.Lexeme) ast.Location {
@@ -139,7 +140,7 @@ func (p *Parser) parseFunction() (ast.Function, error) {
 		return ast.Function{}, err
 	}
 
-	returnType := ""
+	var returnType types.Type
 	if lex.IsPunctuation(":") {
 		// return type specifier
 		p.consume() // ":"
@@ -233,7 +234,7 @@ func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
 		return ast.ExternFunction{}, err
 	}
 
-	returnType := ""
+	var returnType types.Type
 	if lex.IsPunctuation(":") {
 		// consume ":"
 		p.consume()
@@ -262,10 +263,10 @@ func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
 	}, nil
 }
 
-func (p *Parser) parseType() (string, error) {
+func (p *Parser) parseType() (types.Type, error) {
 	lex, err := p.peek()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Check for pointer type (starts with '*')
@@ -275,22 +276,22 @@ func (p *Parser) parseType() (string, error) {
 		// Parse the underlying type
 		underlyingType, err := p.parseType()
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return "*" + underlyingType, nil
+		return types.NewPointerType(underlyingType), nil
 	}
 
 	// Parse base type (identifier)
 	lex, err = p.consume()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return "", fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
+		return nil, fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
 	}
 
-	return lex.Str, nil
+	return types.NewBaseType(lex.Str), nil
 }
 
 func (p *Parser) parseArguments() ([]ast.Arg, error) {
@@ -772,7 +773,7 @@ func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 	}
 
 	// type
-	typeStr, err := p.parseType()
+	typeExpr, err := p.parseType()
 	if err != nil {
 		return nil, err
 	}
@@ -780,7 +781,7 @@ func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 	return &ast.VariableDeclaration{
 		Loc:  varLoc,
 		Name: name,
-		Type: typeStr,
+		Type: typeExpr,
 	}, nil
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/lexer"
+	"github.com/iley/pirx/internal/types"
 )
 
 // compareASTIgnoreLocation recursively compares AST nodes while ignoring Location fields
@@ -105,7 +106,7 @@ func TestParseProgram(t *testing.T) {
 						Body: ast.Block{
 							Loc: ast.Location{Line: 1, Col: 15},
 							Statements: []ast.Statement{
-								&ast.VariableDeclaration{Loc: ast.Location{Line: 1, Col: 15}, Name: "x", Type: "int"},
+								&ast.VariableDeclaration{Loc: ast.Location{Line: 1, Col: 15}, Name: "x", Type: types.Int},
 							},
 						},
 					},
@@ -120,8 +121,8 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name: "add",
 						Args: []ast.Arg{
-							{Name: "a", Type: "int"},
-							{Name: "b", Type: "int"},
+							{Name: "a", Type: types.Int},
+							{Name: "b", Type: types.Int},
 						},
 						Body: ast.Block{Statements: []ast.Statement{}},
 					},
@@ -163,8 +164,8 @@ func TestParseProgram(t *testing.T) {
 						Args: []ast.Arg{},
 						Body: ast.Block{
 							Statements: []ast.Statement{
-								&ast.VariableDeclaration{Name: "x", Type: "int"},
-								&ast.VariableDeclaration{Name: "y", Type: "string"},
+								&ast.VariableDeclaration{Name: "x", Type: types.Int},
+								&ast.VariableDeclaration{Name: "y", Type: types.String},
 							},
 						},
 					},
@@ -301,7 +302,7 @@ func TestParseProgram(t *testing.T) {
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
 									Name: "x",
-									Type: "int",
+									Type: types.Int,
 								},
 								&ast.ReturnStatement{
 									Value: &ast.VariableReference{
@@ -343,7 +344,7 @@ func TestParseProgram(t *testing.T) {
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
 									Name: "x",
-									Type: "int",
+									Type: types.Int,
 								},
 								&ast.BreakStatement{},
 								&ast.ReturnStatement{
@@ -386,7 +387,7 @@ func TestParseProgram(t *testing.T) {
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
 									Name: "x",
-									Type: "int",
+									Type: types.Int,
 								},
 								&ast.ContinueStatement{},
 								&ast.ReturnStatement{
@@ -408,8 +409,8 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name: "Foo",
 						Fields: []ast.StructField{
-							{Name: "x", Type: "int"},
-							{Name: "y", Type: "string"},
+							{Name: "x", Type: types.Int},
+							{Name: "y", Type: types.String},
 						},
 					},
 				},
@@ -435,7 +436,7 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name: "Point",
 						Fields: []ast.StructField{
-							{Name: "x", Type: "int"},
+							{Name: "x", Type: types.Int},
 						},
 					},
 				},
@@ -449,15 +450,15 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name: "Point",
 						Fields: []ast.StructField{
-							{Name: "x", Type: "int"},
-							{Name: "y", Type: "int"},
+							{Name: "x", Type: types.Int},
+							{Name: "y", Type: types.Int},
 						},
 					},
 					{
 						Name: "Person",
 						Fields: []ast.StructField{
-							{Name: "name", Type: "string"},
-							{Name: "age", Type: "int"},
+							{Name: "name", Type: types.String},
+							{Name: "age", Type: types.Int},
 						},
 					},
 				},
@@ -471,8 +472,8 @@ func TestParseProgram(t *testing.T) {
 					{
 						Name: "Point",
 						Fields: []ast.StructField{
-							{Name: "x", Type: "int"},
-							{Name: "y", Type: "int"},
+							{Name: "x", Type: types.Int},
+							{Name: "y", Type: types.Int},
 						},
 					},
 				},
@@ -482,7 +483,7 @@ func TestParseProgram(t *testing.T) {
 						Args: []ast.Arg{},
 						Body: ast.Block{
 							Statements: []ast.Statement{
-								&ast.VariableDeclaration{Name: "p", Type: "Point"},
+								&ast.VariableDeclaration{Name: "p", Type: types.NewBaseType("Point")},
 							},
 						},
 					},
@@ -520,7 +521,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 					{
 						Name: "test",
 						Args: []ast.Arg{
-							{Name: "ptr", Type: "*int"},
+							{Name: "ptr", Type: types.NewPointerType(types.Int)},
 						},
 						Body: ast.Block{Statements: []ast.Statement{}},
 					},
@@ -536,7 +537,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 						Name:       "getPtr",
 						Args:       []ast.Arg{},
 						Body:       ast.Block{Statements: []ast.Statement{}},
-						ReturnType: "*string",
+						ReturnType: types.NewPointerType(types.String),
 					},
 				},
 			},
@@ -549,7 +550,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 					{
 						Name: "test",
 						Args: []ast.Arg{
-							{Name: "ptr", Type: "**int"},
+							{Name: "ptr", Type: types.NewPointerType(types.NewPointerType(types.Int))},
 						},
 						Body: ast.Block{Statements: []ast.Statement{}},
 					},
@@ -564,9 +565,9 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 					{
 						Name: "test",
 						Args: []ast.Arg{
-							{Name: "x", Type: "*int"},
-							{Name: "y", Type: "*string"},
-							{Name: "z", Type: "**bool"},
+							{Name: "x", Type: types.NewPointerType(types.Int)},
+							{Name: "y", Type: types.NewPointerType(types.String)},
+							{Name: "z", Type: types.NewPointerType(types.NewPointerType(types.Bool))},
 						},
 						Body: ast.Block{Statements: []ast.Statement{}},
 					},
@@ -583,7 +584,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 						Args: []ast.Arg{},
 						Body: ast.Block{
 							Statements: []ast.Statement{
-								&ast.VariableDeclaration{Name: "ptr", Type: "*int"},
+								&ast.VariableDeclaration{Name: "ptr", Type: types.NewPointerType(types.Int)},
 							},
 						},
 					},
@@ -600,7 +601,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 						Args: []ast.Arg{},
 						Body: ast.Block{
 							Statements: []ast.Statement{
-								&ast.VariableDeclaration{Name: "ptr", Type: "**string"},
+								&ast.VariableDeclaration{Name: "ptr", Type: types.NewPointerType(types.NewPointerType(types.String))},
 							},
 						},
 					},
@@ -615,9 +616,9 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 					{
 						Name: "malloc",
 						Args: []ast.Arg{
-							{Name: "size", Type: "*int"},
+							{Name: "size", Type: types.NewPointerType(types.Int)},
 						},
-						ReturnType: "*int",
+						ReturnType: types.NewPointerType(types.Int),
 					},
 				},
 			},
@@ -630,8 +631,8 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 					{
 						Name: "Node",
 						Fields: []ast.StructField{
-							{Name: "data", Type: "int"},
-							{Name: "next", Type: "*Node"},
+							{Name: "data", Type: types.Int},
+							{Name: "next", Type: types.NewPointerType(types.NewBaseType("Node"))},
 						},
 					},
 				},
@@ -645,9 +646,9 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 					{
 						Name: "Complex",
 						Fields: []ast.StructField{
-							{Name: "value", Type: "*int"},
-							{Name: "name", Type: "*string"},
-							{Name: "parent", Type: "**Complex"},
+							{Name: "value", Type: types.NewPointerType(types.Int)},
+							{Name: "name", Type: types.NewPointerType(types.String)},
+							{Name: "parent", Type: types.NewPointerType(types.NewPointerType(types.NewBaseType("Complex")))},
 						},
 					},
 				},
@@ -661,13 +662,13 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 					{
 						Name: "process",
 						Args: []ast.Arg{
-							{Name: "x", Type: "int"},
-							{Name: "ptr", Type: "*int"},
-							{Name: "y", Type: "string"},
-							{Name: "ptrptr", Type: "**bool"},
+							{Name: "x", Type: types.Int},
+							{Name: "ptr", Type: types.NewPointerType(types.Int)},
+							{Name: "y", Type: types.String},
+							{Name: "ptrptr", Type: types.NewPointerType(types.NewPointerType(types.Bool))},
 						},
 						Body:       ast.Block{Statements: []ast.Statement{}},
-						ReturnType: "*string",
+						ReturnType: types.NewPointerType(types.String),
 					},
 				},
 			},

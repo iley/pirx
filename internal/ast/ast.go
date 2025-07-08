@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/iley/pirx/internal/types"
 	"github.com/iley/pirx/internal/util"
 )
 
@@ -52,7 +53,7 @@ type Function struct {
 	Name       string
 	Args       []Arg
 	Body       Block
-	ReturnType string
+	ReturnType types.Type
 }
 
 func (f *Function) GetLocation() Location {
@@ -69,10 +70,10 @@ func (f *Function) String() string {
 		}
 	}
 	sb.WriteString(") ")
-	if f.ReturnType == "" {
+	if f.ReturnType == nil {
 		sb.WriteString("() ")
 	} else {
-		sb.WriteString(f.ReturnType + " ")
+		sb.WriteString(f.ReturnType.String() + " ")
 	}
 	sb.WriteString(f.Body.String())
 	sb.WriteString(")")
@@ -83,7 +84,7 @@ type ExternFunction struct {
 	Loc        Location
 	Name       string
 	Args       []Arg
-	ReturnType string
+	ReturnType types.Type
 }
 
 func (f *ExternFunction) GetLocation() Location {
@@ -100,8 +101,8 @@ func (f *ExternFunction) String() string {
 		}
 	}
 	sb.WriteString(")")
-	if f.ReturnType != "" {
-		sb.WriteString(": " + f.ReturnType)
+	if f.ReturnType != nil {
+		sb.WriteString(": " + f.ReturnType.String())
 	}
 	sb.WriteString(")")
 	return sb.String()
@@ -133,7 +134,7 @@ func (s *StructDeclaration) String() string {
 type StructField struct {
 	Loc  Location
 	Name string
-	Type string
+	Type types.Type
 }
 
 func (f StructField) GetLocation() Location {
@@ -141,13 +142,13 @@ func (f StructField) GetLocation() Location {
 }
 
 func (f StructField) String() string {
-	return fmt.Sprintf("(%s %s)", f.Name, f.Type)
+	return fmt.Sprintf("(%s %s)", f.Name, f.Type.String())
 }
 
 type Arg struct {
 	Loc  Location
 	Name string
-	Type string
+	Type types.Type
 }
 
 func (a Arg) GetLocation() Location {
@@ -155,7 +156,7 @@ func (a Arg) GetLocation() Location {
 }
 
 func (a Arg) String() string {
-	return fmt.Sprintf("(%s %s)", a.Name, a.Type)
+	return fmt.Sprintf("(%s %s)", a.Name, a.Type.String())
 }
 
 type Block struct {
@@ -188,7 +189,7 @@ type Statement interface {
 type VariableDeclaration struct {
 	Loc  Location
 	Name string
-	Type string
+	Type types.Type
 }
 
 func (d *VariableDeclaration) GetLocation() Location {
@@ -198,7 +199,7 @@ func (d *VariableDeclaration) GetLocation() Location {
 func (d *VariableDeclaration) isStatement() {}
 
 func (d *VariableDeclaration) String() string {
-	return fmt.Sprintf("(decl %s %s)", d.Name, d.Type)
+	return fmt.Sprintf("(decl %s %s)", d.Name, d.Type.String())
 }
 
 type ExpressionStatement struct {

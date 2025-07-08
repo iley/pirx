@@ -5,6 +5,7 @@ import (
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/functions"
+	"github.com/iley/pirx/internal/types"
 )
 
 type IrContext struct {
@@ -279,13 +280,13 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	return ops, Arg{Variable: temp}, size
 }
 
-func getTypeSize(typ string) int {
-	switch typ {
-	case "int", "bool":
-		return 4
-	case "int64", "string":
+func getTypeSize(typ types.Type) int {
+	if _, ok := typ.(*types.PointerType); ok {
 		return 8
-	default:
-		panic(fmt.Sprintf("unknown type %s", typ))
+	} else if typ.Equals(types.Bool) || typ.Equals(types.Int) {
+		return 4
+	} else if typ.Equals(types.Int64) || typ.Equals(types.String) {
+		return 8
 	}
+	panic(fmt.Sprintf("unknown type %s", typ))
 }

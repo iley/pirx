@@ -1193,7 +1193,7 @@ func TestParseExpression_Assignment_Error(t *testing.T) {
 		{
 			name:          "assignment with invalid variable name",
 			src:           `func main() { 123 = 42; }`,
-			expectedError: "expected ';' after statement",
+			expectedError: "invalid assignment target",
 		},
 	}
 

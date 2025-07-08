@@ -10,7 +10,7 @@ import (
 )
 
 // compareASTIgnoreLocation recursively compares AST nodes while ignoring Location fields
-func compareASTIgnoreLocation(a, b interface{}) bool {
+func compareASTIgnoreLocation(a, b any) bool {
 	if a == nil && b == nil {
 		return true
 	}
@@ -2196,7 +2196,6 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 													Args: []ast.Expression{
 														ast.NewStringLiteral("loop\n"),
 													},
-													Variadic: true,
 												},
 											},
 										},
@@ -2326,7 +2325,6 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 														ast.NewStringLiteral("i = %d\n"),
 														&ast.VariableReference{Name: "i"},
 													},
-													Variadic: true,
 												},
 											},
 											&ast.ExpressionStatement{
@@ -2471,7 +2469,6 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 													Args: []ast.Expression{
 														ast.NewStringLiteral("before break\n"),
 													},
-													Variadic: true,
 												},
 											},
 											&ast.BreakStatement{},
@@ -2481,7 +2478,6 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 													Args: []ast.Expression{
 														ast.NewStringLiteral("after break\n"),
 													},
-													Variadic: true,
 												},
 											},
 										},
@@ -2626,7 +2622,6 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 													Args: []ast.Expression{
 														ast.NewStringLiteral("before continue\n"),
 													},
-													Variadic: true,
 												},
 											},
 											&ast.ContinueStatement{},
@@ -2636,7 +2631,6 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 													Args: []ast.Expression{
 														ast.NewStringLiteral("after continue\n"),
 													},
-													Variadic: true,
 												},
 											},
 										},

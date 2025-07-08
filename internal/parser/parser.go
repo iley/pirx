@@ -13,13 +13,6 @@ func locationFromLexeme(lex lexer.Lexeme) ast.Location {
 	return ast.Location{Line: lex.Line, Col: lex.Col}
 }
 
-var (
-	// TODO: Find a better way of figuring out whether a function is variadic.
-	VariadicFuncs = map[string]struct{}{
-		"printf": {},
-	}
-)
-
 type Parser struct {
 	lexer   *lexer.Lexer
 	lexemes []lexer.Lexeme
@@ -599,7 +592,6 @@ func (p *Parser) parseFunctionCall() (ast.Expression, error) {
 	}
 
 	args := []ast.Expression{}
-	_, variadic := VariadicFuncs[name]
 
 	// check for ')'
 	lex, err = p.peek()
@@ -608,7 +600,7 @@ func (p *Parser) parseFunctionCall() (ast.Expression, error) {
 	}
 	if lex.IsPunctuation(")") {
 		p.consume() // consume ')'
-		return &ast.FunctionCall{Loc: callLoc, FunctionName: name, Args: args, Variadic: variadic}, nil
+		return &ast.FunctionCall{Loc: callLoc, FunctionName: name, Args: args}, nil
 	}
 
 	for {
@@ -641,7 +633,7 @@ func (p *Parser) parseFunctionCall() (ast.Expression, error) {
 		return nil, err
 	}
 
-	return &ast.FunctionCall{Loc: callLoc, FunctionName: name, Args: args, Variadic: variadic}, nil
+	return &ast.FunctionCall{Loc: callLoc, FunctionName: name, Args: args}, nil
 }
 
 func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {

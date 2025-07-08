@@ -304,7 +304,14 @@ func unaryOperationResult(op string, val types.Type) (types.Type, bool) {
 		return val, val == types.Int || val == types.Int64
 	case "&":
 		// We can make a pointer to any type.
+		// TODO: Check that we're only taking address of lvalues.
 		return types.NewPointerType(val), true
+	case "*":
+		if ptr, ok := val.(*types.PointerType); ok {
+			return ptr.ElementType, true
+		} else {
+			return nil, false
+		}
 	}
 	panic(fmt.Sprintf("unknown unary operation %s", op))
 }

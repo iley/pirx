@@ -353,9 +353,9 @@ func NewBoolLiteral(value bool) *Literal {
 }
 
 type Assignment struct {
-	Loc          Location
-	VariableName string
-	Value        Expression
+	Loc    Location
+	Target Expression
+	Value  Expression
 }
 
 func (a *Assignment) GetLocation() Location {
@@ -365,7 +365,7 @@ func (a *Assignment) GetLocation() Location {
 func (a *Assignment) isExpression() {}
 
 func (a *Assignment) String() string {
-	return fmt.Sprintf("(= %s %s)", a.VariableName, a.Value.String())
+	return fmt.Sprintf("(= %s %s)", a.Target.String(), a.Value.String())
 }
 
 type VariableReference struct {

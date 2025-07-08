@@ -1045,23 +1045,23 @@ func TestParseExpression_Assignment(t *testing.T) {
 			name: "assignment with integer literal",
 			src:  `func main() { x = 42; }`,
 			expected: &ast.Assignment{
-				VariableName: "x",
-				Value:        ast.NewIntLiteral(42),
+				Target: &ast.VariableReference{Name: "x"},
+				Value:  ast.NewIntLiteral(42),
 			},
 		},
 		{
 			name: "assignment with string literal",
 			src:  `func main() { name = "hello"; }`,
 			expected: &ast.Assignment{
-				VariableName: "name",
-				Value:        ast.NewStringLiteral("hello"),
+				Target: &ast.VariableReference{Name: "name"},
+				Value:  ast.NewStringLiteral("hello"),
 			},
 		},
 		{
 			name: "assignment with function call",
 			src:  `func main() { result = foo(); }`,
 			expected: &ast.Assignment{
-				VariableName: "result",
+				Target: &ast.VariableReference{Name: "result"},
 				Value: &ast.FunctionCall{
 					FunctionName: "foo",
 					Args:         []ast.Expression{},
@@ -1072,7 +1072,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 			name: "assignment with function call with args",
 			src:  `func main() { result = add(1, 2); }`,
 			expected: &ast.Assignment{
-				VariableName: "result",
+				Target: &ast.VariableReference{Name: "result"},
 				Value: &ast.FunctionCall{
 					FunctionName: "add",
 					Args: []ast.Expression{
@@ -1086,26 +1086,26 @@ func TestParseExpression_Assignment(t *testing.T) {
 			name: "assignment with zero",
 			src:  `func main() { counter = 0; }`,
 			expected: &ast.Assignment{
-				VariableName: "counter",
-				Value:        ast.NewIntLiteral(0),
+				Target: &ast.VariableReference{Name: "counter"},
+				Value:  ast.NewIntLiteral(0),
 			},
 		},
 		{
 			name: "assignment with empty string",
 			src:  `func main() { text = ""; }`,
 			expected: &ast.Assignment{
-				VariableName: "text",
-				Value:        ast.NewStringLiteral(""),
+				Target: &ast.VariableReference{Name: "text"},
+				Value:  ast.NewStringLiteral(""),
 			},
 		},
 		{
 			name: "chained assignment",
 			src:  `func main() { x = y = 1; }`,
 			expected: &ast.Assignment{
-				VariableName: "x",
+				Target: &ast.VariableReference{Name: "x"},
 				Value: &ast.Assignment{
-					VariableName: "y",
-					Value:        ast.NewIntLiteral(1),
+					Target: &ast.VariableReference{Name: "y"},
+					Value:  ast.NewIntLiteral(1),
 				},
 			},
 		},
@@ -1113,10 +1113,36 @@ func TestParseExpression_Assignment(t *testing.T) {
 			name: "assignment with variable",
 			src:  `func main() { x = y; }`,
 			expected: &ast.Assignment{
-				VariableName: "x",
+				Target: &ast.VariableReference{Name: "x"},
 				Value: &ast.VariableReference{
 					Name: "y",
 				},
+			},
+		},
+		{
+			name: "pointer dereference assignment",
+			src:  `func main() { *p = 42; }`,
+			expected: &ast.Assignment{
+				Target: &ast.UnaryOperation{
+					Operator: "*",
+					Operand:  &ast.VariableReference{Name: "p"},
+				},
+				Value: ast.NewIntLiteral(42),
+			},
+		},
+		{
+			name: "complex pointer dereference assignment",
+			src:  `func main() { *(ptr + 1) = value; }`,
+			expected: &ast.Assignment{
+				Target: &ast.UnaryOperation{
+					Operator: "*",
+					Operand: &ast.BinaryOperation{
+						Left:     &ast.VariableReference{Name: "ptr"},
+						Operator: "+",
+						Right:    ast.NewIntLiteral(1),
+					},
+				},
+				Value: &ast.VariableReference{Name: "value"},
 			},
 		},
 	}
@@ -1941,8 +1967,8 @@ func TestParseStatement_IfStatement(t *testing.T) {
 										Statements: []ast.Statement{
 											&ast.ExpressionStatement{
 												Expression: &ast.Assignment{
-													VariableName: "y",
-													Value:        ast.NewIntLiteral(1),
+													Target: &ast.VariableReference{Name: "y"},
+													Value:  ast.NewIntLiteral(1),
 												},
 											},
 										},
@@ -1951,8 +1977,8 @@ func TestParseStatement_IfStatement(t *testing.T) {
 										Statements: []ast.Statement{
 											&ast.ExpressionStatement{
 												Expression: &ast.Assignment{
-													VariableName: "y",
-													Value:        ast.NewIntLiteral(0),
+													Target: &ast.VariableReference{Name: "y"},
+													Value:  ast.NewIntLiteral(0),
 												},
 											},
 										},
@@ -2419,7 +2445,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 										Statements: []ast.Statement{
 											&ast.ExpressionStatement{
 												Expression: &ast.Assignment{
-													VariableName: "x",
+													Target: &ast.VariableReference{Name: "x"},
 													Value: &ast.BinaryOperation{
 														Left:     &ast.VariableReference{Name: "x"},
 														Operator: "-",
@@ -2498,7 +2524,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 										Statements: []ast.Statement{
 											&ast.ExpressionStatement{
 												Expression: &ast.Assignment{
-													VariableName: "done",
+													Target: &ast.VariableReference{Name: "done"},
 													Value: &ast.FunctionCall{
 														FunctionName: "check",
 														Args:         []ast.Expression{},
@@ -2542,7 +2568,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 													Statements: []ast.Statement{
 														&ast.ExpressionStatement{
 															Expression: &ast.Assignment{
-																VariableName: "y",
+																Target: &ast.VariableReference{Name: "y"},
 																Value: &ast.BinaryOperation{
 																	Left:     &ast.VariableReference{Name: "y"},
 																	Operator: "-",
@@ -2555,7 +2581,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 											},
 											&ast.ExpressionStatement{
 												Expression: &ast.Assignment{
-													VariableName: "x",
+													Target: &ast.VariableReference{Name: "x"},
 													Value: &ast.BinaryOperation{
 														Left:     &ast.VariableReference{Name: "x"},
 														Operator: "-",
@@ -2601,7 +2627,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 											},
 											&ast.ExpressionStatement{
 												Expression: &ast.Assignment{
-													VariableName: "i",
+													Target: &ast.VariableReference{Name: "i"},
 													Value: &ast.BinaryOperation{
 														Left:     &ast.VariableReference{Name: "i"},
 														Operator: "+",

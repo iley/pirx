@@ -510,18 +510,30 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 
 		// For left-associative operators, use precedence + 1
 		// For right-associative operators, use precedence
+		// Assignment is right-associative, so use same precedence
 		nextMinPrecedence := precedence + 1
+		if operator == "=" {
+			nextMinPrecedence = precedence
+		}
 
 		right, err := p.parseExpressionWithPrecedence(nextMinPrecedence)
 		if err != nil {
 			return nil, err
 		}
 
-		left = &ast.BinaryOperation{
-			Loc:      operatorLoc,
-			Left:     left,
-			Operator: operator,
-			Right:    right,
+		if operator == "=" {
+			left = &ast.Assignment{
+				Loc:    operatorLoc,
+				Target: left,
+				Value:  right,
+			}
+		} else {
+			left = &ast.BinaryOperation{
+				Loc:      operatorLoc,
+				Left:     left,
+				Operator: operator,
+				Right:    right,
+			}
 		}
 	}
 
@@ -531,21 +543,23 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 func isBinaryOperator(op string) bool {
 	return op == "+" || op == "-" || op == "*" || op == "/" || op == "%" ||
 		op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=" ||
-		op == "&&" || op == "||"
+		op == "&&" || op == "||" || op == "="
 }
 
 func getOperatorPrecedence(op string) int {
 	switch op {
-	case "||":
+	case "=":
 		return 1
-	case "&&":
+	case "||":
 		return 2
-	case "==", "!=", "<", ">", "<=", ">=":
+	case "&&":
 		return 3
-	case "+", "-":
+	case "==", "!=", "<", ">", "<=", ">=":
 		return 4
-	case "*", "/", "%":
+	case "+", "-":
 		return 5
+	case "*", "/", "%":
+		return 6
 	default:
 		return 0
 	}
@@ -844,9 +858,6 @@ func (p *Parser) parseIdentifierExpression() (ast.Expression, error) {
 	// Look ahead to see what follows the identifier
 	if p.pos+1 < len(p.lexemes) {
 		nextLex := p.lexemes[p.pos+1]
-		if nextLex.IsOperator("=") {
-			return p.parseAssignment()
-		}
 		if nextLex.IsPunctuation("(") {
 			return p.parseFunctionCall()
 		}
@@ -863,50 +874,13 @@ func (p *Parser) parseIdentifierExpression() (ast.Expression, error) {
 		}
 		p.pos = currentPos // reset position
 
-		if nextLex.IsOperator("=") {
-			return p.parseAssignment()
-		}
 		if nextLex.IsPunctuation("(") {
 			return p.parseFunctionCall()
 		}
 	}
 
-	// Default to variable reference if not assignment or function call
+	// Default to variable reference if not function call
 	return p.parseVariableReference()
-}
-
-func (p *Parser) parseAssignment() (ast.Expression, error) {
-	// variable name
-	lex, err := p.consume()
-	if err != nil {
-		return nil, err
-	}
-	if lex.Type != lexer.LEX_IDENT {
-		return nil, fmt.Errorf("%d:%d: expected variable name, got %v", lex.Line, lex.Col, lex)
-	}
-	assignLoc := locationFromLexeme(lex)
-	varName := lex.Str
-
-	// '='
-	lex, err = p.consume()
-	if err != nil {
-		return nil, err
-	}
-	if !lex.IsOperator("=") {
-		return nil, fmt.Errorf("%d:%d: expected '=', got %v", lex.Line, lex.Col, lex)
-	}
-
-	// value expression
-	value, err := p.parseExpression()
-	if err != nil {
-		return nil, err
-	}
-
-	return &ast.Assignment{
-		Loc:          assignLoc,
-		VariableName: varName,
-		Value:        value,
-	}, nil
 }
 
 func (p *Parser) parseVariableReference() (ast.Expression, error) {

@@ -683,18 +683,30 @@ func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 	litLoc := locationFromLexeme(lex)
 	var literal *ast.Literal
 
-	// TODO: Support base16 and base2.
-	if strings.HasSuffix(lex.Str, "l") {
+	// Determine if this is a 64-bit literal (has 'l' suffix)
+	is64Bit := strings.HasSuffix(lex.Str, "l")
+	str := lex.Str
+	if is64Bit {
+		str, _ = strings.CutSuffix(lex.Str, "l")
+	}
+
+	// Determine the base
+	base := 10
+	if strings.HasPrefix(str, "0x") || strings.HasPrefix(str, "0X") {
+		base = 16
+		str = str[2:] // Remove "0x" or "0X" prefix
+	}
+
+	if is64Bit {
 		// int64 literal
-		str, _ := strings.CutSuffix(lex.Str, "l")
-		val, err := strconv.ParseInt(str, 10, 64)
+		val, err := strconv.ParseInt(str, base, 64)
 		if err != nil {
 			return nil, fmt.Errorf("%d:%d: could not parse 64-bit integer: %w", lex.Line, lex.Col, err)
 		}
 		literal = ast.NewInt64Literal(val)
 	} else {
 		// int literal (32 bit)
-		val, err := strconv.ParseInt(lex.Str, 10, 32)
+		val, err := strconv.ParseInt(str, base, 32)
 		if err != nil {
 			return nil, fmt.Errorf("%d:%d: could not parse integer: %w", lex.Line, lex.Col, err)
 		}

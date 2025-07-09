@@ -894,6 +894,41 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 			src:      `func main() { 7; }`,
 			expected: ast.NewIntLiteral(7),
 		},
+		{
+			name:     "hexadecimal lowercase",
+			src:      `func main() { 0x42; }`,
+			expected: ast.NewIntLiteral(0x42),
+		},
+		{
+			name:     "hexadecimal uppercase",
+			src:      `func main() { 0X42; }`,
+			expected: ast.NewIntLiteral(0X42),
+		},
+		{
+			name:     "hexadecimal with letters",
+			src:      `func main() { 0xdeadl; }`,
+			expected: ast.NewInt64Literal(0xdead),
+		},
+		{
+			name:     "hexadecimal mixed case",
+			src:      `func main() { 0XaBc; }`,
+			expected: ast.NewIntLiteral(0XaBc),
+		},
+		{
+			name:     "hexadecimal zero",
+			src:      `func main() { 0x0; }`,
+			expected: ast.NewIntLiteral(0x0),
+		},
+		{
+			name:     "hexadecimal 64-bit",
+			src:      `func main() { 0x42l; }`,
+			expected: ast.NewInt64Literal(0x42),
+		},
+		{
+			name:     "hexadecimal 64-bit large",
+			src:      `func main() { 0xdeadbeefl; }`,
+			expected: ast.NewInt64Literal(0xdeadbeef),
+		},
 	}
 
 	for _, tc := range testCases {

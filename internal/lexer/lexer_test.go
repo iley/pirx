@@ -78,6 +78,58 @@ func TestLexer(t *testing.T) {
 			},
 		},
 		{
+			name:  "hexadecimal numbers",
+			input: "0x42 0xdeadbeef 0X123ABC",
+			expected: []Lexeme{
+				{Type: LEX_NUMBER, Str: "0x42", Line: 1, Col: 1},
+				{Type: LEX_NUMBER, Str: "0xdeadbeef", Line: 1, Col: 6},
+				{Type: LEX_NUMBER, Str: "0X123ABC", Line: 1, Col: 17},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "hexadecimal numbers with l suffix",
+			input: "0x42l 0xdeadbeefl",
+			expected: []Lexeme{
+				{Type: LEX_NUMBER, Str: "0x42l", Line: 1, Col: 1},
+				{Type: LEX_NUMBER, Str: "0xdeadbeefl", Line: 1, Col: 7},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "mixed decimal and hex numbers",
+			input: "42 0x2a 123 0xdead",
+			expected: []Lexeme{
+				{Type: LEX_NUMBER, Str: "42", Line: 1, Col: 1},
+				{Type: LEX_NUMBER, Str: "0x2a", Line: 1, Col: 4},
+				{Type: LEX_NUMBER, Str: "123", Line: 1, Col: 9},
+				{Type: LEX_NUMBER, Str: "0xdead", Line: 1, Col: 13},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "hex numbers with various cases",
+			input: "0xABCD 0xabcd 0XaBcD 0x0123456789",
+			expected: []Lexeme{
+				{Type: LEX_NUMBER, Str: "0xABCD", Line: 1, Col: 1},
+				{Type: LEX_NUMBER, Str: "0xabcd", Line: 1, Col: 8},
+				{Type: LEX_NUMBER, Str: "0XaBcD", Line: 1, Col: 15},
+				{Type: LEX_NUMBER, Str: "0x0123456789", Line: 1, Col: 22},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "edge cases with zero",
+			input: "0 0x0 0x00 0xl",
+			expected: []Lexeme{
+				{Type: LEX_NUMBER, Str: "0", Line: 1, Col: 1},
+				{Type: LEX_NUMBER, Str: "0x0", Line: 1, Col: 3},
+				{Type: LEX_NUMBER, Str: "0x00", Line: 1, Col: 7},
+				{Type: LEX_NUMBER, Str: "0xl", Line: 1, Col: 12},
+				{Type: LEX_EOF},
+			},
+		},
+		{
 			name:  "string literals",
 			input: `"hello" "world" "with spaces"`,
 			expected: []Lexeme{

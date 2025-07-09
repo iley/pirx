@@ -303,7 +303,6 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 }
 
 // TODO: Support unsigned operations.
-// TODO: Test that all operations handle signed/unsigned consistently.
 func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	generateRegisterLoad(cc, 0, binop.Size, binop.Left)
 	generateRegisterLoad(cc, 1, binop.Size, binop.Right)

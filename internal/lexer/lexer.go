@@ -561,6 +561,39 @@ func (l *Lexer) lexString(startLine, startCol int) (Lexeme, error) {
 func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 	var num string
 
+	// Read the first digit
+	r, _, err := l.readRune()
+	if err != nil {
+		return Lexeme{}, err
+	}
+	num += string(r)
+
+	// Check for hexadecimal prefix
+	if r == '0' {
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				// Just "0" at EOF
+				return Lexeme{
+					Type: LEX_NUMBER,
+					Str:  num,
+					Line: startLine,
+					Col:  startCol,
+				}, nil
+			}
+			return Lexeme{}, err
+		}
+		if nextR == 'x' || nextR == 'X' {
+			// It's a hexadecimal number
+			num += string(nextR)
+			return l.lexHexNumber(num, startLine, startCol)
+		} else {
+			// Not hex, put back the character and continue with decimal
+			l.unreadRune()
+		}
+	}
+
+	// Continue reading decimal digits
 	for {
 		r, _, err := l.readRune()
 		if err != nil {
@@ -577,6 +610,42 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 		}
 
 		if !unicode.IsDigit(r) {
+			l.unreadRune()
+			break
+		}
+
+		num += string(r)
+	}
+
+	return Lexeme{
+		Type: LEX_NUMBER,
+		Str:  num,
+		Line: startLine,
+		Col:  startCol,
+	}, nil
+}
+
+// lexHexNumber reads a hexadecimal number literal
+func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, error) {
+	var num string = prefix
+
+	for {
+		r, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return Lexeme{}, err
+		}
+
+		// "l" suffix indicates an int64 literal
+		if r == 'l' {
+			num += string(r)
+			break
+		}
+
+		// Check for valid hex digit
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
 			l.unreadRune()
 			break
 		}

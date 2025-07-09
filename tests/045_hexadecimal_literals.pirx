@@ -1,0 +1,32 @@
+func main(): int {
+  var x: int;
+  var y: int64;
+  
+  // Test 32-bit hex literals
+  x = 0x42;
+  printf("x = %d\n", x);
+  
+  x = 0X10;
+  printf("x = %d\n", x);
+  
+  x = 0xABCD;
+  printf("x = %d\n", x);
+  
+  x = 0xabcd;
+  printf("x = %d\n", x);
+  
+  x = 0x0;
+  printf("x = %d\n", x);
+  
+  // Test 64-bit hex literals
+  y = 0x42l;
+  printf("y = %lld\n", y);
+  
+  y = 0xdeadbeefl;
+  printf("y = %lld\n", y);
+  
+  y = 0X1234567890ABCDEFl;
+  printf("y = %lld\n", y);
+  
+  return 0;
+}

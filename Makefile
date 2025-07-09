@@ -1,6 +1,6 @@
 default: pirx testrunner
 
-pirx: always
+pirx: stdlib always
 	go build -o pirx ./cmd/pirx
 
 testrunner: always
@@ -13,10 +13,14 @@ test: pirx testrunner
 always:
 
 clean:
+	$(MAKE) -C ./stdlib clean
 	$(MAKE) -C ./examples clean
 	rm -f ./pirx
 
 examples:
 	$(MAKE) -C ./examples
 
-.PHONY: always clean default examples test
+stdlib:
+	$(MAKE) -C ./stdlib
+
+.PHONY: always clean default examples test stdlib

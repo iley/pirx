@@ -19,4 +19,5 @@ func main(): int {
   var r: int;
   r = factorial(10);
   printf("10! = %lld\n", r);
+  return 0;
 }

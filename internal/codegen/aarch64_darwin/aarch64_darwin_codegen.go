@@ -15,7 +15,6 @@ import (
 const (
 	WORD_SIZE     = 8
 	MAX_FUNC_ARGS = 8
-	// TODO: Generate code for indirect loading to work around the max. offset.
 	MAX_SP_OFFSET = 504 // maximum offset from SP supproted in load/store instructions.
 )
 

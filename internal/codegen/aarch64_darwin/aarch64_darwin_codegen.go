@@ -220,25 +220,21 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error 
 	if assign.Value.Variable != "" {
 		// Assign value to variable.
 		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
-		// TODO: Factor these two lines into a function.
-		generateRegisterLoad(cc, 1, WORD_SIZE, assign.Target)
-		fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(0, assign.Size), registerByIndex(1, WORD_SIZE))
+		generateStoreByAddr(cc, 0, assign.Size, assign.Target)
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 4 {
 			panic(fmt.Errorf("invalid size %d for 32-bit literal %v", assign.Size, assign.Value))
 		}
 		generateRegisterLoad(cc, 0, 4, assign.Value)
-		generateRegisterLoad(cc, 1, WORD_SIZE, assign.Target)
-		fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(0, assign.Size), registerByIndex(1, WORD_SIZE))
+		generateStoreByAddr(cc, 0, assign.Size, assign.Target)
 	} else if assign.Value.LiteralInt64 != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 8 {
 			panic(fmt.Errorf("invalid size %d for 64-bit literal %v", assign.Size, assign.Value))
 		}
 		generateRegisterLoad(cc, 0, 8, assign.Value)
-		generateRegisterLoad(cc, 1, WORD_SIZE, assign.Target)
-		fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(0, assign.Size), registerByIndex(1, WORD_SIZE))
+		generateStoreByAddr(cc, 0, assign.Size, assign.Target)
 	} else {
 		panic(fmt.Errorf("Invalid rvalue in assignment: %v", assign.Value))
 	}
@@ -436,6 +432,13 @@ func generateRegisterStore(cc *CodegenContext, regIndex, regSize int, target str
 		fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
 		fmt.Fprintf(cc.output, "  str %s, [x9]\n", reg)
 	}
+}
+
+// generateStoreByAddr generates code for storing a register through a pointer.
+// Loads the pointer address into a register and stores the value through it.
+func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Arg) {
+	generateRegisterLoad(cc, 1, WORD_SIZE, target)
+	fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(regIndex, regSize), registerByIndex(1, WORD_SIZE))
 }
 
 func generateLiteralLoad(cc *CodegenContext, reg string, val int64) {

@@ -289,7 +289,13 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Args)))
 	}
 
-	size := getTypeSize(funcProto.ReturnType)
+	// This is a workaround for void functions. For now we just make it look like they return a word.
+	// TODO: Handle void functions better. Omit the assignment. Perhaps introduce a null target.
+	size := WORD_SIZE
+	if funcProto.ReturnType != nil {
+		size = getTypeSize(funcProto.ReturnType)
+	}
+
 	temp := ic.allocTemp(size)
 	ops = append(ops, Call{
 		Result:    temp,

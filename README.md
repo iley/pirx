@@ -8,3 +8,7 @@ func main(): int {
     return 0;
 }
 ```
+
+The language is a work in progress. It is still lacking many everyday necessities.
+
+See `examples/` and `tests/` for code samples.

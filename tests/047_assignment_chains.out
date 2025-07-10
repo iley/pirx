@@ -1,0 +1,5 @@
+Testing assignment chains:
+a=42, b=42, c=42
+a=100, b=100, c=100, d=100
+a=15, b=15, c=15
+a=6, b=6, c=6

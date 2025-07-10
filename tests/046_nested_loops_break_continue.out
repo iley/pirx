@@ -1,0 +1,29 @@
+Testing nested loops with break and continue:
+Outer loop i=0
+  Inner loop j=0
+  Inner loop j=1
+  Breaking inner loop at j=2
+Outer loop i=1
+  Inner loop j=0
+  Inner loop j=1
+  Breaking inner loop at j=2
+Outer loop i=2
+  Inner loop j=0
+  Inner loop j=1
+  Breaking inner loop at j=2
+
+Outer loop i=0
+  Inner loop j=0
+  Continuing inner loop at j=1
+  Inner loop j=2
+  Inner loop j=3
+Outer loop i=1
+  Inner loop j=0
+  Continuing inner loop at j=1
+  Inner loop j=2
+  Inner loop j=3
+Outer loop i=2
+  Inner loop j=0
+  Continuing inner loop at j=1
+  Inner loop j=2
+  Inner loop j=3

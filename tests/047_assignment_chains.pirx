@@ -1,0 +1,33 @@
+func main(): int {
+  var a: int;
+  var b: int;
+  var c: int;
+  var d: int;
+  
+  printf("Testing assignment chains:\n");
+  
+  // Test simple assignment chain
+  a = b = c = 42;
+  printf("a=%d, b=%d, c=%d\n", a, b, c);
+  
+  // Test longer assignment chain
+  a = b = c = d = 100;
+  printf("a=%d, b=%d, c=%d, d=%d\n", a, b, c, d);
+  
+  // Test assignment chain with expression
+  a = b = c = 10 + 5;
+  printf("a=%d, b=%d, c=%d\n", a, b, c);
+  
+  // Test assignment chain with function call
+  a = b = c = factorial(3);
+  printf("a=%d, b=%d, c=%d\n", a, b, c);
+  
+  return 0;
+}
+
+func factorial(n: int): int {
+  if n <= 1 {
+    return 1;
+  }
+  return n * factorial(n - 1);
+}

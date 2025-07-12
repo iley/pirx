@@ -70,6 +70,7 @@ var singleCharTokens = map[rune]TokenType{
 	';': LEX_PUNCTUATION,
 	',': LEX_PUNCTUATION,
 	':': LEX_PUNCTUATION,
+	'.': LEX_PUNCTUATION,
 	'+': LEX_OPERATOR,
 	'-': LEX_OPERATOR,
 	'*': LEX_OPERATOR,

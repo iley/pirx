@@ -344,6 +344,22 @@ func (d *DereferenceLValue) String() string {
 	return fmt.Sprintf("(* %s)", d.Expression.String())
 }
 
+type FieldLValue struct {
+	Loc       Location
+	Object    Expression
+	FieldName string
+}
+
+func (f *FieldLValue) GetLocation() Location {
+	return f.Loc
+}
+
+func (f *FieldLValue) isLValue() {}
+
+func (f *FieldLValue) String() string {
+	return fmt.Sprintf("(. %s %s)", f.Object.String(), f.FieldName)
+}
+
 type Literal struct {
 	Loc         Location
 	StringValue *string
@@ -474,4 +490,20 @@ func (u *UnaryOperation) isExpression() {}
 
 func (u *UnaryOperation) String() string {
 	return fmt.Sprintf("(%s %s)", u.Operator, u.Operand.String())
+}
+
+type FieldAccess struct {
+	Loc       Location
+	Object    Expression
+	FieldName string
+}
+
+func (f *FieldAccess) GetLocation() Location {
+	return f.Loc
+}
+
+func (f *FieldAccess) isExpression() {}
+
+func (f *FieldAccess) String() string {
+	return fmt.Sprintf("(. %s %s)", f.Object.String(), f.FieldName)
 }

@@ -902,7 +902,7 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 		{
 			name:     "hexadecimal uppercase",
 			src:      `func main() { 0X42; }`,
-			expected: ast.NewIntLiteral(0X42),
+			expected: ast.NewIntLiteral(0x42),
 		},
 		{
 			name:     "hexadecimal with letters",
@@ -912,7 +912,7 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 		{
 			name:     "hexadecimal mixed case",
 			src:      `func main() { 0XaBc; }`,
-			expected: ast.NewIntLiteral(0XaBc),
+			expected: ast.NewIntLiteral(0xaBc),
 		},
 		{
 			name:     "hexadecimal zero",
@@ -3030,3 +3030,188 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 		})
 	}
 }
+
+func TestParseExpression_FieldAccess_Simple(t *testing.T) {
+	src := `func main() { x.field; }`
+	expected := &ast.FieldAccess{
+		Object:    &ast.VariableReference{Name: "x"},
+		FieldName: "field",
+	}
+
+	lex := lexer.New(strings.NewReader(src))
+	parser := New(lex)
+	program, err := parser.ParseProgram()
+	if err != nil {
+		t.Fatalf("Error parsing program: %v", err)
+	}
+	if len(program.Functions) != 1 {
+		t.Fatalf("Expected 1 function, got %d", len(program.Functions))
+	}
+	if len(program.Functions[0].Body.Statements) != 1 {
+		t.Fatalf("Expected 1 statement, got %d", len(program.Functions[0].Body.Statements))
+	}
+	stmt, ok := program.Functions[0].Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Expected ExpressionStatement, got %T", program.Functions[0].Body.Statements[0])
+	}
+	if !compareASTIgnoreLocation(stmt.Expression, expected) {
+		t.Errorf("Expected %+v, got %+v", expected, stmt.Expression)
+	}
+}
+
+func TestParseExpression_FieldAccess_Nested(t *testing.T) {
+	src := `func main() { x.field.subfield; }`
+	expected := &ast.FieldAccess{
+		Object: &ast.FieldAccess{
+			Object:    &ast.VariableReference{Name: "x"},
+			FieldName: "field",
+		},
+		FieldName: "subfield",
+	}
+
+	lex := lexer.New(strings.NewReader(src))
+	parser := New(lex)
+	program, err := parser.ParseProgram()
+	if err != nil {
+		t.Fatalf("Error parsing program: %v", err)
+	}
+	if len(program.Functions) != 1 {
+		t.Fatalf("Expected 1 function, got %d", len(program.Functions))
+	}
+	if len(program.Functions[0].Body.Statements) != 1 {
+		t.Fatalf("Expected 1 statement, got %d", len(program.Functions[0].Body.Statements))
+	}
+	stmt, ok := program.Functions[0].Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Expected ExpressionStatement, got %T", program.Functions[0].Body.Statements[0])
+	}
+	if !compareASTIgnoreLocation(stmt.Expression, expected) {
+		t.Errorf("Expected %+v, got %+v", expected, stmt.Expression)
+	}
+}
+
+func TestParseExpression_FieldAccess_InBinaryOperation(t *testing.T) {
+	src := `func main() { x.field + 1; }`
+	expected := &ast.BinaryOperation{
+		Left: &ast.FieldAccess{
+			Object:    &ast.VariableReference{Name: "x"},
+			FieldName: "field",
+		},
+		Operator: "+",
+		Right:    ast.NewIntLiteral(1),
+	}
+
+	lex := lexer.New(strings.NewReader(src))
+	parser := New(lex)
+	program, err := parser.ParseProgram()
+	if err != nil {
+		t.Fatalf("Error parsing program: %v", err)
+	}
+	if len(program.Functions) != 1 {
+		t.Fatalf("Expected 1 function, got %d", len(program.Functions))
+	}
+	if len(program.Functions[0].Body.Statements) != 1 {
+		t.Fatalf("Expected 1 statement, got %d", len(program.Functions[0].Body.Statements))
+	}
+	stmt, ok := program.Functions[0].Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Expected ExpressionStatement, got %T", program.Functions[0].Body.Statements[0])
+	}
+	if !compareASTIgnoreLocation(stmt.Expression, expected) {
+		t.Errorf("Expected %+v, got %+v", expected, stmt.Expression)
+	}
+}
+
+func TestParseExpression_FieldAccess_Assignment(t *testing.T) {
+	src := `func main() { x.field = 42; }`
+	expected := &ast.Assignment{
+		Target: &ast.FieldLValue{
+			Object:    &ast.VariableReference{Name: "x"},
+			FieldName: "field",
+		},
+		Value: ast.NewIntLiteral(42),
+	}
+
+	lex := lexer.New(strings.NewReader(src))
+	parser := New(lex)
+	program, err := parser.ParseProgram()
+	if err != nil {
+		t.Fatalf("Error parsing program: %v", err)
+	}
+	if len(program.Functions) != 1 {
+		t.Fatalf("Expected 1 function, got %d", len(program.Functions))
+	}
+	if len(program.Functions[0].Body.Statements) != 1 {
+		t.Fatalf("Expected 1 statement, got %d", len(program.Functions[0].Body.Statements))
+	}
+	stmt, ok := program.Functions[0].Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Expected ExpressionStatement, got %T", program.Functions[0].Body.Statements[0])
+	}
+	if !compareASTIgnoreLocation(stmt.Expression, expected) {
+		t.Errorf("Expected %+v, got %+v", expected, stmt.Expression)
+	}
+}
+
+func TestParseExpression_FieldAccess_NestedAssignment(t *testing.T) {
+	src := `func main() { x.field.subfield = 42; }`
+	expected := &ast.Assignment{
+		Target: &ast.FieldLValue{
+			Object: &ast.FieldAccess{
+				Object:    &ast.VariableReference{Name: "x"},
+				FieldName: "field",
+			},
+			FieldName: "subfield",
+		},
+		Value: ast.NewIntLiteral(42),
+	}
+
+	lex := lexer.New(strings.NewReader(src))
+	parser := New(lex)
+	program, err := parser.ParseProgram()
+	if err != nil {
+		t.Fatalf("Error parsing program: %v", err)
+	}
+	if len(program.Functions) != 1 {
+		t.Fatalf("Expected 1 function, got %d", len(program.Functions))
+	}
+	if len(program.Functions[0].Body.Statements) != 1 {
+		t.Fatalf("Expected 1 statement, got %d", len(program.Functions[0].Body.Statements))
+	}
+	stmt, ok := program.Functions[0].Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Expected ExpressionStatement, got %T", program.Functions[0].Body.Statements[0])
+	}
+	if !compareASTIgnoreLocation(stmt.Expression, expected) {
+		t.Errorf("Expected %+v, got %+v", expected, stmt.Expression)
+	}
+}
+func TestParseExpression_FieldAccess_Error_MissingFieldName(t *testing.T) {
+	src := `func main() { x.; }`
+	expectedError := "expected field name after '.'"
+
+	lex := lexer.New(strings.NewReader(src))
+	parser := New(lex)
+	_, err := parser.ParseProgram()
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), expectedError) {
+		t.Errorf("Expected error containing %q, got %q", expectedError, err.Error())
+	}
+}
+func TestParseExpression_FieldAccess_Error_NumberAsFieldName(t *testing.T) {
+	src := `func main() { x.123; }`
+	expectedError := "expected field name after '.'"
+
+	lex := lexer.New(strings.NewReader(src))
+	parser := New(lex)
+	_, err := parser.ParseProgram()
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), expectedError) {
+		t.Errorf("Expected error containing %q, got %q", expectedError, err.Error())
+	}
+}
+

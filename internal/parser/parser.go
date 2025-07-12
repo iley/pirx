@@ -570,6 +570,9 @@ func getOperatorPrecedence(op string) int {
 }
 
 func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
+	var expr ast.Expression
+	var err error
+	
 	lex, err := p.peek()
 	if err != nil {
 		return nil, err
@@ -578,19 +581,29 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 	case lexer.LEX_KEYWORD:
 		if lex.IsKeyword("true") {
 			p.consume()
-			return ast.NewBoolLiteral(true), nil
+			expr = ast.NewBoolLiteral(true)
 		} else if lex.IsKeyword("false") {
 			p.consume()
-			return ast.NewBoolLiteral(false), nil
+			expr = ast.NewBoolLiteral(false)
+		} else {
+			return nil, fmt.Errorf("%d:%d: unexpected keyword %s when parsing a primary expression", lex.Line, lex.Col, lex.Str)
 		}
-		return nil, fmt.Errorf("%d:%d: unexpected keyword %s when parsing a primary expression", lex.Line, lex.Col, lex.Str)
 	case lexer.LEX_IDENT:
 		// Look ahead to determine if this is a function call or assignment
-		return p.parseIdentifierExpression()
+		expr, err = p.parseIdentifierExpression()
+		if err != nil {
+			return nil, err
+		}
 	case lexer.LEX_NUMBER:
-		return p.parseIntegerLiteral()
+		expr, err = p.parseIntegerLiteral()
+		if err != nil {
+			return nil, err
+		}
 	case lexer.LEX_STRING:
-		return p.parseStringLiteral()
+		expr, err = p.parseStringLiteral()
+		if err != nil {
+			return nil, err
+		}
 	case lexer.LEX_OPERATOR:
 		if lex.Str == "!" || lex.Str == "-" || lex.Str == "*" {
 			return p.parseUnaryExpression()
@@ -601,12 +614,51 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	case lexer.LEX_PUNCTUATION:
 		if lex.Str == "(" {
-			return p.parseParenthesizedExpression()
+			expr, err = p.parseParenthesizedExpression()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 		}
-		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	default:
 		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	}
+	
+	// Handle field access postfix operations
+	for {
+		lex, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if lex.IsPunctuation(".") {
+			// consume '.'
+			dotLex, err := p.consume()
+			if err != nil {
+				return nil, err
+			}
+			dotLoc := locationFromLexeme(dotLex)
+			
+			// expect field name
+			fieldLex, err := p.consume()
+			if err != nil {
+				return nil, err
+			}
+			if fieldLex.Type != lexer.LEX_IDENT {
+				return nil, fmt.Errorf("%d:%d: expected field name after '.', got %v", fieldLex.Line, fieldLex.Col, fieldLex)
+			}
+			
+			expr = &ast.FieldAccess{
+				Loc:       dotLoc,
+				Object:    expr,
+				FieldName: fieldLex.Str,
+			}
+		} else {
+			break
+		}
+	}
+	
+	return expr, nil
 }
 
 func (p *Parser) parseFunctionCall() (ast.Expression, error) {
@@ -932,6 +984,12 @@ func (p *Parser) convertExpressionToLValue(expr ast.Expression) (ast.LValue, err
 			}, nil
 		}
 		return nil, fmt.Errorf("%d:%d: invalid assignment target: %s", e.GetLocation().Line, e.GetLocation().Col, e.String())
+	case *ast.FieldAccess:
+		return &ast.FieldLValue{
+			Loc:       e.GetLocation(),
+			Object:    e.Object,
+			FieldName: e.FieldName,
+		}, nil
 	default:
 		return nil, fmt.Errorf("%d:%d: invalid assignment target: %s", expr.GetLocation().Line, expr.GetLocation().Col, expr.String())
 	}

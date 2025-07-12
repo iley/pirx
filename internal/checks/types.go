@@ -54,7 +54,7 @@ func (c *TypeChecker) checkFunction(fn ast.Function) {
 
 	// TODO: Check that each possible execution path ends with a return.
 	if c.currentFunc.ReturnType != nil && !c.hasReturn {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s with return type %s must contain a return operator", fn.Loc.Line, fn.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType))
+		c.errors = append(c.errors, fmt.Errorf("%s: function %s with return type %s must contain a return operator", fn.Loc, c.currentFunc.Name, c.currentFunc.ReturnType))
 	}
 }
 
@@ -122,11 +122,11 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) {
 func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) ast.Type {
 	proto, declared := c.declaredFuncs[call.FunctionName]
 	if !declared {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s is not declared", call.Loc.Line, call.Loc.Col, call.FunctionName))
+		c.errors = append(c.errors, fmt.Errorf("%s: function %s is not declared", call.Loc, call.FunctionName))
 	}
 
 	if declared && !proto.Variadic && (len(proto.Args) != len(call.Args)) {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s has %d arguments but %d were provided", call.Loc.Line, call.Loc.Col, call.FunctionName, len(proto.Args), len(call.Args)))
+		c.errors = append(c.errors, fmt.Errorf("%s: function %s has %d arguments but %d were provided", call.Loc, call.FunctionName, len(proto.Args), len(call.Args)))
 	}
 
 	for i, expr := range call.Args {
@@ -138,8 +138,8 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) ast.Type {
 
 		expectedArgType := proto.Args[i].Typ
 		if !actualArgType.Equals(expectedArgType) {
-			c.errors = append(c.errors, fmt.Errorf("%d:%d: argument #%d of function %s has wrong type: expected %s but got %s",
-				call.Loc.Line, call.Loc.Col, i+1, call.FunctionName, expectedArgType, actualArgType))
+			c.errors = append(c.errors, fmt.Errorf("%s: argument #%d of function %s has wrong type: expected %s but got %s",
+				call.Loc, i+1, call.FunctionName, expectedArgType, actualArgType))
 		}
 	}
 
@@ -157,26 +157,25 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) ast.Type {
 		var declared bool
 		targetType, declared = c.declaredVars[varName]
 		if !declared {
-			c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before assignment", assignment.Loc.Line, assignment.Loc.Col, varName))
+			c.errors = append(c.errors, fmt.Errorf("%s: variable %s is not declared before assignment", assignment.Loc, varName))
 			return nil
 		}
 	} else if deref, ok := assignment.Target.(*ast.DereferenceLValue); ok {
 		refType := c.checkExpression(deref.Expression)
 		ptrType, ok := refType.(*ast.PointerType)
 		if !ok {
-			c.errors = append(c.errors, fmt.Errorf("%d:%d: dereference of a non-pointer type %s", assignment.Loc.Line, assignment.Loc.Col, refType))
+			c.errors = append(c.errors, fmt.Errorf("%s: dereference of a non-pointer type %s", assignment.Loc, refType))
 			return nil
 		}
 		targetType = ptrType.ElementType
 	} else {
-		panic(fmt.Errorf("%d: %d: invalid lvalue %s in assignment", assignment.Loc.Line, assignment.Loc.Col, assignment.Target))
+		panic(fmt.Errorf("%s: invalid lvalue %s in assignment", assignment.Loc, assignment.Target))
 	}
 
 	valueType := c.checkExpression(assignment.Value)
 	if !valueType.Equals(targetType) {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: cannot assign value of type %s to lvalue of type %s",
-			assignment.Loc.Line,
-			assignment.Loc.Col,
+		c.errors = append(c.errors, fmt.Errorf("%s: cannot assign value of type %s to lvalue of type %s",
+			assignment.Loc,
 			valueType,
 			targetType,
 		))
@@ -188,7 +187,7 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) ast.Type {
 func (c *TypeChecker) checkVariableReference(ref *ast.VariableReference) ast.Type {
 	varType, declared := c.declaredVars[ref.Name]
 	if !declared {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: variable %s is not declared before reference", ref.Loc.Line, ref.Loc.Col, ref.Name))
+		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is not declared before reference", ref.Loc, ref.Name))
 	}
 
 	return varType
@@ -198,20 +197,20 @@ func (c *TypeChecker) checkReturnStatement(stmt *ast.ReturnStatement) {
 	c.hasReturn = true
 
 	if stmt.Value == nil && c.currentFunc.ReturnType != nil {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s should return a value of type %s but no value was provided",
-			stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType,
+		c.errors = append(c.errors, fmt.Errorf("%s: function %s should return a value of type %s but no value was provided",
+			stmt.Loc, c.currentFunc.Name, c.currentFunc.ReturnType,
 		))
 	}
 
 	if stmt.Value != nil {
 		typ := c.checkExpression(stmt.Value)
 		if c.currentFunc.ReturnType == nil {
-			c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s does not have a return type but a value was provided",
-				stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name,
+			c.errors = append(c.errors, fmt.Errorf("%s: function %s does not have a return type but a value was provided",
+				stmt.Loc, c.currentFunc.Name,
 			))
 		} else if !typ.Equals(c.currentFunc.ReturnType) {
-			c.errors = append(c.errors, fmt.Errorf("%d:%d: function %s has return type %s but a value of type %s was provided",
-				stmt.Loc.Line, stmt.Loc.Col, c.currentFunc.Name, c.currentFunc.ReturnType, typ,
+			c.errors = append(c.errors, fmt.Errorf("%s: function %s has return type %s but a value of type %s was provided",
+				stmt.Loc, c.currentFunc.Name, c.currentFunc.ReturnType, typ,
 			))
 		}
 	}
@@ -222,9 +221,8 @@ func (c *TypeChecker) checkBinaryOperation(binOp *ast.BinaryOperation) ast.Type 
 	rightType := c.checkExpression(binOp.Right)
 	resultType, ok := binaryOperationResult(binOp.Operator, leftType, rightType)
 	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: binary operation %s cannot be applied to values of types %s and %s",
-			binOp.Loc.Line,
-			binOp.Loc.Col,
+		c.errors = append(c.errors, fmt.Errorf("%s: binary operation %s cannot be applied to values of types %s and %s",
+			binOp.Loc,
 			binOp.Operator,
 			leftType,
 			rightType,
@@ -237,9 +235,8 @@ func (c *TypeChecker) checkUnaryOperation(unaryOp *ast.UnaryOperation) ast.Type 
 	operandType := c.checkExpression(unaryOp.Operand)
 	resultType, ok := unaryOperationResult(unaryOp.Operator, operandType)
 	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: unary operation %s cannot be applied to a value of type %s",
-			unaryOp.Loc.Line,
-			unaryOp.Loc.Col,
+		c.errors = append(c.errors, fmt.Errorf("%s: unary operation %s cannot be applied to a value of type %s",
+			unaryOp.Loc,
 			unaryOp.Operator,
 			operandType,
 		))
@@ -250,9 +247,8 @@ func (c *TypeChecker) checkUnaryOperation(unaryOp *ast.UnaryOperation) ast.Type 
 func (c *TypeChecker) checkIfStatement(stmt *ast.IfStatement) {
 	exprType := c.checkExpression(stmt.Condition)
 	if exprType != ast.Bool {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in if condition, got type %s",
-			stmt.Loc.Line,
-			stmt.Loc.Col,
+		c.errors = append(c.errors, fmt.Errorf("%s: expected an expression of type bool in if condition, got type %s",
+			stmt.Loc,
 			exprType,
 		))
 	}
@@ -265,9 +261,8 @@ func (c *TypeChecker) checkIfStatement(stmt *ast.IfStatement) {
 func (c *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) {
 	exprType := c.checkExpression(stmt.Condition)
 	if exprType != ast.Bool {
-		c.errors = append(c.errors, fmt.Errorf("%d:%d: expected an expression of type bool in while condition, got type %s",
-			stmt.Loc.Line,
-			stmt.Loc.Col,
+		c.errors = append(c.errors, fmt.Errorf("%s: expected an expression of type bool in while condition, got type %s",
+			stmt.Loc,
 			exprType,
 		))
 	}

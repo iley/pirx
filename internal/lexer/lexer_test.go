@@ -22,9 +22,9 @@ func TestLexer(t *testing.T) {
 			name:  "simple identifiers",
 			input: "hello world _test123",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "world", Line: 1, Col: 7},
-				{Type: LEX_IDENT, Str: "_test123", Line: 1, Col: 13},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "world", Loc: Location{Line: 1, Col: 7}},
+				{Type: LEX_IDENT, Str: "_test123", Loc: Location{Line: 1, Col: 13}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -32,11 +32,11 @@ func TestLexer(t *testing.T) {
 			name:  "keywords",
 			input: "func var val if else",
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
-				{Type: LEX_KEYWORD, Str: "var", Line: 1, Col: 6},
-				{Type: LEX_KEYWORD, Str: "val", Line: 1, Col: 10},
-				{Type: LEX_KEYWORD, Str: "if", Line: 1, Col: 14},
-				{Type: LEX_KEYWORD, Str: "else", Line: 1, Col: 17},
+				{Type: LEX_KEYWORD, Str: "func", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_KEYWORD, Str: "var", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_KEYWORD, Str: "val", Loc: Location{Line: 1, Col: 10}},
+				{Type: LEX_KEYWORD, Str: "if", Loc: Location{Line: 1, Col: 14}},
+				{Type: LEX_KEYWORD, Str: "else", Loc: Location{Line: 1, Col: 17}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -44,7 +44,7 @@ func TestLexer(t *testing.T) {
 			name:  "struct keyword",
 			input: "struct",
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "struct", Line: 1, Col: 1},
+				{Type: LEX_KEYWORD, Str: "struct", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -52,18 +52,18 @@ func TestLexer(t *testing.T) {
 			name:  "struct declaration",
 			input: "struct Foo { x: int; y: string; }",
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "struct", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "Foo", Line: 1, Col: 8},
-				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 12},
-				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 14},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 15},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 17},
-				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 20},
-				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 22},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 23},
-				{Type: LEX_IDENT, Str: "string", Line: 1, Col: 25},
-				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 31},
-				{Type: LEX_PUNCTUATION, Str: "}", Line: 1, Col: 33},
+				{Type: LEX_KEYWORD, Str: "struct", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "Foo", Loc: Location{Line: 1, Col: 8}},
+				{Type: LEX_PUNCTUATION, Str: "{", Loc: Location{Line: 1, Col: 12}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 1, Col: 14}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 15}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 17}},
+				{Type: LEX_PUNCTUATION, Str: ";", Loc: Location{Line: 1, Col: 20}},
+				{Type: LEX_IDENT, Str: "y", Loc: Location{Line: 1, Col: 22}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 23}},
+				{Type: LEX_IDENT, Str: "string", Loc: Location{Line: 1, Col: 25}},
+				{Type: LEX_PUNCTUATION, Str: ";", Loc: Location{Line: 1, Col: 31}},
+				{Type: LEX_PUNCTUATION, Str: "}", Loc: Location{Line: 1, Col: 33}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -71,9 +71,9 @@ func TestLexer(t *testing.T) {
 			name:  "numbers",
 			input: "42 123 0",
 			expected: []Lexeme{
-				{Type: LEX_NUMBER, Str: "42", Line: 1, Col: 1},
-				{Type: LEX_NUMBER, Str: "123", Line: 1, Col: 4},
-				{Type: LEX_NUMBER, Str: "0", Line: 1, Col: 8},
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "123", Loc: Location{Line: 1, Col: 4}},
+				{Type: LEX_NUMBER, Str: "0", Loc: Location{Line: 1, Col: 8}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -81,9 +81,9 @@ func TestLexer(t *testing.T) {
 			name:  "hexadecimal numbers",
 			input: "0x42 0xdeadbeef 0X123ABC",
 			expected: []Lexeme{
-				{Type: LEX_NUMBER, Str: "0x42", Line: 1, Col: 1},
-				{Type: LEX_NUMBER, Str: "0xdeadbeef", Line: 1, Col: 6},
-				{Type: LEX_NUMBER, Str: "0X123ABC", Line: 1, Col: 17},
+				{Type: LEX_NUMBER, Str: "0x42", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "0xdeadbeef", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_NUMBER, Str: "0X123ABC", Loc: Location{Line: 1, Col: 17}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -91,8 +91,8 @@ func TestLexer(t *testing.T) {
 			name:  "hexadecimal numbers with l suffix",
 			input: "0x42l 0xdeadbeefl",
 			expected: []Lexeme{
-				{Type: LEX_NUMBER, Str: "0x42l", Line: 1, Col: 1},
-				{Type: LEX_NUMBER, Str: "0xdeadbeefl", Line: 1, Col: 7},
+				{Type: LEX_NUMBER, Str: "0x42l", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "0xdeadbeefl", Loc: Location{Line: 1, Col: 7}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -100,10 +100,10 @@ func TestLexer(t *testing.T) {
 			name:  "mixed decimal and hex numbers",
 			input: "42 0x2a 123 0xdead",
 			expected: []Lexeme{
-				{Type: LEX_NUMBER, Str: "42", Line: 1, Col: 1},
-				{Type: LEX_NUMBER, Str: "0x2a", Line: 1, Col: 4},
-				{Type: LEX_NUMBER, Str: "123", Line: 1, Col: 9},
-				{Type: LEX_NUMBER, Str: "0xdead", Line: 1, Col: 13},
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "0x2a", Loc: Location{Line: 1, Col: 4}},
+				{Type: LEX_NUMBER, Str: "123", Loc: Location{Line: 1, Col: 9}},
+				{Type: LEX_NUMBER, Str: "0xdead", Loc: Location{Line: 1, Col: 13}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -111,10 +111,10 @@ func TestLexer(t *testing.T) {
 			name:  "hex numbers with various cases",
 			input: "0xABCD 0xabcd 0XaBcD 0x0123456789",
 			expected: []Lexeme{
-				{Type: LEX_NUMBER, Str: "0xABCD", Line: 1, Col: 1},
-				{Type: LEX_NUMBER, Str: "0xabcd", Line: 1, Col: 8},
-				{Type: LEX_NUMBER, Str: "0XaBcD", Line: 1, Col: 15},
-				{Type: LEX_NUMBER, Str: "0x0123456789", Line: 1, Col: 22},
+				{Type: LEX_NUMBER, Str: "0xABCD", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "0xabcd", Loc: Location{Line: 1, Col: 8}},
+				{Type: LEX_NUMBER, Str: "0XaBcD", Loc: Location{Line: 1, Col: 15}},
+				{Type: LEX_NUMBER, Str: "0x0123456789", Loc: Location{Line: 1, Col: 22}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -122,10 +122,10 @@ func TestLexer(t *testing.T) {
 			name:  "edge cases with zero",
 			input: "0 0x0 0x00 0xl",
 			expected: []Lexeme{
-				{Type: LEX_NUMBER, Str: "0", Line: 1, Col: 1},
-				{Type: LEX_NUMBER, Str: "0x0", Line: 1, Col: 3},
-				{Type: LEX_NUMBER, Str: "0x00", Line: 1, Col: 7},
-				{Type: LEX_NUMBER, Str: "0xl", Line: 1, Col: 12},
+				{Type: LEX_NUMBER, Str: "0", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "0x0", Loc: Location{Line: 1, Col: 3}},
+				{Type: LEX_NUMBER, Str: "0x00", Loc: Location{Line: 1, Col: 7}},
+				{Type: LEX_NUMBER, Str: "0xl", Loc: Location{Line: 1, Col: 12}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -133,9 +133,9 @@ func TestLexer(t *testing.T) {
 			name:  "string literals",
 			input: `"hello" "world" "with spaces"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_STRING, Str: "world", Line: 1, Col: 9},
-				{Type: LEX_STRING, Str: "with spaces", Line: 1, Col: 17},
+				{Type: LEX_STRING, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_STRING, Str: "world", Loc: Location{Line: 1, Col: 9}},
+				{Type: LEX_STRING, Str: "with spaces", Loc: Location{Line: 1, Col: 17}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -146,20 +146,20 @@ func TestLexer(t *testing.T) {
     val message = "Hello, Pirx!"
 }`,
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "main", Line: 1, Col: 6},
-				{Type: LEX_PUNCTUATION, Str: "(", Line: 1, Col: 10},
-				{Type: LEX_PUNCTUATION, Str: ")", Line: 1, Col: 11},
-				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 13},
-				{Type: LEX_KEYWORD, Str: "var", Line: 2, Col: 5},
-				{Type: LEX_IDENT, Str: "x", Line: 2, Col: 9},
-				{Type: LEX_OPERATOR, Str: "=", Line: 2, Col: 11},
-				{Type: LEX_NUMBER, Str: "42", Line: 2, Col: 13},
-				{Type: LEX_KEYWORD, Str: "val", Line: 3, Col: 5},
-				{Type: LEX_IDENT, Str: "message", Line: 3, Col: 9},
-				{Type: LEX_OPERATOR, Str: "=", Line: 3, Col: 17},
-				{Type: LEX_STRING, Str: "Hello, Pirx!", Line: 3, Col: 19},
-				{Type: LEX_PUNCTUATION, Str: "}", Line: 4, Col: 1},
+				{Type: LEX_KEYWORD, Str: "func", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "main", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_PUNCTUATION, Str: "(", Loc: Location{Line: 1, Col: 10}},
+				{Type: LEX_PUNCTUATION, Str: ")", Loc: Location{Line: 1, Col: 11}},
+				{Type: LEX_PUNCTUATION, Str: "{", Loc: Location{Line: 1, Col: 13}},
+				{Type: LEX_KEYWORD, Str: "var", Loc: Location{Line: 2, Col: 5}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 2, Col: 9}},
+				{Type: LEX_OPERATOR, Str: "=", Loc: Location{Line: 2, Col: 11}},
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Line: 2, Col: 13}},
+				{Type: LEX_KEYWORD, Str: "val", Loc: Location{Line: 3, Col: 5}},
+				{Type: LEX_IDENT, Str: "message", Loc: Location{Line: 3, Col: 9}},
+				{Type: LEX_OPERATOR, Str: "=", Loc: Location{Line: 3, Col: 17}},
+				{Type: LEX_STRING, Str: "Hello, Pirx!", Loc: Location{Line: 3, Col: 19}},
+				{Type: LEX_PUNCTUATION, Str: "}", Loc: Location{Line: 4, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -167,9 +167,9 @@ func TestLexer(t *testing.T) {
 			name:  "multiline input",
 			input: "hello\nworld\n42",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
-				{Type: LEX_NUMBER, Str: "42", Line: 3, Col: 1},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "world", Loc: Location{Line: 2, Col: 1}},
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Line: 3, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -191,11 +191,11 @@ func TestLexer(t *testing.T) {
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
 				}
-				if got.Line != expected.Line {
-					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				if got.Loc.Line != expected.Loc.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Loc.Line, got.Loc.Line)
 				}
-				if got.Col != expected.Col {
-					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				if got.Loc.Col != expected.Loc.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Loc.Col, got.Loc.Col)
 				}
 			}
 		})
@@ -241,9 +241,9 @@ func TestLexerWhitespace(t *testing.T) {
 			name:  "various whitespace",
 			input: "  hello\t\n  world  \n  42",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 3},
-				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 3},
-				{Type: LEX_NUMBER, Str: "42", Line: 3, Col: 3},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 3}},
+				{Type: LEX_IDENT, Str: "world", Loc: Location{Line: 2, Col: 3}},
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Line: 3, Col: 3}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -272,11 +272,11 @@ func TestLexerWhitespace(t *testing.T) {
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
 				}
-				if got.Line != expected.Line {
-					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				if got.Loc.Line != expected.Loc.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Loc.Line, got.Loc.Line)
 				}
-				if got.Col != expected.Col {
-					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				if got.Loc.Col != expected.Loc.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Loc.Col, got.Loc.Col)
 				}
 			}
 		})
@@ -293,8 +293,8 @@ func TestLexerComments(t *testing.T) {
 			name:  "comment at end of line",
 			input: "hello // this is a comment\nworld",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "world", Loc: Location{Line: 2, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -302,8 +302,8 @@ func TestLexerComments(t *testing.T) {
 			name:  "comment on its own line",
 			input: "hello\n// this is a comment\nworld",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "world", Line: 3, Col: 1},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "world", Loc: Location{Line: 3, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -311,9 +311,9 @@ func TestLexerComments(t *testing.T) {
 			name:  "multiple comments",
 			input: "hello // comment 1\nworld // comment 2\n42",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
-				{Type: LEX_NUMBER, Str: "42", Line: 3, Col: 1},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "world", Loc: Location{Line: 2, Col: 1}},
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Line: 3, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -321,8 +321,8 @@ func TestLexerComments(t *testing.T) {
 			name:  "empty comment",
 			input: "hello //\nworld",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "world", Loc: Location{Line: 2, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -330,7 +330,7 @@ func TestLexerComments(t *testing.T) {
 			name:  "comment at end of file",
 			input: "hello // comment at EOF",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -338,8 +338,8 @@ func TestLexerComments(t *testing.T) {
 			name:  "comment with special characters",
 			input: "hello // comment with symbols !@#$%^&*()\nworld",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "world", Line: 2, Col: 1},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "world", Loc: Location{Line: 2, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -347,9 +347,9 @@ func TestLexerComments(t *testing.T) {
 			name:  "division operator vs comment",
 			input: "x / y // division vs comment",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 1},
-				{Type: LEX_OPERATOR, Str: "/", Line: 1, Col: 3},
-				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 5},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_OPERATOR, Str: "/", Loc: Location{Line: 1, Col: 3}},
+				{Type: LEX_IDENT, Str: "y", Loc: Location{Line: 1, Col: 5}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -357,8 +357,8 @@ func TestLexerComments(t *testing.T) {
 			name:  "single slash at EOF",
 			input: "hello /",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "hello", Line: 1, Col: 1},
-				{Type: LEX_OPERATOR, Str: "/", Line: 1, Col: 7},
+				{Type: LEX_IDENT, Str: "hello", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_OPERATOR, Str: "/", Loc: Location{Line: 1, Col: 7}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -370,18 +370,18 @@ func TestLexerComments(t *testing.T) {
     return x // return statement
 }`,
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "main", Line: 1, Col: 6},
-				{Type: LEX_PUNCTUATION, Str: "(", Line: 1, Col: 10},
-				{Type: LEX_PUNCTUATION, Str: ")", Line: 1, Col: 11},
-				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 13},
-				{Type: LEX_KEYWORD, Str: "var", Line: 2, Col: 5},
-				{Type: LEX_IDENT, Str: "x", Line: 2, Col: 9},
-				{Type: LEX_OPERATOR, Str: "=", Line: 2, Col: 11},
-				{Type: LEX_NUMBER, Str: "42", Line: 2, Col: 13},
-				{Type: LEX_KEYWORD, Str: "return", Line: 4, Col: 5},
-				{Type: LEX_IDENT, Str: "x", Line: 4, Col: 12},
-				{Type: LEX_PUNCTUATION, Str: "}", Line: 5, Col: 1},
+				{Type: LEX_KEYWORD, Str: "func", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "main", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_PUNCTUATION, Str: "(", Loc: Location{Line: 1, Col: 10}},
+				{Type: LEX_PUNCTUATION, Str: ")", Loc: Location{Line: 1, Col: 11}},
+				{Type: LEX_PUNCTUATION, Str: "{", Loc: Location{Line: 1, Col: 13}},
+				{Type: LEX_KEYWORD, Str: "var", Loc: Location{Line: 2, Col: 5}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 2, Col: 9}},
+				{Type: LEX_OPERATOR, Str: "=", Loc: Location{Line: 2, Col: 11}},
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Line: 2, Col: 13}},
+				{Type: LEX_KEYWORD, Str: "return", Loc: Location{Line: 4, Col: 5}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 4, Col: 12}},
+				{Type: LEX_PUNCTUATION, Str: "}", Loc: Location{Line: 5, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -403,11 +403,11 @@ func TestLexerComments(t *testing.T) {
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
 				}
-				if got.Line != expected.Line {
-					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				if got.Loc.Line != expected.Loc.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Loc.Line, got.Loc.Line)
 				}
-				if got.Col != expected.Col {
-					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				if got.Loc.Col != expected.Loc.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Loc.Col, got.Loc.Col)
 				}
 			}
 		})
@@ -424,7 +424,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "newline escape",
 			input: `"hello\nworld"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello\nworld", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "hello\nworld", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -432,7 +432,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "tab escape",
 			input: `"hello\tworld"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello\tworld", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "hello\tworld", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -440,7 +440,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "carriage return escape",
 			input: `"hello\rworld"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello\rworld", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "hello\rworld", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -448,7 +448,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "backslash escape",
 			input: `"hello\\world"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello\\world", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "hello\\world", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -456,7 +456,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "quote escape",
 			input: `"hello\"world"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello\"world", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "hello\"world", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -464,7 +464,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "single quote escape",
 			input: `"hello\'world"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello'world", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "hello'world", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -472,7 +472,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "multiple escapes",
 			input: `"line1\nline2\tcolumn2\nline3"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "line1\nline2\tcolumn2\nline3", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "line1\nline2\tcolumn2\nline3", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -480,7 +480,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "escape at end of string",
 			input: `"hello world\n"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello world\n", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "hello world\n", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -488,7 +488,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "escape at start of string",
 			input: `"\nhello world"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "\nhello world", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "\nhello world", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -496,7 +496,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "consecutive escapes",
 			input: `"\\n\\t\\r"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "\\n\\t\\r", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "\\n\\t\\r", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -504,7 +504,7 @@ func TestLexerEscapeSequences(t *testing.T) {
 			name:  "empty string with escape",
 			input: `"\n"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "\n", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "\n", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -515,20 +515,20 @@ func TestLexerEscapeSequences(t *testing.T) {
     var path = "C:\\Users\\test\\file.txt"
 }`,
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "main", Line: 1, Col: 6},
-				{Type: LEX_PUNCTUATION, Str: "(", Line: 1, Col: 10},
-				{Type: LEX_PUNCTUATION, Str: ")", Line: 1, Col: 11},
-				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 13},
-				{Type: LEX_KEYWORD, Str: "var", Line: 2, Col: 5},
-				{Type: LEX_IDENT, Str: "message", Line: 2, Col: 9},
-				{Type: LEX_OPERATOR, Str: "=", Line: 2, Col: 17},
-				{Type: LEX_STRING, Str: "Hello\nWorld\tPirx!", Line: 2, Col: 19},
-				{Type: LEX_KEYWORD, Str: "var", Line: 3, Col: 5},
-				{Type: LEX_IDENT, Str: "path", Line: 3, Col: 9},
-				{Type: LEX_OPERATOR, Str: "=", Line: 3, Col: 14},
-				{Type: LEX_STRING, Str: "C:\\Users\\test\\file.txt", Line: 3, Col: 16},
-				{Type: LEX_PUNCTUATION, Str: "}", Line: 4, Col: 1},
+				{Type: LEX_KEYWORD, Str: "func", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "main", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_PUNCTUATION, Str: "(", Loc: Location{Line: 1, Col: 10}},
+				{Type: LEX_PUNCTUATION, Str: ")", Loc: Location{Line: 1, Col: 11}},
+				{Type: LEX_PUNCTUATION, Str: "{", Loc: Location{Line: 1, Col: 13}},
+				{Type: LEX_KEYWORD, Str: "var", Loc: Location{Line: 2, Col: 5}},
+				{Type: LEX_IDENT, Str: "message", Loc: Location{Line: 2, Col: 9}},
+				{Type: LEX_OPERATOR, Str: "=", Loc: Location{Line: 2, Col: 17}},
+				{Type: LEX_STRING, Str: "Hello\nWorld\tPirx!", Loc: Location{Line: 2, Col: 19}},
+				{Type: LEX_KEYWORD, Str: "var", Loc: Location{Line: 3, Col: 5}},
+				{Type: LEX_IDENT, Str: "path", Loc: Location{Line: 3, Col: 9}},
+				{Type: LEX_OPERATOR, Str: "=", Loc: Location{Line: 3, Col: 14}},
+				{Type: LEX_STRING, Str: "C:\\Users\\test\\file.txt", Loc: Location{Line: 3, Col: 16}},
+				{Type: LEX_PUNCTUATION, Str: "}", Loc: Location{Line: 4, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -550,11 +550,11 @@ func TestLexerEscapeSequences(t *testing.T) {
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
 				}
-				if got.Line != expected.Line {
-					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				if got.Loc.Line != expected.Loc.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Loc.Line, got.Loc.Line)
 				}
-				if got.Col != expected.Col {
-					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				if got.Loc.Col != expected.Loc.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Loc.Col, got.Loc.Col)
 				}
 			}
 		})
@@ -571,7 +571,7 @@ func TestLexerInvalidEscapeSequences(t *testing.T) {
 			name:  "unknown escape sequence",
 			input: `"hello\xworld"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "helloxworld", Line: 1, Col: 1}, // \x becomes just x
+				{Type: LEX_STRING, Str: "helloxworld", Loc: Location{Line: 1, Col: 1}}, // \x becomes just x
 				{Type: LEX_EOF},
 			},
 		},
@@ -579,7 +579,7 @@ func TestLexerInvalidEscapeSequences(t *testing.T) {
 			name:  "backslash at end of string",
 			input: `"hello\\"`,
 			expected: []Lexeme{
-				{Type: LEX_STRING, Str: "hello\\", Line: 1, Col: 1},
+				{Type: LEX_STRING, Str: "hello\\", Loc: Location{Line: 1, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -601,11 +601,11 @@ func TestLexerInvalidEscapeSequences(t *testing.T) {
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
 				}
-				if got.Line != expected.Line {
-					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				if got.Loc.Line != expected.Loc.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Loc.Line, got.Loc.Line)
 				}
-				if got.Col != expected.Col {
-					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				if got.Loc.Col != expected.Loc.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Loc.Col, got.Loc.Col)
 				}
 			}
 		})
@@ -651,8 +651,8 @@ func TestLexerPointerTypes(t *testing.T) {
 			name:  "simple pointer type",
 			input: "*int",
 			expected: []Lexeme{
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 2},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 2}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -660,9 +660,9 @@ func TestLexerPointerTypes(t *testing.T) {
 			name:  "pointer to pointer type",
 			input: "**int",
 			expected: []Lexeme{
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 1},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 2},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 3},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 2}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 3}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -670,11 +670,11 @@ func TestLexerPointerTypes(t *testing.T) {
 			name:  "pointer type in variable declaration",
 			input: "var ptr: *int",
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "var", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "ptr", Line: 1, Col: 5},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 8},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 10},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 11},
+				{Type: LEX_KEYWORD, Str: "var", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "ptr", Loc: Location{Line: 1, Col: 5}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 8}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 10}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 11}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -682,23 +682,23 @@ func TestLexerPointerTypes(t *testing.T) {
 			name:  "pointer type in function signature",
 			input: "func test(x: *int, y: **string): *bool",
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "test", Line: 1, Col: 6},
-				{Type: LEX_PUNCTUATION, Str: "(", Line: 1, Col: 10},
-				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 11},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 12},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 14},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 15},
-				{Type: LEX_PUNCTUATION, Str: ",", Line: 1, Col: 18},
-				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 20},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 21},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 23},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 24},
-				{Type: LEX_IDENT, Str: "string", Line: 1, Col: 25},
-				{Type: LEX_PUNCTUATION, Str: ")", Line: 1, Col: 31},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 32},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 34},
-				{Type: LEX_IDENT, Str: "bool", Line: 1, Col: 35},
+				{Type: LEX_KEYWORD, Str: "func", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "test", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_PUNCTUATION, Str: "(", Loc: Location{Line: 1, Col: 10}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 1, Col: 11}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 12}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 14}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 15}},
+				{Type: LEX_PUNCTUATION, Str: ",", Loc: Location{Line: 1, Col: 18}},
+				{Type: LEX_IDENT, Str: "y", Loc: Location{Line: 1, Col: 20}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 21}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 23}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 24}},
+				{Type: LEX_IDENT, Str: "string", Loc: Location{Line: 1, Col: 25}},
+				{Type: LEX_PUNCTUATION, Str: ")", Loc: Location{Line: 1, Col: 31}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 32}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 34}},
+				{Type: LEX_IDENT, Str: "bool", Loc: Location{Line: 1, Col: 35}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -706,17 +706,17 @@ func TestLexerPointerTypes(t *testing.T) {
 			name:  "mixed pointer types and multiplication",
 			input: "var x: *int; y = 2 * 3",
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "var", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 5},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 6},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 8},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 9},
-				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 12},
-				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 14},
-				{Type: LEX_OPERATOR, Str: "=", Line: 1, Col: 16},
-				{Type: LEX_NUMBER, Str: "2", Line: 1, Col: 18},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 20},
-				{Type: LEX_NUMBER, Str: "3", Line: 1, Col: 22},
+				{Type: LEX_KEYWORD, Str: "var", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 1, Col: 5}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 8}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 9}},
+				{Type: LEX_PUNCTUATION, Str: ";", Loc: Location{Line: 1, Col: 12}},
+				{Type: LEX_IDENT, Str: "y", Loc: Location{Line: 1, Col: 14}},
+				{Type: LEX_OPERATOR, Str: "=", Loc: Location{Line: 1, Col: 16}},
+				{Type: LEX_NUMBER, Str: "2", Loc: Location{Line: 1, Col: 18}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 20}},
+				{Type: LEX_NUMBER, Str: "3", Loc: Location{Line: 1, Col: 22}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -724,19 +724,19 @@ func TestLexerPointerTypes(t *testing.T) {
 			name:  "pointer type with struct",
 			input: "struct Node { data: int; next: *Node; }",
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "struct", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "Node", Line: 1, Col: 8},
-				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 13},
-				{Type: LEX_IDENT, Str: "data", Line: 1, Col: 15},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 19},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 21},
-				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 24},
-				{Type: LEX_IDENT, Str: "next", Line: 1, Col: 26},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 30},
-				{Type: LEX_OPERATOR, Str: "*", Line: 1, Col: 32},
-				{Type: LEX_IDENT, Str: "Node", Line: 1, Col: 33},
-				{Type: LEX_PUNCTUATION, Str: ";", Line: 1, Col: 37},
-				{Type: LEX_PUNCTUATION, Str: "}", Line: 1, Col: 39},
+				{Type: LEX_KEYWORD, Str: "struct", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "Node", Loc: Location{Line: 1, Col: 8}},
+				{Type: LEX_PUNCTUATION, Str: "{", Loc: Location{Line: 1, Col: 13}},
+				{Type: LEX_IDENT, Str: "data", Loc: Location{Line: 1, Col: 15}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 19}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 21}},
+				{Type: LEX_PUNCTUATION, Str: ";", Loc: Location{Line: 1, Col: 24}},
+				{Type: LEX_IDENT, Str: "next", Loc: Location{Line: 1, Col: 26}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 30}},
+				{Type: LEX_OPERATOR, Str: "*", Loc: Location{Line: 1, Col: 32}},
+				{Type: LEX_IDENT, Str: "Node", Loc: Location{Line: 1, Col: 33}},
+				{Type: LEX_PUNCTUATION, Str: ";", Loc: Location{Line: 1, Col: 37}},
+				{Type: LEX_PUNCTUATION, Str: "}", Loc: Location{Line: 1, Col: 39}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -758,11 +758,11 @@ func TestLexerPointerTypes(t *testing.T) {
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
 				}
-				if got.Line != expected.Line {
-					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				if got.Loc.Line != expected.Loc.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Loc.Line, got.Loc.Line)
 				}
-				if got.Col != expected.Col {
-					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				if got.Loc.Col != expected.Loc.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Loc.Col, got.Loc.Col)
 				}
 			}
 		})
@@ -779,8 +779,8 @@ func TestLexerBooleanOperators(t *testing.T) {
 			name:  "equality operators",
 			input: "== !=",
 			expected: []Lexeme{
-				{Type: LEX_OPERATOR, Str: "==", Line: 1, Col: 1},
-				{Type: LEX_OPERATOR, Str: "!=", Line: 1, Col: 4},
+				{Type: LEX_OPERATOR, Str: "==", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_OPERATOR, Str: "!=", Loc: Location{Line: 1, Col: 4}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -788,10 +788,10 @@ func TestLexerBooleanOperators(t *testing.T) {
 			name:  "comparison operators",
 			input: "< > <= >=",
 			expected: []Lexeme{
-				{Type: LEX_OPERATOR, Str: "<", Line: 1, Col: 1},
-				{Type: LEX_OPERATOR, Str: ">", Line: 1, Col: 3},
-				{Type: LEX_OPERATOR, Str: "<=", Line: 1, Col: 5},
-				{Type: LEX_OPERATOR, Str: ">=", Line: 1, Col: 8},
+				{Type: LEX_OPERATOR, Str: "<", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_OPERATOR, Str: ">", Loc: Location{Line: 1, Col: 3}},
+				{Type: LEX_OPERATOR, Str: "<=", Loc: Location{Line: 1, Col: 5}},
+				{Type: LEX_OPERATOR, Str: ">=", Loc: Location{Line: 1, Col: 8}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -799,9 +799,9 @@ func TestLexerBooleanOperators(t *testing.T) {
 			name:  "logical operators",
 			input: "&& || !",
 			expected: []Lexeme{
-				{Type: LEX_OPERATOR, Str: "&&", Line: 1, Col: 1},
-				{Type: LEX_OPERATOR, Str: "||", Line: 1, Col: 4},
-				{Type: LEX_OPERATOR, Str: "!", Line: 1, Col: 7},
+				{Type: LEX_OPERATOR, Str: "&&", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_OPERATOR, Str: "||", Loc: Location{Line: 1, Col: 4}},
+				{Type: LEX_OPERATOR, Str: "!", Loc: Location{Line: 1, Col: 7}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -809,10 +809,10 @@ func TestLexerBooleanOperators(t *testing.T) {
 			name:  "address-of operator",
 			input: "&x &y",
 			expected: []Lexeme{
-				{Type: LEX_OPERATOR, Str: "&", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 2},
-				{Type: LEX_OPERATOR, Str: "&", Line: 1, Col: 4},
-				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 5},
+				{Type: LEX_OPERATOR, Str: "&", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 1, Col: 2}},
+				{Type: LEX_OPERATOR, Str: "&", Loc: Location{Line: 1, Col: 4}},
+				{Type: LEX_IDENT, Str: "y", Loc: Location{Line: 1, Col: 5}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -820,11 +820,11 @@ func TestLexerBooleanOperators(t *testing.T) {
 			name:  "mixed address-of and logical operators",
 			input: "&x && &y",
 			expected: []Lexeme{
-				{Type: LEX_OPERATOR, Str: "&", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 2},
-				{Type: LEX_OPERATOR, Str: "&&", Line: 1, Col: 4},
-				{Type: LEX_OPERATOR, Str: "&", Line: 1, Col: 7},
-				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 8},
+				{Type: LEX_OPERATOR, Str: "&", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 1, Col: 2}},
+				{Type: LEX_OPERATOR, Str: "&&", Loc: Location{Line: 1, Col: 4}},
+				{Type: LEX_OPERATOR, Str: "&", Loc: Location{Line: 1, Col: 7}},
+				{Type: LEX_IDENT, Str: "y", Loc: Location{Line: 1, Col: 8}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -832,13 +832,13 @@ func TestLexerBooleanOperators(t *testing.T) {
 			name:  "mixed boolean operations",
 			input: "x == 42 && y != 0",
 			expected: []Lexeme{
-				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 1},
-				{Type: LEX_OPERATOR, Str: "==", Line: 1, Col: 3},
-				{Type: LEX_NUMBER, Str: "42", Line: 1, Col: 6},
-				{Type: LEX_OPERATOR, Str: "&&", Line: 1, Col: 9},
-				{Type: LEX_IDENT, Str: "y", Line: 1, Col: 12},
-				{Type: LEX_OPERATOR, Str: "!=", Line: 1, Col: 14},
-				{Type: LEX_NUMBER, Str: "0", Line: 1, Col: 17},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_OPERATOR, Str: "==", Loc: Location{Line: 1, Col: 3}},
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_OPERATOR, Str: "&&", Loc: Location{Line: 1, Col: 9}},
+				{Type: LEX_IDENT, Str: "y", Loc: Location{Line: 1, Col: 12}},
+				{Type: LEX_OPERATOR, Str: "!=", Loc: Location{Line: 1, Col: 14}},
+				{Type: LEX_NUMBER, Str: "0", Loc: Location{Line: 1, Col: 17}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -846,12 +846,12 @@ func TestLexerBooleanOperators(t *testing.T) {
 			name:  "negation and comparisons",
 			input: "!found || x >= limit",
 			expected: []Lexeme{
-				{Type: LEX_OPERATOR, Str: "!", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "found", Line: 1, Col: 2},
-				{Type: LEX_OPERATOR, Str: "||", Line: 1, Col: 8},
-				{Type: LEX_IDENT, Str: "x", Line: 1, Col: 11},
-				{Type: LEX_OPERATOR, Str: ">=", Line: 1, Col: 13},
-				{Type: LEX_IDENT, Str: "limit", Line: 1, Col: 16},
+				{Type: LEX_OPERATOR, Str: "!", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "found", Loc: Location{Line: 1, Col: 2}},
+				{Type: LEX_OPERATOR, Str: "||", Loc: Location{Line: 1, Col: 8}},
+				{Type: LEX_IDENT, Str: "x", Loc: Location{Line: 1, Col: 11}},
+				{Type: LEX_OPERATOR, Str: ">=", Loc: Location{Line: 1, Col: 13}},
+				{Type: LEX_IDENT, Str: "limit", Loc: Location{Line: 1, Col: 16}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -863,37 +863,37 @@ func TestLexerBooleanOperators(t *testing.T) {
     }
 }`,
 			expected: []Lexeme{
-				{Type: LEX_KEYWORD, Str: "func", Line: 1, Col: 1},
-				{Type: LEX_IDENT, Str: "compare", Line: 1, Col: 6},
-				{Type: LEX_PUNCTUATION, Str: "(", Line: 1, Col: 13},
-				{Type: LEX_IDENT, Str: "a", Line: 1, Col: 14},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 15},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 17},
-				{Type: LEX_PUNCTUATION, Str: ",", Line: 1, Col: 20},
-				{Type: LEX_IDENT, Str: "b", Line: 1, Col: 22},
-				{Type: LEX_PUNCTUATION, Str: ":", Line: 1, Col: 23},
-				{Type: LEX_IDENT, Str: "int", Line: 1, Col: 25},
-				{Type: LEX_PUNCTUATION, Str: ")", Line: 1, Col: 28},
-				{Type: LEX_PUNCTUATION, Str: "{", Line: 1, Col: 30},
-				{Type: LEX_KEYWORD, Str: "if", Line: 2, Col: 5},
-				{Type: LEX_IDENT, Str: "a", Line: 2, Col: 8},
-				{Type: LEX_OPERATOR, Str: "<=", Line: 2, Col: 10},
-				{Type: LEX_IDENT, Str: "b", Line: 2, Col: 13},
-				{Type: LEX_OPERATOR, Str: "&&", Line: 2, Col: 15},
-				{Type: LEX_IDENT, Str: "a", Line: 2, Col: 18},
-				{Type: LEX_OPERATOR, Str: "!=", Line: 2, Col: 20},
-				{Type: LEX_NUMBER, Str: "0", Line: 2, Col: 23},
-				{Type: LEX_PUNCTUATION, Str: "{", Line: 2, Col: 25},
-				{Type: LEX_KEYWORD, Str: "return", Line: 3, Col: 9},
-				{Type: LEX_IDENT, Str: "a", Line: 3, Col: 16},
-				{Type: LEX_OPERATOR, Str: "<", Line: 3, Col: 18},
-				{Type: LEX_IDENT, Str: "b", Line: 3, Col: 20},
-				{Type: LEX_OPERATOR, Str: "||", Line: 3, Col: 22},
-				{Type: LEX_IDENT, Str: "a", Line: 3, Col: 25},
-				{Type: LEX_OPERATOR, Str: "==", Line: 3, Col: 27},
-				{Type: LEX_IDENT, Str: "b", Line: 3, Col: 30},
-				{Type: LEX_PUNCTUATION, Str: "}", Line: 4, Col: 5},
-				{Type: LEX_PUNCTUATION, Str: "}", Line: 5, Col: 1},
+				{Type: LEX_KEYWORD, Str: "func", Loc: Location{Line: 1, Col: 1}},
+				{Type: LEX_IDENT, Str: "compare", Loc: Location{Line: 1, Col: 6}},
+				{Type: LEX_PUNCTUATION, Str: "(", Loc: Location{Line: 1, Col: 13}},
+				{Type: LEX_IDENT, Str: "a", Loc: Location{Line: 1, Col: 14}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 15}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 17}},
+				{Type: LEX_PUNCTUATION, Str: ",", Loc: Location{Line: 1, Col: 20}},
+				{Type: LEX_IDENT, Str: "b", Loc: Location{Line: 1, Col: 22}},
+				{Type: LEX_PUNCTUATION, Str: ":", Loc: Location{Line: 1, Col: 23}},
+				{Type: LEX_IDENT, Str: "int", Loc: Location{Line: 1, Col: 25}},
+				{Type: LEX_PUNCTUATION, Str: ")", Loc: Location{Line: 1, Col: 28}},
+				{Type: LEX_PUNCTUATION, Str: "{", Loc: Location{Line: 1, Col: 30}},
+				{Type: LEX_KEYWORD, Str: "if", Loc: Location{Line: 2, Col: 5}},
+				{Type: LEX_IDENT, Str: "a", Loc: Location{Line: 2, Col: 8}},
+				{Type: LEX_OPERATOR, Str: "<=", Loc: Location{Line: 2, Col: 10}},
+				{Type: LEX_IDENT, Str: "b", Loc: Location{Line: 2, Col: 13}},
+				{Type: LEX_OPERATOR, Str: "&&", Loc: Location{Line: 2, Col: 15}},
+				{Type: LEX_IDENT, Str: "a", Loc: Location{Line: 2, Col: 18}},
+				{Type: LEX_OPERATOR, Str: "!=", Loc: Location{Line: 2, Col: 20}},
+				{Type: LEX_NUMBER, Str: "0", Loc: Location{Line: 2, Col: 23}},
+				{Type: LEX_PUNCTUATION, Str: "{", Loc: Location{Line: 2, Col: 25}},
+				{Type: LEX_KEYWORD, Str: "return", Loc: Location{Line: 3, Col: 9}},
+				{Type: LEX_IDENT, Str: "a", Loc: Location{Line: 3, Col: 16}},
+				{Type: LEX_OPERATOR, Str: "<", Loc: Location{Line: 3, Col: 18}},
+				{Type: LEX_IDENT, Str: "b", Loc: Location{Line: 3, Col: 20}},
+				{Type: LEX_OPERATOR, Str: "||", Loc: Location{Line: 3, Col: 22}},
+				{Type: LEX_IDENT, Str: "a", Loc: Location{Line: 3, Col: 25}},
+				{Type: LEX_OPERATOR, Str: "==", Loc: Location{Line: 3, Col: 27}},
+				{Type: LEX_IDENT, Str: "b", Loc: Location{Line: 3, Col: 30}},
+				{Type: LEX_PUNCTUATION, Str: "}", Loc: Location{Line: 4, Col: 5}},
+				{Type: LEX_PUNCTUATION, Str: "}", Loc: Location{Line: 5, Col: 1}},
 				{Type: LEX_EOF},
 			},
 		},
@@ -915,11 +915,11 @@ func TestLexerBooleanOperators(t *testing.T) {
 				if got.Str != expected.Str {
 					t.Errorf("token %d: expected string %q, got %q", i, expected.Str, got.Str)
 				}
-				if got.Line != expected.Line {
-					t.Errorf("token %d: expected line %d, got %d", i, expected.Line, got.Line)
+				if got.Loc.Line != expected.Loc.Line {
+					t.Errorf("token %d: expected line %d, got %d", i, expected.Loc.Line, got.Loc.Line)
 				}
-				if got.Col != expected.Col {
-					t.Errorf("token %d: expected column %d, got %d", i, expected.Col, got.Col)
+				if got.Loc.Col != expected.Loc.Col {
+					t.Errorf("token %d: expected column %d, got %d", i, expected.Loc.Col, got.Loc.Col)
 				}
 			}
 		})

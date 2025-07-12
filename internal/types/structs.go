@@ -29,7 +29,7 @@ func MakeStructDescriptor(node *ast.StructDeclaration) (*StructDescriptor, error
 	for _, fnode := range node.Fields {
 		size, err := GetTypeSize(fnode.Type)
 		if err != nil {
-			return nil, fmt.Errorf("%d:%d: error in struct declaration: %s", node.Loc.Line, node.Loc.Col, err)
+			return nil, fmt.Errorf("%s: error in struct declaration: %s", node.Loc, err)
 		}
 		offset = util.Align(offset+size, size)
 		desc.Fields = append(desc.Fields, StructField{

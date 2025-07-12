@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/iley/pirx/internal/lexer"
 	"github.com/iley/pirx/internal/util"
 )
 
-type Location struct {
-	Line int
-	Col  int
-}
+type Location = lexer.Location
 
 type AstNode interface {
 	fmt.Stringer

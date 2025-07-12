@@ -173,7 +173,7 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 		leftOps, leftArg, leftSize := generateExpressionOps(ic, binOp.Left)
 		rightOps, rightArg, rightSize := generateExpressionOps(ic, binOp.Right)
 		if leftSize != rightSize {
-			panic(fmt.Sprintf("%d:%d: size mismatch between operands of %s", binOp.Loc.Line, binOp.Loc.Col, binOp.Operator))
+			panic(fmt.Sprintf("%s: size mismatch between operands of %s", binOp.Loc, binOp.Operator))
 		}
 		ops := append(leftOps, rightOps...)
 		temp := ic.allocTemp(leftSize)

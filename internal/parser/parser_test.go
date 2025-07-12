@@ -493,7 +493,7 @@ func TestParseProgram(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			prog, err := parser.ParseProgram()
 			if err != nil {
@@ -676,7 +676,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			prog, err := parser.ParseProgram()
 			if err != nil {
@@ -764,7 +764,7 @@ func TestParseProgram_Error(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			_, err := parser.ParseProgram()
 			if err == nil {
@@ -840,7 +840,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			prog, err := parser.ParseProgram()
 			if err != nil {
@@ -932,7 +932,7 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			prog, err := parser.ParseProgram()
 			if err != nil {
@@ -994,7 +994,7 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			prog, err := parser.ParseProgram()
 			if err != nil {
@@ -1056,7 +1056,7 @@ func TestParseExpression_Error(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			_, err := parser.ParseProgram()
 			if err == nil {
@@ -1181,7 +1181,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			prog, err := parser.ParseProgram()
 			if err != nil {
@@ -1233,7 +1233,7 @@ func TestParseExpression_Assignment_Error(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			_, err := parser.ParseProgram()
 			if err == nil {
@@ -1271,7 +1271,7 @@ func TestParseExpression_AddressOf_Error(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			_, err := parser.ParseProgram()
 			if err == nil {
@@ -1679,7 +1679,7 @@ func TestParseExpression_BinaryOperation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			result, err := parser.parseExpression()
 			if err != nil {
@@ -1931,7 +1931,7 @@ func TestParseExpression_BooleanOperators(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			result, err := parser.parseExpression()
 			if err != nil {
@@ -2136,7 +2136,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			program, err := parser.ParseProgram()
 			if err != nil {
@@ -2178,7 +2178,7 @@ func TestParseStatement_IfStatement_Error(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			_, err := parser.ParseProgram()
 			if err == nil {
@@ -2438,7 +2438,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			program, err := parser.ParseProgram()
 			if err != nil {
@@ -2680,7 +2680,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			program, err := parser.ParseProgram()
 			if err != nil {
@@ -2714,7 +2714,7 @@ func TestParseStatement_WhileStatement_Error(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			_, err := parser.ParseProgram()
 			if err == nil {
@@ -2864,7 +2864,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			program, err := parser.ParseProgram()
 			if err != nil {
@@ -3017,7 +3017,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			program, err := parser.ParseProgram()
 			if err != nil {
@@ -3037,7 +3037,7 @@ func TestParseExpression_FieldAccess_Simple(t *testing.T) {
 		FieldName: "field",
 	}
 
-	lex := lexer.New(strings.NewReader(src))
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	program, err := parser.ParseProgram()
 	if err != nil {
@@ -3068,7 +3068,7 @@ func TestParseExpression_FieldAccess_Nested(t *testing.T) {
 		FieldName: "subfield",
 	}
 
-	lex := lexer.New(strings.NewReader(src))
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	program, err := parser.ParseProgram()
 	if err != nil {
@@ -3100,7 +3100,7 @@ func TestParseExpression_FieldAccess_InBinaryOperation(t *testing.T) {
 		Right:    ast.NewIntLiteral(1),
 	}
 
-	lex := lexer.New(strings.NewReader(src))
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	program, err := parser.ParseProgram()
 	if err != nil {
@@ -3131,7 +3131,7 @@ func TestParseExpression_FieldAccess_Assignment(t *testing.T) {
 		Value: ast.NewIntLiteral(42),
 	}
 
-	lex := lexer.New(strings.NewReader(src))
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	program, err := parser.ParseProgram()
 	if err != nil {
@@ -3165,7 +3165,7 @@ func TestParseExpression_FieldAccess_NestedAssignment(t *testing.T) {
 		Value: ast.NewIntLiteral(42),
 	}
 
-	lex := lexer.New(strings.NewReader(src))
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	program, err := parser.ParseProgram()
 	if err != nil {
@@ -3189,7 +3189,7 @@ func TestParseExpression_FieldAccess_Error_MissingFieldName(t *testing.T) {
 	src := `func main() { x.; }`
 	expectedError := "expected field name after '.'"
 
-	lex := lexer.New(strings.NewReader(src))
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	_, err := parser.ParseProgram()
 	if err == nil {
@@ -3203,7 +3203,7 @@ func TestParseExpression_FieldAccess_Error_NumberAsFieldName(t *testing.T) {
 	src := `func main() { x.123; }`
 	expectedError := "expected field name after '.'"
 
-	lex := lexer.New(strings.NewReader(src))
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	_, err := parser.ParseProgram()
 	if err == nil {

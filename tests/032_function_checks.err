@@ -1,8 +1,8 @@
-5:3: function unknown_function is not declared
-7:3: function one_argument has 1 arguments but 0 were provided
-9:3: function one_argument has 1 arguments but 2 were provided
-10:3: function one_argument has 1 arguments but 3 were provided
-12:3: function two_arguments has 2 arguments but 0 were provided
-13:3: function two_arguments has 2 arguments but 1 were provided
-15:3: function two_arguments has 2 arguments but 3 were provided
+tests/032_function_checks.pirx:5:3: function unknown_function is not declared
+tests/032_function_checks.pirx:7:3: function one_argument has 1 arguments but 0 were provided
+tests/032_function_checks.pirx:9:3: function one_argument has 1 arguments but 2 were provided
+tests/032_function_checks.pirx:10:3: function one_argument has 1 arguments but 3 were provided
+tests/032_function_checks.pirx:12:3: function two_arguments has 2 arguments but 0 were provided
+tests/032_function_checks.pirx:13:3: function two_arguments has 2 arguments but 1 were provided
+tests/032_function_checks.pirx:15:3: function two_arguments has 2 arguments but 3 were provided
 exit status 1

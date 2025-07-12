@@ -35,7 +35,7 @@ func main() {
 	}
 	defer inputFile.Close()
 
-	lex := lexer.New(inputFile)
+	lex := lexer.New(inputFile, inputFileName)
 	p := parser.New(lex)
 	ast, err := p.ParseProgram()
 	if err != nil {

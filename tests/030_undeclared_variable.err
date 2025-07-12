@@ -1,2 +1,2 @@
-2:20: variable unknown_var is not declared before reference
+tests/030_undeclared_variable.pirx:2:20: variable unknown_var is not declared before reference
 exit status 1

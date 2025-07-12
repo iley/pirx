@@ -179,7 +179,7 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			prog, err := parser.ParseProgram()
 			if err != nil {
@@ -247,7 +247,7 @@ func TestParseProgram_ExternFunction_Error(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lex := lexer.New(strings.NewReader(tc.src))
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
 			parser := New(lex)
 			_, err := parser.ParseProgram()
 			if err == nil {

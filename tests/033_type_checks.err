@@ -1,12 +1,12 @@
-11:4: cannot assign value of type string to lvalue of type int
-12:5: binary operation + cannot be applied to values of types int and string
-15:5: cannot assign value of type int to lvalue of type string
-16:5: cannot assign value of type int to lvalue of type string
-18:3: argument #2 of function add has wrong type: expected int but got string
-19:3: argument #1 of function add has wrong type: expected int but got string
-21:3: unary operation ! cannot be applied to a value of type string
-24:8: cannot assign value of type int to lvalue of type bool
-25:8: cannot assign value of type string to lvalue of type bool
-27:3: expected an expression of type bool in if condition, got type int
-31:3: expected an expression of type bool in while condition, got type string
+tests/033_type_checks.pirx:11:4: cannot assign value of type string to lvalue of type int
+tests/033_type_checks.pirx:12:5: binary operation + cannot be applied to values of types int and string
+tests/033_type_checks.pirx:15:5: cannot assign value of type int to lvalue of type string
+tests/033_type_checks.pirx:16:5: cannot assign value of type int to lvalue of type string
+tests/033_type_checks.pirx:18:3: argument #2 of function add has wrong type: expected int but got string
+tests/033_type_checks.pirx:19:3: argument #1 of function add has wrong type: expected int but got string
+tests/033_type_checks.pirx:21:3: unary operation ! cannot be applied to a value of type string
+tests/033_type_checks.pirx:24:8: cannot assign value of type int to lvalue of type bool
+tests/033_type_checks.pirx:25:8: cannot assign value of type string to lvalue of type bool
+tests/033_type_checks.pirx:27:3: expected an expression of type bool in if condition, got type int
+tests/033_type_checks.pirx:31:3: expected an expression of type bool in while condition, got type string
 exit status 1

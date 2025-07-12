@@ -63,9 +63,9 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 	fic.vars = make(map[string]int)
 
 	for _, arg := range node.Args {
-		fic.vars[arg.Name] = types.GetTypeSize(arg.Type)
+		fic.vars[arg.Name] = types.GetTypeSizeNoError(arg.Type)
 		irfunc.Args = append(irfunc.Args, arg.Name)
-		irfunc.ArgSizes = append(irfunc.ArgSizes, types.GetTypeSize(arg.Type))
+		irfunc.ArgSizes = append(irfunc.ArgSizes, types.GetTypeSizeNoError(arg.Type))
 	}
 
 	irfunc.Ops = generateBlockOps(&fic, node.Body)
@@ -99,7 +99,7 @@ func generateBlockOps(ic *IrContext, block ast.Block) []Op {
 func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 	ops := []Op{}
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
-		size := types.GetTypeSize(varDecl.Type)
+		size := types.GetTypeSizeNoError(varDecl.Type)
 		ic.vars[varDecl.Name] = size
 		// TODO: Handle more type sizes.
 		switch size {
@@ -286,7 +286,7 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	// TODO: Handle void functions better. Omit the assignment. Perhaps introduce a null target.
 	size := types.WORD_SIZE
 	if funcProto.ReturnType != nil {
-		size = types.GetTypeSize(funcProto.ReturnType)
+		size = types.GetTypeSizeNoError(funcProto.ReturnType)
 	}
 
 	temp := ic.allocTemp(size)

@@ -7,12 +7,6 @@ import (
 	"github.com/iley/pirx/internal/types"
 )
 
-const (
-	// TODO: Do we need to pass this in as a parameter?
-	WORD_SIZE = 8
-	BOOL_SIZE = 4
-)
-
 type IrContext struct {
 	nextTempIndex  int
 	nextLabelIndex int
@@ -69,9 +63,9 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 	fic.vars = make(map[string]int)
 
 	for _, arg := range node.Args {
-		fic.vars[arg.Name] = getTypeSize(arg.Type)
+		fic.vars[arg.Name] = types.GetTypeSize(arg.Type)
 		irfunc.Args = append(irfunc.Args, arg.Name)
-		irfunc.ArgSizes = append(irfunc.ArgSizes, getTypeSize(arg.Type))
+		irfunc.ArgSizes = append(irfunc.ArgSizes, types.GetTypeSize(arg.Type))
 	}
 
 	irfunc.Ops = generateBlockOps(&fic, node.Body)
@@ -105,7 +99,7 @@ func generateBlockOps(ic *IrContext, block ast.Block) []Op {
 func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 	ops := []Op{}
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
-		size := getTypeSize(varDecl.Type)
+		size := types.GetTypeSize(varDecl.Type)
 		ic.vars[varDecl.Name] = size
 		// TODO: Handle more type sizes.
 		switch size {
@@ -290,9 +284,9 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 
 	// This is a workaround for void functions. For now we just make it look like they return a word.
 	// TODO: Handle void functions better. Omit the assignment. Perhaps introduce a null target.
-	size := WORD_SIZE
+	size := types.WORD_SIZE
 	if funcProto.ReturnType != nil {
-		size = getTypeSize(funcProto.ReturnType)
+		size = types.GetTypeSize(funcProto.ReturnType)
 	}
 
 	temp := ic.allocTemp(size)
@@ -308,20 +302,9 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	return ops, Arg{Variable: temp}, size
 }
 
-func getTypeSize(typ ast.Type) int {
-	if _, ok := typ.(*ast.PointerType); ok {
-		return 8
-	} else if typ.Equals(ast.Bool) || typ.Equals(ast.Int) {
-		return 4
-	} else if typ.Equals(ast.Int64) || typ.Equals(ast.String) {
-		return 8
-	}
-	panic(fmt.Sprintf("unknown type %s", typ))
-}
-
 func unaryOperationSize(op string, operandSize int) int {
 	if op == "&" {
-		return WORD_SIZE
+		return types.WORD_SIZE
 	}
 	return operandSize
 }
@@ -329,7 +312,7 @@ func unaryOperationSize(op string, operandSize int) int {
 func binaryOperationSize(operator string, operandSize int) int {
 	switch operator {
 	case "==", "!=", "<", ">", "<=", ">=":
-		return BOOL_SIZE
+		return types.BOOL_SIZE
 	}
 	return operandSize
 }

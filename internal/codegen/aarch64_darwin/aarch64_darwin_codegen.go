@@ -7,13 +7,13 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/iley/pirx/internal/types"
 	"github.com/iley/pirx/internal/codegen/common"
 	"github.com/iley/pirx/internal/ir"
 	"github.com/iley/pirx/internal/util"
 )
 
 const (
-	WORD_SIZE     = 8
 	MAX_FUNC_ARGS = 8
 	MAX_SP_OFFSET = 504 // maximum offset from SP supproted in load/store instructions.
 )
@@ -94,7 +94,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// For now we're going to assume that all variables are 64-bit.
 	// This does not include space for storing X29 and X30.
 	// SP must always be aligned by 16 bytes.
-	frameSize := util.Align(len(lsizes)*WORD_SIZE, 16)
+	frameSize := util.Align(len(lsizes)*types.WORD_SIZE, 16)
 
 	// Save X29 and X30
 	fmt.Fprintf(cc.output, "  sub sp, sp, #16\n")
@@ -265,7 +265,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 				// Sign extend 32-bit values to 64-bit
 				fmt.Fprintf(cc.output, "  sxtw x0, w0\n")
 			}
-			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*WORD_SIZE-int(spShift))
+			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*types.WORD_SIZE-int(spShift))
 		}
 
 		for i, arg := range call.Args[0:call.NamedArgs] {
@@ -436,8 +436,8 @@ func generateRegisterStore(cc *CodegenContext, regIndex, regSize int, target str
 // generateStoreByAddr generates code for storing a register through a pointer.
 // Loads the pointer address into a register and stores the value through it.
 func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Arg) {
-	generateRegisterLoad(cc, 1, WORD_SIZE, target)
-	fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(regIndex, regSize), registerByIndex(1, WORD_SIZE))
+	generateRegisterLoad(cc, 1, types.WORD_SIZE, target)
+	fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(regIndex, regSize), registerByIndex(1, types.WORD_SIZE))
 }
 
 func generateLiteralLoad(cc *CodegenContext, reg string, val int64) {

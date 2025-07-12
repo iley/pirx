@@ -7,7 +7,6 @@ import (
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/lexer"
-	"github.com/iley/pirx/internal/types"
 )
 
 func locationFromLexeme(lex lexer.Lexeme) ast.Location {
@@ -140,7 +139,7 @@ func (p *Parser) parseFunction() (ast.Function, error) {
 		return ast.Function{}, err
 	}
 
-	var returnType types.Type
+	var returnType ast.Type
 	if lex.IsPunctuation(":") {
 		// return type specifier
 		p.consume() // ":"
@@ -234,7 +233,7 @@ func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
 		return ast.ExternFunction{}, err
 	}
 
-	var returnType types.Type
+	var returnType ast.Type
 	if lex.IsPunctuation(":") {
 		// consume ":"
 		p.consume()
@@ -263,7 +262,7 @@ func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
 	}, nil
 }
 
-func (p *Parser) parseType() (types.Type, error) {
+func (p *Parser) parseType() (ast.Type, error) {
 	lex, err := p.peek()
 	if err != nil {
 		return nil, err
@@ -279,7 +278,7 @@ func (p *Parser) parseType() (types.Type, error) {
 			return nil, err
 		}
 
-		return types.NewPointerType(underlyingType), nil
+		return ast.NewPointerType(underlyingType), nil
 	}
 
 	// Parse base type (identifier)
@@ -291,7 +290,7 @@ func (p *Parser) parseType() (types.Type, error) {
 		return nil, fmt.Errorf("%d:%d: expected type, got %v", lex.Line, lex.Col, lex)
 	}
 
-	return types.NewBaseType(lex.Str), nil
+	return ast.NewBaseType(lex.Str), nil
 }
 
 func (p *Parser) parseArguments() ([]ast.Arg, error) {
@@ -572,7 +571,7 @@ func getOperatorPrecedence(op string) int {
 func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 	var expr ast.Expression
 	var err error
-	
+
 	lex, err := p.peek()
 	if err != nil {
 		return nil, err
@@ -624,7 +623,7 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 	default:
 		return nil, fmt.Errorf("%d:%d: unknown expression: %v", lex.Line, lex.Col, lex)
 	}
-	
+
 	// Handle field access postfix operations
 	for {
 		lex, err := p.peek()
@@ -638,7 +637,7 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 				return nil, err
 			}
 			dotLoc := locationFromLexeme(dotLex)
-			
+
 			// expect field name
 			fieldLex, err := p.consume()
 			if err != nil {
@@ -647,7 +646,7 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 			if fieldLex.Type != lexer.LEX_IDENT {
 				return nil, fmt.Errorf("%d:%d: expected field name after '.', got %v", fieldLex.Line, fieldLex.Col, fieldLex)
 			}
-			
+
 			expr = &ast.FieldAccess{
 				Loc:       dotLoc,
 				Object:    expr,
@@ -657,7 +656,7 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 			break
 		}
 	}
-	
+
 	return expr, nil
 }
 

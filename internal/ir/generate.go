@@ -5,7 +5,6 @@ import (
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/functions"
-	"github.com/iley/pirx/internal/types"
 )
 
 const (
@@ -309,12 +308,12 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	return ops, Arg{Variable: temp}, size
 }
 
-func getTypeSize(typ types.Type) int {
-	if _, ok := typ.(*types.PointerType); ok {
+func getTypeSize(typ ast.Type) int {
+	if _, ok := typ.(*ast.PointerType); ok {
 		return 8
-	} else if typ.Equals(types.Bool) || typ.Equals(types.Int) {
+	} else if typ.Equals(ast.Bool) || typ.Equals(ast.Int) {
 		return 4
-	} else if typ.Equals(types.Int64) || typ.Equals(types.String) {
+	} else if typ.Equals(ast.Int64) || typ.Equals(ast.String) {
 		return 8
 	}
 	panic(fmt.Sprintf("unknown type %s", typ))

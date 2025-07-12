@@ -1,19 +1,19 @@
 package functions
 
-import "github.com/iley/pirx/internal/types"
+import "github.com/iley/pirx/internal/ast"
 
 func getBuiltins() []Proto {
 	return []Proto{
 		{
 			Name:       "printf",
-			Args:       []Arg{{"fmt", types.String}},
-			ReturnType: types.Int,
+			Args:       []Arg{{"fmt", ast.String}},
+			ReturnType: ast.Int,
 			Variadic:   true,
 		},
 		{
 			Name:       "putchar",
-			Args:       []Arg{{"ch", types.Int}},
-			ReturnType: types.Int,
+			Args:       []Arg{{"ch", ast.Int}},
+			ReturnType: ast.Int,
 		},
 	}
 }

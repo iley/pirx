@@ -2,19 +2,18 @@ package functions
 
 import (
 	"github.com/iley/pirx/internal/ast"
-	"github.com/iley/pirx/internal/types"
 )
 
 type Proto struct {
 	Name       string
 	Args       []Arg
-	ReturnType types.Type
+	ReturnType ast.Type
 	Variadic   bool
 }
 
 type Arg struct {
 	Name string
-	Typ  types.Type
+	Typ  ast.Type
 }
 
 func GetFunctionTable(program *ast.Program) []Proto {

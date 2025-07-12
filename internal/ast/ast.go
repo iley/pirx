@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/iley/pirx/internal/types"
 	"github.com/iley/pirx/internal/util"
 )
 
@@ -53,7 +52,7 @@ type Function struct {
 	Name       string
 	Args       []Arg
 	Body       Block
-	ReturnType types.Type
+	ReturnType Type
 }
 
 func (f *Function) GetLocation() Location {
@@ -84,7 +83,7 @@ type ExternFunction struct {
 	Loc        Location
 	Name       string
 	Args       []Arg
-	ReturnType types.Type
+	ReturnType Type
 }
 
 func (f *ExternFunction) GetLocation() Location {
@@ -134,7 +133,7 @@ func (s *StructDeclaration) String() string {
 type StructField struct {
 	Loc  Location
 	Name string
-	Type types.Type
+	Type Type
 }
 
 func (f StructField) GetLocation() Location {
@@ -148,7 +147,7 @@ func (f StructField) String() string {
 type Arg struct {
 	Loc  Location
 	Name string
-	Type types.Type
+	Type Type
 }
 
 func (a Arg) GetLocation() Location {
@@ -189,7 +188,7 @@ type Statement interface {
 type VariableDeclaration struct {
 	Loc  Location
 	Name string
-	Type types.Type
+	Type Type
 }
 
 func (d *VariableDeclaration) GetLocation() Location {

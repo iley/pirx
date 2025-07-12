@@ -6,7 +6,6 @@ import (
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/lexer"
-	"github.com/iley/pirx/internal/types"
 )
 
 func TestParseProgram_ExternFunction(t *testing.T) {
@@ -25,8 +24,8 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 					{
 						Loc:        ast.Location{Line: 1, Col: 1},
 						Name:       "atoi",
-						Args:       []ast.Arg{{Name: "x", Type: types.String}},
-						ReturnType: types.Int,
+						Args:       []ast.Arg{{Name: "x", Type: ast.String}},
+						ReturnType: ast.Int,
 					},
 				},
 			},
@@ -40,7 +39,7 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 					{
 						Name:       "getpid",
 						Args:       []ast.Arg{},
-						ReturnType: types.Int,
+						ReturnType: ast.Int,
 					},
 				},
 			},
@@ -54,10 +53,10 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 					{
 						Name: "strcmp",
 						Args: []ast.Arg{
-							{Name: "s1", Type: types.String},
-							{Name: "s2", Type: types.String},
+							{Name: "s1", Type: ast.String},
+							{Name: "s2", Type: ast.String},
 						},
-						ReturnType: types.Int,
+						ReturnType: ast.Int,
 					},
 				},
 			},
@@ -77,9 +76,9 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 					{
 						Name: "printf",
 						Args: []ast.Arg{
-							{Name: "format", Type: types.String},
+							{Name: "format", Type: ast.String},
 						},
-						ReturnType: types.Int,
+						ReturnType: ast.Int,
 					},
 				},
 			},
@@ -93,16 +92,16 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 					{
 						Name: "malloc",
 						Args: []ast.Arg{
-							{Name: "size", Type: types.Int},
+							{Name: "size", Type: ast.Int},
 						},
-						ReturnType: types.Int,
+						ReturnType: ast.Int,
 					},
 					{
 						Name: "free",
 						Args: []ast.Arg{
-							{Name: "ptr", Type: types.Int},
+							{Name: "ptr", Type: ast.Int},
 						},
-						ReturnType: types.Int,
+						ReturnType: ast.Int,
 					},
 				},
 			},
@@ -116,9 +115,9 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 					{
 						Name: "getenv",
 						Args: []ast.Arg{
-							{Name: "name", Type: types.String},
+							{Name: "name", Type: ast.String},
 						},
-						ReturnType: types.String,
+						ReturnType: ast.String,
 					},
 				},
 			},
@@ -132,7 +131,7 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 					{
 						Name: "exit",
 						Args: []ast.Arg{
-							{Name: "status", Type: types.Int},
+							{Name: "status", Type: ast.Int},
 						},
 						ReturnType: nil,
 					},
@@ -162,16 +161,16 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 					{
 						Name: "exit",
 						Args: []ast.Arg{
-							{Name: "status", Type: types.Int},
+							{Name: "status", Type: ast.Int},
 						},
 						ReturnType: nil,
 					},
 					{
 						Name: "malloc",
 						Args: []ast.Arg{
-							{Name: "size", Type: types.Int},
+							{Name: "size", Type: ast.Int},
 						},
-						ReturnType: types.Int,
+						ReturnType: ast.Int,
 					},
 				},
 			},

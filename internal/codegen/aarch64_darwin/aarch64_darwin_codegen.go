@@ -253,7 +253,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 		// First, move SP to allocate space for the args. Don't forget to align SP by 16.
 		var spShift int
 		if len(call.Args) > 1 {
-			spShift = util.Align(len(call.Args)-1, 16)
+			spShift = util.Align(types.WORD_SIZE*(len(call.Args)-call.NamedArgs), 16)
 		}
 
 		// Then generate stack pushes for the arguments except the first one.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/iley/pirx/internal/ast"
-	"github.com/iley/pirx/internal/functions"
+	"github.com/iley/pirx/internal/types"
 )
 
 const (
@@ -18,7 +18,7 @@ type IrContext struct {
 	nextLabelIndex int
 	breakLabel     string
 	continueLabel  string
-	funcs          map[string]functions.Proto
+	funcs          map[string]types.FuncProto
 	// Local variables: name -> size in bytes.
 	vars map[string]int
 }
@@ -41,10 +41,10 @@ func Generate(node *ast.Program) IrProgram {
 	irp := IrProgram{}
 	ic := IrContext{
 		nextLabelIndex: 1,
-		funcs:          make(map[string]functions.Proto),
+		funcs:          make(map[string]types.FuncProto),
 	}
 
-	for _, funcProto := range functions.GetFunctionTable(node) {
+	for _, funcProto := range types.GetFunctionTable(node) {
 		ic.funcs[funcProto.Name] = funcProto
 	}
 

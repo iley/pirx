@@ -1,10 +1,10 @@
-package functions
+package types
 
 import (
 	"github.com/iley/pirx/internal/ast"
 )
 
-type Proto struct {
+type FuncProto struct {
 	Name       string
 	Args       []Arg
 	ReturnType ast.Type
@@ -16,12 +16,12 @@ type Arg struct {
 	Typ  ast.Type
 }
 
-func GetFunctionTable(program *ast.Program) []Proto {
-	protos := []Proto{}
+func GetFunctionTable(program *ast.Program) []FuncProto {
+	protos := []FuncProto{}
 	protos = append(protos, getBuiltins()...)
 
 	for _, fn := range program.Functions {
-		proto := Proto{
+		proto := FuncProto{
 			Name:       fn.Name,
 			Args:       []Arg{},
 			ReturnType: fn.ReturnType,
@@ -33,7 +33,7 @@ func GetFunctionTable(program *ast.Program) []Proto {
 	}
 
 	for _, fn := range program.ExternFunctions {
-		proto := Proto{
+		proto := FuncProto{
 			Name:       fn.Name,
 			Args:       []Arg{},
 			ReturnType: fn.ReturnType,

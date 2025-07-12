@@ -1,9 +1,9 @@
-package functions
+package types
 
 import "github.com/iley/pirx/internal/ast"
 
-func getBuiltins() []Proto {
-	return []Proto{
+func getBuiltins() []FuncProto {
+	return []FuncProto{
 		{
 			Name:       "printf",
 			Args:       []Arg{{"fmt", ast.String}},

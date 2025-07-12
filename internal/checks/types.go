@@ -4,21 +4,21 @@ import (
 	"fmt"
 
 	"github.com/iley/pirx/internal/ast"
-	"github.com/iley/pirx/internal/functions"
+	"github.com/iley/pirx/internal/types"
 )
 
 type TypeChecker struct {
 	declaredVars  map[string]ast.Type
-	declaredFuncs map[string]functions.Proto
+	declaredFuncs map[string]types.FuncProto
 	errors        []error
-	currentFunc   functions.Proto
+	currentFunc   types.FuncProto
 	hasReturn     bool
 }
 
 func NewTypeChecker() *TypeChecker {
 	return &TypeChecker{
 		declaredVars:  make(map[string]ast.Type),
-		declaredFuncs: make(map[string]functions.Proto),
+		declaredFuncs: make(map[string]types.FuncProto),
 		errors:        []error{},
 	}
 }
@@ -31,7 +31,7 @@ func (c *TypeChecker) CheckProgram(program *ast.Program) {
 	// TODO: Check that function declarations use valid types.
 
 	// Gather function prototypes so we can check arguments and types later.
-	protos := functions.GetFunctionTable(program)
+	protos := types.GetFunctionTable(program)
 	for _, proto := range protos {
 		c.declaredFuncs[proto.Name] = proto
 	}

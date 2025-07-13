@@ -3156,7 +3156,7 @@ func TestParseExpression_FieldAccess_NestedAssignment(t *testing.T) {
 	src := `func main() { x.field.subfield = 42; }`
 	expected := &ast.Assignment{
 		Target: &ast.FieldLValue{
-			Object: &ast.FieldAccess{
+			Object: &ast.FieldLValue{
 				Object:    &ast.VariableReference{Name: "x"},
 				FieldName: "field",
 			},

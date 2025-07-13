@@ -332,6 +332,8 @@ func (v *VariableLValue) GetLocation() Location {
 
 func (v *VariableLValue) isLValue() {}
 
+func (v *VariableLValue) isExpression() {}
+
 func (v *VariableLValue) String() string {
 	return v.Name
 }
@@ -346,6 +348,8 @@ func (d *DereferenceLValue) GetLocation() Location {
 }
 
 func (d *DereferenceLValue) isLValue() {}
+
+func (d *DereferenceLValue) isExpression() {}
 
 func (d *DereferenceLValue) String() string {
 	return fmt.Sprintf("(* %s)", d.Expression.String())
@@ -363,8 +367,10 @@ func (f *FieldLValue) GetLocation() Location {
 
 func (f *FieldLValue) isLValue() {}
 
+func (f *FieldLValue) isExpression() {}
+
 func (f *FieldLValue) String() string {
-	return fmt.Sprintf("(. %s %s)", f.Object.String(), f.FieldName)
+	return fmt.Sprintf("(.l %s %s)", f.Object.String(), f.FieldName)
 }
 
 type Literal struct {

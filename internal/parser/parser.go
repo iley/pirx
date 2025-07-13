@@ -984,9 +984,25 @@ func (p *Parser) convertExpressionToLValue(expr ast.Expression) (ast.LValue, err
 		}
 		return nil, fmt.Errorf("%s: invalid assignment target: %s", e.GetLocation(), e.String())
 	case *ast.FieldAccess:
+		var objectExpr ast.Expression
+		if nestedFieldAccess, ok := e.Object.(*ast.FieldAccess); ok {
+			// Recursively convert nested field access
+			objectLValue, err := p.convertExpressionToLValue(nestedFieldAccess)
+			if err != nil {
+				return nil, err
+			}
+			var ok2 bool
+			objectExpr, ok2 = objectLValue.(ast.Expression)
+			if !ok2 {
+				return nil, fmt.Errorf("%s: converted object is not an expression", e.GetLocation())
+			}
+		} else {
+			// Keep other expressions (like VariableReference) as-is
+			objectExpr = e.Object
+		}
 		return &ast.FieldLValue{
 			Loc:       e.GetLocation(),
-			Object:    e.Object,
+			Object:    objectExpr,
 			FieldName: e.FieldName,
 		}, nil
 	default:

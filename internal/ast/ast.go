@@ -107,6 +107,7 @@ func (f *ExternFunction) String() string {
 
 type TypeDeclaration interface {
 	fmt.Stringer
+	GetTypeName() string
 	GetLocation() Location
 }
 
@@ -114,6 +115,10 @@ type StructDeclaration struct {
 	Loc    Location
 	Name   string
 	Fields []StructField
+}
+
+func (s *StructDeclaration) GetTypeName() string {
+	return s.Name
 }
 
 func (s *StructDeclaration) GetLocation() Location {

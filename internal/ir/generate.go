@@ -14,7 +14,8 @@ type IrContext struct {
 	continueLabel  string
 	funcs          map[string]types.FuncProto
 	// Local variables: name -> size in bytes.
-	vars map[string]int
+	vars  map[string]int
+	types *types.TypeTable
 }
 
 func (ic *IrContext) allocTemp(size int) string {
@@ -31,12 +32,19 @@ func (ic *IrContext) allocLabel() string {
 	return fmt.Sprintf("anchor%d", idx)
 }
 
-func Generate(node *ast.Program) IrProgram {
+func Generate(node *ast.Program) (IrProgram, error) {
 	irp := IrProgram{}
 	ic := IrContext{
 		nextLabelIndex: 1,
 		funcs:          make(map[string]types.FuncProto),
 	}
+
+	typeTable, err := types.MakeTypeTable(node.TypeDeclarations)
+	if err != nil {
+		return IrProgram{}, err
+	}
+
+	ic.types = typeTable
 
 	for _, funcProto := range types.GetFunctionTable(node) {
 		ic.funcs[funcProto.Name] = funcProto
@@ -46,7 +54,7 @@ func Generate(node *ast.Program) IrProgram {
 		irFunc := generateFunction(&ic, function)
 		irp.Functions = append(irp.Functions, irFunc)
 	}
-	return irp
+	return irp, nil
 }
 
 func generateFunction(ic *IrContext, node ast.Function) IrFunction {
@@ -63,9 +71,9 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 	fic.vars = make(map[string]int)
 
 	for _, arg := range node.Args {
-		fic.vars[arg.Name] = types.GetTypeSizeNoError(arg.Type)
+		fic.vars[arg.Name] = ic.types.GetSizeNoError(arg.Type)
 		irfunc.Args = append(irfunc.Args, arg.Name)
-		irfunc.ArgSizes = append(irfunc.ArgSizes, types.GetTypeSizeNoError(arg.Type))
+		irfunc.ArgSizes = append(irfunc.ArgSizes, ic.types.GetSizeNoError(arg.Type))
 	}
 
 	irfunc.Ops = generateBlockOps(&fic, node.Body)
@@ -99,7 +107,7 @@ func generateBlockOps(ic *IrContext, block ast.Block) []Op {
 func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 	ops := []Op{}
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
-		size := types.GetTypeSizeNoError(varDecl.Type)
+		size := ic.types.GetSizeNoError(varDecl.Type)
 		ic.vars[varDecl.Name] = size
 		// TODO: Handle more type sizes.
 		switch size {
@@ -286,7 +294,7 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	// TODO: Handle void functions better. Omit the assignment. Perhaps introduce a null target.
 	size := types.WORD_SIZE
 	if funcProto.ReturnType != nil {
-		size = types.GetTypeSizeNoError(funcProto.ReturnType)
+		size = ic.types.GetSizeNoError(funcProto.ReturnType)
 	}
 
 	temp := ic.allocTemp(size)

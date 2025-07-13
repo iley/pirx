@@ -74,7 +74,10 @@ func main() {
 		return
 	}
 
-	programIr := ir.Generate(ast)
+	programIr, err := ir.Generate(ast)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+	}
 
 	if !*noOptimize {
 		programIr = ir.Optimize(programIr)

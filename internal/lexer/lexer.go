@@ -245,7 +245,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 				return Lexeme{
 					Type: LEX_OPERATOR,
 					Str:  "/",
-					Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 				}, nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
@@ -263,7 +263,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "/",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		}
 	case r == '=':
@@ -275,7 +275,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 				return Lexeme{
 					Type: LEX_OPERATOR,
 					Str:  "=",
-					Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 				}, nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
@@ -285,7 +285,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "==",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		} else {
 			// It's just an assignment operator, put back the second character
@@ -293,7 +293,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "=",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		}
 	case r == '!':
@@ -305,7 +305,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 				return Lexeme{
 					Type: LEX_OPERATOR,
 					Str:  "!",
-					Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 				}, nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
@@ -315,7 +315,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "!=",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		} else {
 			// It's just a negation operator, put back the second character
@@ -323,7 +323,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "!",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		}
 	case r == '<':
@@ -335,7 +335,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 				return Lexeme{
 					Type: LEX_OPERATOR,
 					Str:  "<",
-					Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 				}, nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
@@ -345,7 +345,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "<=",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		} else {
 			// It's just a less-than operator, put back the second character
@@ -353,7 +353,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "<",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		}
 	case r == '>':
@@ -365,7 +365,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 				return Lexeme{
 					Type: LEX_OPERATOR,
 					Str:  ">",
-					Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 				}, nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
@@ -375,7 +375,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  ">=",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		} else {
 			// It's just a greater-than operator, put back the second character
@@ -383,7 +383,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  ">",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		}
 	case r == '&':
@@ -395,7 +395,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 				return Lexeme{
 					Type: LEX_OPERATOR,
 					Str:  "&",
-					Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 				}, nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
@@ -405,7 +405,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "&&",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		} else {
 			// Single '&' is address-of operator
@@ -413,7 +413,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "&",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		}
 	case r == '|':
@@ -431,7 +431,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_OPERATOR,
 				Str:  "||",
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		} else {
 			// Single '|' is not supported, return EOF for unknown character
@@ -444,7 +444,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return Lexeme{
 				Type: tokenType,
 				Str:  string(r),
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		}
 		// For now, return EOF for unknown characters
@@ -478,14 +478,14 @@ func (l *Lexer) lexIdent(startLine, startCol int) (Lexeme, error) {
 		return Lexeme{
 			Type: LEX_KEYWORD,
 			Str:  ident,
-			Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+			Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 		}, nil
 	}
 
 	return Lexeme{
 		Type: LEX_IDENT,
 		Str:  ident,
-		Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+		Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 	}, nil
 }
 
@@ -506,7 +506,7 @@ func (l *Lexer) lexString(startLine, startCol int) (Lexeme, error) {
 			return Lexeme{
 				Type: LEX_STRING,
 				Str:  str,
-				Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 			}, nil
 		}
 
@@ -567,7 +567,7 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 				return Lexeme{
 					Type: LEX_NUMBER,
 					Str:  num,
-					Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 				}, nil
 			}
 			return Lexeme{}, err
@@ -609,7 +609,7 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 	return Lexeme{
 		Type: LEX_NUMBER,
 		Str:  num,
-		Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+		Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 	}, nil
 }
 
@@ -644,6 +644,6 @@ func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, er
 	return Lexeme{
 		Type: LEX_NUMBER,
 		Str:  num,
-		Loc: Location{Filename: l.filename, Line: startLine, Col: startCol},
+		Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 	}, nil
 }

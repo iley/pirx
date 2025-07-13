@@ -88,11 +88,11 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// Space on the stack for local variables including function arguments.
 	// For now we're going to assume that all variables are 64-bit.
 	// This does not include space for storing X29 and X30.
-	// SP must always be aligned by 16 bytes.
 	frameSize := 0
 	for _, size := range lsizes {
 		frameSize += size
 	}
+	// SP must always be aligned by 16 bytes.
 	frameSize = util.Align(frameSize, 16)
 
 	// Save X29 and X30

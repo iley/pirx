@@ -126,7 +126,7 @@ func (tt *TypeTable) GetSize(typ ast.Type) (int, error) {
 	if _, ok := typ.(*ast.PointerType); ok {
 		// TODO: Validate the type we're pointing to.
 		return 8, nil
-	}  else if baseType, ok := typ.(*ast.BaseType); ok {
+	} else if baseType, ok := typ.(*ast.BaseType); ok {
 		td, ok := tt.types[baseType.Name]
 		if !ok {
 			return 0, fmt.Errorf("unknown type %s", baseType)

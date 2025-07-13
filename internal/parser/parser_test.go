@@ -404,8 +404,8 @@ func TestParseProgram(t *testing.T) {
 			name: "struct declaration with two fields",
 			src:  `struct Foo { x: int; y: string; }`,
 			expected: &ast.Program{
-				StructDeclarations: []ast.StructDeclaration{
-					{
+				TypeDeclarations: []ast.TypeDeclaration{
+					&ast.StructDeclaration{
 						Name: "Foo",
 						Fields: []ast.StructField{
 							{Name: "x", Type: ast.Int},
@@ -419,8 +419,8 @@ func TestParseProgram(t *testing.T) {
 			name: "empty struct",
 			src:  `struct Empty { }`,
 			expected: &ast.Program{
-				StructDeclarations: []ast.StructDeclaration{
-					{
+				TypeDeclarations: []ast.TypeDeclaration{
+					&ast.StructDeclaration{
 						Name:   "Empty",
 						Fields: []ast.StructField{},
 					},
@@ -431,8 +431,8 @@ func TestParseProgram(t *testing.T) {
 			name: "struct with single field",
 			src:  `struct Point { x: int; }`,
 			expected: &ast.Program{
-				StructDeclarations: []ast.StructDeclaration{
-					{
+				TypeDeclarations: []ast.TypeDeclaration{
+					&ast.StructDeclaration{
 						Name: "Point",
 						Fields: []ast.StructField{
 							{Name: "x", Type: ast.Int},
@@ -445,15 +445,15 @@ func TestParseProgram(t *testing.T) {
 			name: "multiple structs",
 			src:  `struct Point { x: int; y: int; } struct Person { name: string; age: int; }`,
 			expected: &ast.Program{
-				StructDeclarations: []ast.StructDeclaration{
-					{
+				TypeDeclarations: []ast.TypeDeclaration{
+					&ast.StructDeclaration{
 						Name: "Point",
 						Fields: []ast.StructField{
 							{Name: "x", Type: ast.Int},
 							{Name: "y", Type: ast.Int},
 						},
 					},
-					{
+					&ast.StructDeclaration{
 						Name: "Person",
 						Fields: []ast.StructField{
 							{Name: "name", Type: ast.String},
@@ -467,8 +467,8 @@ func TestParseProgram(t *testing.T) {
 			name: "struct and function together",
 			src:  `struct Point { x: int; y: int; } func main() { var p: Point; }`,
 			expected: &ast.Program{
-				StructDeclarations: []ast.StructDeclaration{
-					{
+				TypeDeclarations: []ast.TypeDeclaration{
+					&ast.StructDeclaration{
 						Name: "Point",
 						Fields: []ast.StructField{
 							{Name: "x", Type: ast.Int},
@@ -626,8 +626,8 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 			name: "struct with pointer field",
 			src:  `struct Node { data: int; next: *Node; }`,
 			expected: &ast.Program{
-				StructDeclarations: []ast.StructDeclaration{
-					{
+				TypeDeclarations: []ast.TypeDeclaration{
+					&ast.StructDeclaration{
 						Name: "Node",
 						Fields: []ast.StructField{
 							{Name: "data", Type: ast.Int},
@@ -641,8 +641,8 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 			name: "struct with multiple pointer fields",
 			src:  `struct Complex { value: *int; name: *string; parent: **Complex; }`,
 			expected: &ast.Program{
-				StructDeclarations: []ast.StructDeclaration{
-					{
+				TypeDeclarations: []ast.TypeDeclaration{
+					&ast.StructDeclaration{
 						Name: "Complex",
 						Fields: []ast.StructField{
 							{Name: "value", Type: ast.NewPointerType(ast.Int)},

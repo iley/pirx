@@ -16,10 +16,10 @@ type AstNode interface {
 }
 
 type Program struct {
-	Loc                Location
-	Functions          []Function
-	ExternFunctions    []ExternFunction
-	StructDeclarations []StructDeclaration
+	Loc              Location
+	Functions        []Function
+	ExternFunctions  []ExternFunction
+	TypeDeclarations []TypeDeclaration
 }
 
 func (p *Program) GetLocation() Location {
@@ -29,9 +29,9 @@ func (p *Program) GetLocation() Location {
 func (p *Program) String() string {
 	var sb strings.Builder
 	sb.WriteString("(program")
-	for _, structDecl := range p.StructDeclarations {
+	for _, decl := range p.TypeDeclarations {
 		sb.WriteString(" ")
-		sb.WriteString(structDecl.String())
+		sb.WriteString(decl.String())
 	}
 	for _, fn := range p.ExternFunctions {
 		sb.WriteString(" ")
@@ -103,6 +103,11 @@ func (f *ExternFunction) String() string {
 	}
 	sb.WriteString(")")
 	return sb.String()
+}
+
+type TypeDeclaration interface {
+	fmt.Stringer
+	GetLocation() Location
 }
 
 type StructDeclaration struct {

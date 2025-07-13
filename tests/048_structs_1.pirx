@@ -4,5 +4,6 @@ struct Vector {
 }
 
 func main(): int {
+  // var v: Vector;
   return 0;
 }

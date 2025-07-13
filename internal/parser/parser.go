@@ -56,7 +56,7 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 
 	functions := []ast.Function{}
 	externFunctions := []ast.ExternFunction{}
-	structDeclarations := []ast.StructDeclaration{}
+	typeDeclarations := []ast.TypeDeclaration{}
 
 	for {
 		lex, err := p.peek()
@@ -72,7 +72,7 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 			if err != nil {
 				return nil, err
 			}
-			structDeclarations = append(structDeclarations, structDecl)
+			typeDeclarations = append(typeDeclarations, structDecl)
 		} else if lex.IsKeyword("extern") {
 			externFn, err := p.parseExternFunction()
 			if err != nil {
@@ -90,7 +90,7 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 		}
 	}
 
-	return &ast.Program{Loc: programLoc, Functions: functions, ExternFunctions: externFunctions, StructDeclarations: structDeclarations}, nil
+	return &ast.Program{Loc: programLoc, Functions: functions, ExternFunctions: externFunctions, TypeDeclarations: typeDeclarations}, nil
 }
 
 func (p *Parser) parseFunction() (ast.Function, error) {
@@ -1113,31 +1113,31 @@ func (p *Parser) parseWhileStatement() (*ast.WhileStatement, error) {
 	}, nil
 }
 
-func (p *Parser) parseStructDeclaration() (ast.StructDeclaration, error) {
+func (p *Parser) parseStructDeclaration() (*ast.StructDeclaration, error) {
 	// consume 'struct'
 	structLex, err := p.consume()
 	if err != nil {
-		return ast.StructDeclaration{}, err
+		return nil, err
 	}
 	structLoc := locationFromLexeme(structLex)
 
 	// struct name
 	lex, err := p.consume()
 	if err != nil {
-		return ast.StructDeclaration{}, err
+		return nil, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return ast.StructDeclaration{}, fmt.Errorf("%s: expected struct name, got %v", lex.Loc, lex)
+		return nil, fmt.Errorf("%s: expected struct name, got %v", lex.Loc, lex)
 	}
 	name := lex.Str
 
 	// '{'
 	lex, err = p.consume()
 	if err != nil {
-		return ast.StructDeclaration{}, err
+		return nil, err
 	}
 	if !lex.IsPunctuation("{") {
-		return ast.StructDeclaration{}, fmt.Errorf("%s: expected '{' after struct name, got %v", lex.Loc, lex)
+		return nil, fmt.Errorf("%s: expected '{' after struct name, got %v", lex.Loc, lex)
 	}
 
 	// parse fields
@@ -1145,7 +1145,7 @@ func (p *Parser) parseStructDeclaration() (ast.StructDeclaration, error) {
 	for {
 		lex, err := p.peek()
 		if err != nil {
-			return ast.StructDeclaration{}, err
+			return nil, err
 		}
 		if lex.IsPunctuation("}") {
 			break
@@ -1154,10 +1154,10 @@ func (p *Parser) parseStructDeclaration() (ast.StructDeclaration, error) {
 		// field name
 		fieldLex, err := p.consume()
 		if err != nil {
-			return ast.StructDeclaration{}, err
+			return nil, err
 		}
 		if fieldLex.Type != lexer.LEX_IDENT {
-			return ast.StructDeclaration{}, fmt.Errorf("%s: expected field name, got %v", fieldLex.Loc, fieldLex)
+			return nil, fmt.Errorf("%s: expected field name, got %v", fieldLex.Loc, fieldLex)
 		}
 		fieldLoc := locationFromLexeme(fieldLex)
 		fieldName := fieldLex.Str
@@ -1165,25 +1165,25 @@ func (p *Parser) parseStructDeclaration() (ast.StructDeclaration, error) {
 		// ':'
 		lex, err = p.consume()
 		if err != nil {
-			return ast.StructDeclaration{}, err
+			return nil, err
 		}
 		if !lex.IsPunctuation(":") {
-			return ast.StructDeclaration{}, fmt.Errorf("%s: expected ':' after field name, got %v", lex.Loc, lex)
+			return nil, fmt.Errorf("%s: expected ':' after field name, got %v", lex.Loc, lex)
 		}
 
 		// field type
 		fieldType, err := p.parseType()
 		if err != nil {
-			return ast.StructDeclaration{}, err
+			return nil, err
 		}
 
 		// ';'
 		lex, err = p.consume()
 		if err != nil {
-			return ast.StructDeclaration{}, err
+			return nil, err
 		}
 		if !lex.IsPunctuation(";") {
-			return ast.StructDeclaration{}, fmt.Errorf("%s: expected ';' after field declaration, got %v", lex.Loc, lex)
+			return nil, fmt.Errorf("%s: expected ';' after field declaration, got %v", lex.Loc, lex)
 		}
 
 		fields = append(fields, ast.StructField{
@@ -1196,10 +1196,10 @@ func (p *Parser) parseStructDeclaration() (ast.StructDeclaration, error) {
 	// consume '}'
 	_, err = p.consume()
 	if err != nil {
-		return ast.StructDeclaration{}, err
+		return nil, err
 	}
 
-	return ast.StructDeclaration{
+	return &ast.StructDeclaration{
 		Loc:    structLoc,
 		Name:   name,
 		Fields: fields,

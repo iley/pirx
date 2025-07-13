@@ -110,17 +110,7 @@ func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 		size := ic.types.GetSizeNoError(varDecl.Type)
 		ic.vars[varDecl.Name] = size
 		// TODO: Handle more type sizes.
-		switch size {
-		case 4: // 32-bit values.
-			zero := int32(0)
-			ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: Arg{LiteralInt: &zero}})
-		case 8: // 64-bit values.
-			ic.vars[varDecl.Name] = 8
-			zero := int64(0)
-			ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: Arg{LiteralInt64: &zero}})
-		default:
-			panic(fmt.Sprintf("unsupported size %d, type %s", size, varDecl.Type))
-		}
+		ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: Arg{Zero: true}})
 	} else if exprStmt, ok := node.(*ast.ExpressionStatement); ok {
 		// We ignore the result of the expression.
 		exprOps, _, _ := generateExpressionOps(ic, exprStmt.Expression)

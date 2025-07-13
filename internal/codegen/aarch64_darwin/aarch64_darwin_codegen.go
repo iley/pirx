@@ -7,9 +7,9 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/iley/pirx/internal/types"
 	"github.com/iley/pirx/internal/codegen/common"
 	"github.com/iley/pirx/internal/ir"
+	"github.com/iley/pirx/internal/types"
 	"github.com/iley/pirx/internal/util"
 )
 
@@ -28,12 +28,7 @@ type CodegenContext struct {
 	functionName string
 }
 
-//go:embed prologue.txt
-var prologue string
-
 func Generate(output io.Writer, irp ir.IrProgram) error {
-	io.WriteString(output, prologue)
-
 	// Map from string to a label in the data section.
 	stringLiterals := make(map[string]string)
 	for i, s := range common.GatherStrings(irp) {
@@ -94,7 +89,11 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// For now we're going to assume that all variables are 64-bit.
 	// This does not include space for storing X29 and X30.
 	// SP must always be aligned by 16 bytes.
-	frameSize := util.Align(len(lsizes)*types.WORD_SIZE, 16)
+	frameSize := 0
+	for _, size := range lsizes {
+		frameSize += size
+	}
+	frameSize = util.Align(frameSize, 16)
 
 	// Save X29 and X30
 	fmt.Fprintf(cc.output, "  sub sp, sp, #16\n")
@@ -174,7 +173,13 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 		return generateUnaryOp(cc, unaryOp)
 	} else if ret, ok := op.(ir.Return); ok {
 		if ret.Value != nil {
+			if ret.Size > 8 {
+				panic(fmt.Errorf("unsupported return value size: %d", ret.Size))
+			}
 			generateRegisterLoad(cc, 0, ret.Size, *ret.Value)
+			if ret.Size == 4 {
+				fmt.Fprintf(cc.output, "  sxtw x0, w0\n")
+			}
 		}
 		fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
 	} else if jump, ok := op.(ir.Jump); ok {
@@ -192,10 +197,24 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 }
 
 func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
+	if assign.Size%4 != 0 {
+		panic(fmt.Errorf("unsupported size %d, expected multiple of 4", assign.Size))
+	}
+
 	if assign.Value.Variable != "" {
-		// Assign value to variable.
-		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
-		generateRegisterStore(cc, 0, assign.Size, assign.Target)
+		offset := 0
+		// TODO: Consider falling back to memcpy() for really large blocks.
+		for offset < assign.Size {
+			if assign.Size-offset >= 8 {
+				generateRegisterLoadWithOffset(cc, 0, 8, assign.Value, offset)
+				generateRegisterStoreWithOffset(cc, 0, 8, assign.Target, offset)
+				offset += 8
+			} else {
+				generateRegisterLoadWithOffset(cc, 0, 4, assign.Value, offset)
+				generateRegisterStoreWithOffset(cc, 0, 4, assign.Target, offset)
+				offset += 4
+			}
+		}
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 4 {
@@ -210,6 +229,18 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 		}
 		generateRegisterLoad(cc, 0, 8, assign.Value)
 		generateRegisterStore(cc, 0, 8, assign.Target)
+	} else if assign.Value.Zero {
+		generateRegisterLoad(cc, 0, 8, assign.Value)
+		offset := 0
+		for offset < assign.Size {
+			if assign.Size-offset >= 8 {
+				generateRegisterStoreWithOffset(cc, 0, 8, assign.Target, offset)
+				offset += 8
+			} else {
+				generateRegisterStoreWithOffset(cc, 0, 4, assign.Target, offset)
+				offset += 4
+			}
+		}
 	} else {
 		panic(fmt.Errorf("Invalid rvalue in assignment: %v", assign.Value))
 	}
@@ -217,24 +248,39 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 }
 
 func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error {
+	if assign.Size%4 != 0 {
+		panic(fmt.Errorf("size %d not supported in generateAssignmentByAddr, expected a multiple of 4", assign.Size))
+	}
 	if assign.Value.Variable != "" {
-		// Assign value to variable.
-		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
-		generateStoreByAddr(cc, 0, assign.Size, assign.Target)
+		// Variable to variable.
+		offset := 0
+		for offset < assign.Size {
+			if assign.Size-offset >= 8 {
+				generateRegisterLoad(cc, 0, 8, assign.Value)
+				generateStoreByAddr(cc, 0, 8, assign.Target, offset)
+				offset += 8
+			} else {
+				generateRegisterLoad(cc, 0, 4, assign.Value)
+				generateStoreByAddr(cc, 0, 4, assign.Target, offset)
+				offset += 4
+			}
+		}
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 4 {
 			panic(fmt.Errorf("invalid size %d for 32-bit literal %v", assign.Size, assign.Value))
 		}
 		generateRegisterLoad(cc, 0, 4, assign.Value)
-		generateStoreByAddr(cc, 0, assign.Size, assign.Target)
+		generateStoreByAddr(cc, 0, assign.Size, assign.Target, 0)
 	} else if assign.Value.LiteralInt64 != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 8 {
 			panic(fmt.Errorf("invalid size %d for 64-bit literal %v", assign.Size, assign.Value))
 		}
 		generateRegisterLoad(cc, 0, 8, assign.Value)
-		generateStoreByAddr(cc, 0, assign.Size, assign.Target)
+		generateStoreByAddr(cc, 0, assign.Size, assign.Target, 0)
+	} else if assign.Value.Zero {
+		panic("TODO: zero assignment by address not supported yet")
 	} else {
 		panic(fmt.Errorf("Invalid rvalue in assignment: %v", assign.Value))
 	}
@@ -380,17 +426,21 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 // generateRegisterLoad generates code for loading a value into a register by its index and size.
 // trashes X9.
 func generateRegisterLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) {
+	generateRegisterLoadWithOffset(cc, regIndex, regSize, arg, 0)
+}
+
+func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, arg ir.Arg, offset int) {
 	// TODO: Support for non-local variables.
 	reg := registerByIndex(regIndex, regSize)
 
 	if arg.Variable != "" {
-		offset := int64(cc.locals[arg.Variable])
-		if offset <= MAX_SP_OFFSET {
+		fullOffset := int64(cc.locals[arg.Variable]) + int64(offset)
+		if fullOffset <= MAX_SP_OFFSET {
 			// Easy case: offset from SP.
-			fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, offset)
+			fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, fullOffset)
 		} else {
 			// Calculate the address in an intermediary register.
-			generateLiteralLoad(cc, "x9", offset)
+			generateLiteralLoad(cc, "x9", fullOffset)
 			fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
 			fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
 		}
@@ -403,11 +453,12 @@ func generateRegisterLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg)
 		label := cc.stringLiterals[*arg.LiteralString]
 		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
 		fmt.Fprintf(cc.output, "  add %s, %s, %s@PAGEOFF\n", reg, reg, label)
+	} else if arg.Zero {
+		fmt.Fprintf(cc.output, "  mov %s, #0\n", reg)
 	} else {
 		panic(fmt.Errorf("invalid arg in code generation: %v", arg))
 	}
 }
-
 func generateAddressLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) {
 	// TODO: Support for non-local variables.
 	if arg.Variable == "" {
@@ -421,13 +472,17 @@ func generateAddressLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) 
 // generateRegisterStore generates code for storing a register into a local variable by the register index and size.
 // trashes X9.
 func generateRegisterStore(cc *CodegenContext, regIndex, regSize int, target string) {
+	generateRegisterStoreWithOffset(cc, regIndex, regSize, target, 0)
+}
+
+func generateRegisterStoreWithOffset(cc *CodegenContext, regIndex, regSize int, target string, offset int) {
 	reg := registerByIndex(regIndex, regSize)
-	offset := int64(cc.locals[target])
-	if offset <= MAX_SP_OFFSET {
+	fullOffset := int64(cc.locals[target]) + int64(offset)
+	if fullOffset <= MAX_SP_OFFSET {
 		// Easy case: offset from SP.
-		fmt.Fprintf(cc.output, "  str %s, [sp, #%d]\n", reg, offset)
+		fmt.Fprintf(cc.output, "  str %s, [sp, #%d]\n", reg, fullOffset)
 	} else {
-		generateLiteralLoad(cc, "x9", offset)
+		generateLiteralLoad(cc, "x9", fullOffset)
 		fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
 		fmt.Fprintf(cc.output, "  str %s, [x9]\n", reg)
 	}
@@ -435,9 +490,16 @@ func generateRegisterStore(cc *CodegenContext, regIndex, regSize int, target str
 
 // generateStoreByAddr generates code for storing a register through a pointer.
 // Loads the pointer address into a register and stores the value through it.
-func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Arg) {
+func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Arg, offset int) {
+	// Load the destination address.
 	generateRegisterLoad(cc, 1, types.WORD_SIZE, target)
-	fmt.Fprintf(cc.output, "  str %s, [%s]\n", registerByIndex(regIndex, regSize), registerByIndex(1, types.WORD_SIZE))
+	addrReg := registerByIndex(1, types.WORD_SIZE)
+	srcReg := registerByIndex(regIndex, regSize)
+	// Add offset to the address.
+	if offset != 0 {
+		fmt.Fprintf(cc.output, "  add %s, %s, #%d\n", addrReg, addrReg, offset)
+	}
+	fmt.Fprintf(cc.output, "  str %s, [%s]\n", srcReg, addrReg)
 }
 
 func generateLiteralLoad(cc *CodegenContext, reg string, val int64) {

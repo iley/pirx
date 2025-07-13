@@ -1,9 +1,16 @@
 struct Vector {
   x: int;
   y: int;
+  z: int;
 }
 
 func main(): int {
-  // var v: Vector;
+  var v1: Vector;
+  var v2: Vector;
+  var p: *Vector;
+
+  p = &v1;
+  *p = v2;
+
   return 0;
 }

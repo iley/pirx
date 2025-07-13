@@ -259,6 +259,7 @@ type Arg struct {
 	LiteralInt    *int32
 	LiteralInt64  *int64
 	LiteralString *string
+	Zero          bool
 }
 
 func (a Arg) String() string {
@@ -270,6 +271,8 @@ func (a Arg) String() string {
 		return fmt.Sprintf("%d", *a.LiteralInt64)
 	} else if a.LiteralString != nil {
 		return fmt.Sprintf("\"%s\"", util.EscapeString(*a.LiteralString))
+	} else if a.Zero {
+		return "0"
 	}
 	panic(fmt.Sprintf("invalid arg value: %#v", a))
 }

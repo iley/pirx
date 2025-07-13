@@ -9,6 +9,23 @@ import (
 	"github.com/iley/pirx/internal/util"
 )
 
+/*
+Intermediate representation for Pirx. This sits inbetween AST and machine code.
+The IR is a basic three-address code. Each operation has size associated with it.
+That is the size of the result of the operation in bytes.
+
+Here are the currently supported operations:
+ * Assign(Target, Value) - assign value to a variable given its name.
+ * AssignByAddr(Target, Value) - assign value to a variable given its address.
+ * UnaryOp(Target, Operation, Value) - perform operation Op (e.g. unary minus) and assig result to the Target.
+ * BinaryOp(Target, Operation, Left, Right) - performa a binary operation (e.g. add or multiply).
+ * Call(Target, Function, Args) - call a function. Includes support for variadic functions.
+ * Return(Value) - return from a function.
+ * Jump(Label) - unconditional jump to a label defined via Anchor operation.
+ * JumpUnless(Condition, Lable) - jump unless condition is true.
+ * Anchor(Lable) - define a label for Jump/JumpUnless.
+*/
+
 type IrProgram struct {
 	Functions []IrFunction
 }

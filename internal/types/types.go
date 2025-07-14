@@ -44,6 +44,15 @@ func (sd *StructDescriptor) GetSize() int {
 	return sd.Size
 }
 
+func (sd *StructDescriptor) GetField(name string) ast.Type {
+	for _, field := range sd.Fields {
+		if field.Name == name {
+			return field.Type
+		}
+	}
+	return nil
+}
+
 type StructField struct {
 	Name   string
 	Type   ast.Type
@@ -143,6 +152,25 @@ func (tt *TypeTable) GetSizeNoError(typ ast.Type) int {
 		panic(err)
 	}
 	return size
+}
+
+func (tt *TypeTable) GetStruct(typ ast.Type) (*StructDescriptor, error) {
+	pt, ok := typ.(*ast.BaseType)
+	if !ok {
+		return nil, fmt.Errorf("type %s does not represent a struct", typ)
+	}
+
+	typeDesc, exists := tt.types[pt.Name]
+	if !exists {
+		return nil, fmt.Errorf("type %s does not exist", typ)
+	}
+
+	structDesc, ok := typeDesc.(*StructDescriptor)
+	if !ok {
+		return nil, fmt.Errorf("type %s is not a struct", typ)
+	}
+
+	return structDesc, nil
 }
 
 func declarePrimitiveTypes(types map[string]TypeDescriptor) {

@@ -8,15 +8,18 @@ import (
 )
 
 type TypeChecker struct {
+	program       *ast.Program
 	declaredVars  map[string]ast.Type
 	declaredFuncs map[string]types.FuncProto
+	types         *types.TypeTable
 	errors        []error
 	currentFunc   types.FuncProto
 	hasReturn     bool
 }
 
-func NewTypeChecker() *TypeChecker {
+func NewTypeChecker(program *ast.Program) *TypeChecker {
 	return &TypeChecker{
+		program:       program,
 		declaredVars:  make(map[string]ast.Type),
 		declaredFuncs: make(map[string]types.FuncProto),
 		errors:        []error{},
@@ -27,16 +30,22 @@ func (c *TypeChecker) Errors() []error {
 	return c.errors
 }
 
-func (c *TypeChecker) CheckProgram(program *ast.Program) {
+func (c *TypeChecker) Check() {
 	// TODO: Check that function declarations use valid types.
 
 	// Gather function prototypes so we can check arguments and types later.
-	protos := types.GetFunctionTable(program)
+	protos := types.GetFunctionTable(c.program)
 	for _, proto := range protos {
 		c.declaredFuncs[proto.Name] = proto
 	}
 
-	for _, fn := range program.Functions {
+	types, err := types.MakeTypeTable(c.program.TypeDeclarations)
+	if err != nil {
+		c.errors = append(c.errors, err)
+	}
+	c.types = types
+
+	for _, fn := range c.program.Functions {
 		c.checkFunction(fn)
 	}
 }
@@ -97,6 +106,8 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Type {
 		return c.checkBinaryOperation(binaryOperation)
 	} else if unaryOperation, ok := expr.(*ast.UnaryOperation); ok {
 		return c.checkUnaryOperation(unaryOperation)
+	} else if lvalue, ok := expr.(*ast.FieldLValue); ok {
+		return c.checkFieldAccess(lvalue)
 	} else {
 		panic(fmt.Sprintf("Invalid expression type: %v", expr))
 	}
@@ -168,6 +179,8 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) ast.Type {
 			return nil
 		}
 		targetType = ptrType.ElementType
+	} else if lvalue, ok := assignment.Target.(*ast.FieldLValue); ok {
+		return c.checkFieldAccess(lvalue)
 	} else {
 		panic(fmt.Errorf("%s: invalid lvalue %s in assignment", assignment.Loc, assignment.Target))
 	}
@@ -275,6 +288,33 @@ func (c *TypeChecker) checkBreakStatement(stmt *ast.BreakStatement) {
 
 func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) {
 	// noop
+}
+
+func (c *TypeChecker) checkFieldAccess(lvalue *ast.FieldLValue) ast.Type {
+	// TODO: Check that Object is actually an lvalue!
+	objectType := c.checkExpression(lvalue.Object)
+
+	structType, ok := objectType.(*ast.BaseType)
+	if !ok {
+		c.errors = append(c.errors, fmt.Errorf("%s: type %s used in field access is not a base type", lvalue.Loc, objectType))
+		return nil
+	}
+
+	structDesc, err := c.types.GetStruct(structType)
+	if err != nil {
+		c.errors = append(c.errors, fmt.Errorf("%s: %v", lvalue.Loc, err))
+	}
+
+	if structDesc == nil {
+		c.errors = append(c.errors, fmt.Errorf("%s: cannot access field %s of a non-struct", lvalue.Loc, lvalue.FieldName))
+		return nil
+	}
+	fieldType := structDesc.GetField(lvalue.FieldName)
+	if fieldType == nil {
+		c.errors = append(c.errors, fmt.Errorf("%s: struct %s does not have field %s", lvalue.Loc, structDesc.Name, lvalue.FieldName))
+	}
+
+	return fieldType
 }
 
 func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {

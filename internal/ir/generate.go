@@ -253,8 +253,18 @@ func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int
 		ops = append(ops, Assign{Target: addrTemp, Value: lvalueArg, Size: lvalueSize})
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
+	} else if fieldAccess, ok := assgn.Target.(*ast.FieldLValue); ok {
+		ops, objArg, objSize := generateExpressionOps(ic, fieldAccess.Object)
+		rvalueOps, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
+		ops = append(ops, rvalueOps...)
+		addrTemp := ic.allocTemp(types.WORD_SIZE)
+		ops = append(ops, UnaryOp{Result: addrTemp, Value: objArg, Operation: "&", Size: types.WORD_SIZE})
+		offset := int64(0) // TODO: Calculate the correct offset!
+		ops = append(ops, BinaryOp{Result: addrTemp, Left: Arg{Variable: addrTemp}, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		ops = append(ops, AssignByAddr{Target: Arg{Variable: addrTemp}, Value: rvalueArg, Size: rvalueSize})
+		return ops, objArg, objSize
 	}
-	panic(fmt.Errorf("invalid assignment: %s", assgn))
+	panic(fmt.Errorf("invalid assignment: %#v", assgn))
 }
 
 // generateFunctionCallOps generates ops for a function.

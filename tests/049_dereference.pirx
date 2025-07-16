@@ -1,0 +1,13 @@
+func main(): int {
+  var a: int;
+  var b: int;
+  var p: *int;
+
+  a = 1;
+  b = 2;
+  p = &a;
+
+  printf("%d\n", *p + b);
+
+  return 0;
+}

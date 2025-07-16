@@ -4,22 +4,13 @@ struct Vector {
   z: int;
 }
 
-struct Foo {
-  v: Vector;
-}
-
 func main(): int {
-  var foo: Foo;
-  // foo.v.x = 1;
+  var v: Vector;
 
-  var v1: Vector;
-  var v2: Vector;
+  v.x = 1;
+  v.y = 2;
 
-  // var p: *Vector;
-  // p = &v1;
-  // *p = v2;
-
-  v1.x = 1;
+  printf("(%d, %d)\n", v.x, v.y);
 
   return 0;
 }

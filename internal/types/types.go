@@ -44,13 +44,21 @@ func (sd *StructDescriptor) GetSize() int {
 	return sd.Size
 }
 
-func (sd *StructDescriptor) GetField(name string) ast.Type {
+func (sd *StructDescriptor) GetField(name string) *StructField {
 	for _, field := range sd.Fields {
 		if field.Name == name {
-			return field.Type
+			return &field
 		}
 	}
 	return nil
+}
+
+func (sd *StructDescriptor) GetFieldType(name string) ast.Type {
+	field := sd.GetField(name)
+	if field == nil {
+		return nil
+	}
+	return field.Type
 }
 
 type StructField struct {
@@ -93,13 +101,13 @@ func makeStructDescriptor(node *ast.StructDeclaration, tt *TypeTable) (*StructDe
 		if err != nil {
 			return nil, fmt.Errorf("%s: error in struct declaration: %s", node.Loc, err)
 		}
-		offset = util.Align(offset+size, size)
 		desc.Fields = append(desc.Fields, StructField{
 			Name:   fnode.Name,
 			Type:   fnode.Type,
 			Size:   size,
-			Offset: offset,
+			Offset: util.Align(offset, size),
 		})
+		offset = util.Align(offset, size) + size
 	}
 
 	desc.Size = offset

@@ -180,10 +180,39 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 		return ops, Arg{Variable: temp}, leftSize
 	} else if op, ok := node.(*ast.UnaryOperation); ok {
 		ops, arg, operandSize := generateExpressionOps(ic, op.Operand)
-		resultSize := unaryOperationSize(op.Operator, operandSize)
+		var resultSize int
+		switch op.Operator {
+		case "&":
+			resultSize = types.WORD_SIZE
+		case "*":
+			pointerType, ok := op.Operand.GetType().(*ast.PointerType)
+			if !ok {
+				panic(fmt.Errorf("expected a pointer type in dereference, got %v", op.Operand.GetType()))
+			}
+			var err error
+			resultSize, err = ic.types.GetSize(pointerType.ElementType)
+			if err != nil {
+				panic(fmt.Errorf("cannot find type size in dereference: %v", err))
+			}
+		default:
+			resultSize = operandSize
+		}
 		temp := ic.allocTemp(resultSize)
 		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
 		return ops, Arg{Variable: temp}, resultSize
+	} else if fa, ok := node.(*ast.FieldAccess); ok {
+		ops, objArg, _ := generateExpressionOps(ic, fa.Object)
+		addrTemp := ic.allocTemp(types.WORD_SIZE)
+		// Take address of the struct.
+		ops = append(ops, UnaryOp{Result: addrTemp, Value: objArg, Operation: "&", Size: types.WORD_SIZE})
+		// Add offset.
+		field := getField(ic, fa.Object.GetType(), fa.FieldName)
+		offset := int64(field.Offset)
+		ops = append(ops, BinaryOp{Result: addrTemp, Left: Arg{Variable: addrTemp}, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		// Dereference.
+		res := ic.allocTemp(field.Size)
+		ops = append(ops, UnaryOp{Result: res, Value: Arg{Variable: addrTemp}, Operation: "*", Size: field.Size})
+		return ops, Arg{Variable: res}, field.Size
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }
@@ -254,12 +283,15 @@ func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if fieldAccess, ok := assgn.Target.(*ast.FieldLValue); ok {
+		// FIXME: This won't work with chains e.g. foo.bar.baz = 1.
 		ops, objArg, objSize := generateExpressionOps(ic, fieldAccess.Object)
 		rvalueOps, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
 		ops = append(ops, rvalueOps...)
 		addrTemp := ic.allocTemp(types.WORD_SIZE)
 		ops = append(ops, UnaryOp{Result: addrTemp, Value: objArg, Operation: "&", Size: types.WORD_SIZE})
-		offset := int64(0) // TODO: Calculate the correct offset!
+		lvalueType := fieldAccess.Object.GetType()
+		field := getField(ic, lvalueType, fieldAccess.FieldName)
+		offset := int64(field.Offset)
 		ops = append(ops, BinaryOp{Result: addrTemp, Left: Arg{Variable: addrTemp}, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
 		ops = append(ops, AssignByAddr{Target: Arg{Variable: addrTemp}, Value: rvalueArg, Size: rvalueSize})
 		return ops, objArg, objSize
@@ -310,11 +342,16 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	return ops, Arg{Variable: temp}, size
 }
 
-func unaryOperationSize(op string, operandSize int) int {
-	if op == "&" {
-		return types.WORD_SIZE
+func getField(ic *IrContext, objType ast.Type, fieldName string) *types.StructField {
+	structDesc, err := ic.types.GetStruct(objType)
+	if err != nil {
+		panic(fmt.Errorf("field access for non-struct types is not (yet) supported. type %v, error: %v", objType, err))
 	}
-	return operandSize
+	field := structDesc.GetField(fieldName)
+	if field == nil {
+		panic(fmt.Errorf("struct type %v has no field %v", structDesc.Name, fieldName))
+	}
+	return field
 }
 
 func binaryOperationSize(operator string, operandSize int) int {

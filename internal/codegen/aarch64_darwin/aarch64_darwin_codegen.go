@@ -417,6 +417,11 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 	case "&":
 		generateAddressLoad(cc, 0, op.Size, op.Value)
 		generateRegisterStore(cc, 0, op.Size, op.Result)
+	case "*":
+		generateRegisterLoad(cc, 9, types.WORD_SIZE, op.Value)
+		reg := registerByIndex(0, op.Size)
+		fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
+		generateRegisterStore(cc, 0, op.Size, op.Result)
 	default:
 		panic(fmt.Errorf("unsupported unary operation %s", op.Operation))
 	}

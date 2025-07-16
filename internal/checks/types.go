@@ -95,22 +95,40 @@ func (c *TypeChecker) checkStatement(stmt ast.Statement) {
 
 func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Type {
 	if literal, ok := expr.(*ast.Literal); ok {
-		return c.checkLiteral(literal)
+		t := c.checkLiteral(literal)
+		literal.Type = t
+		return t
 	} else if assignment, ok := expr.(*ast.Assignment); ok {
-		return c.checkAssignment(assignment)
+		t := c.checkAssignment(assignment)
+		assignment.Type = t
+		return t
 	} else if functionCall, ok := expr.(*ast.FunctionCall); ok {
-		return c.checkFunctionCall(functionCall)
+		t := c.checkFunctionCall(functionCall)
+		functionCall.Type = t
+		return t
 	} else if variableReference, ok := expr.(*ast.VariableReference); ok {
-		return c.checkVariableReference(variableReference)
+		t := c.checkVariableReference(variableReference)
+		variableReference.Type = t
+		return t
 	} else if binaryOperation, ok := expr.(*ast.BinaryOperation); ok {
-		return c.checkBinaryOperation(binaryOperation)
+		t := c.checkBinaryOperation(binaryOperation)
+		binaryOperation.Type = t
+		return t
 	} else if unaryOperation, ok := expr.(*ast.UnaryOperation); ok {
-		return c.checkUnaryOperation(unaryOperation)
+		t := c.checkUnaryOperation(unaryOperation)
+		unaryOperation.Type = t
+		return t
 	} else if lvalue, ok := expr.(*ast.FieldLValue); ok {
-		return c.checkFieldAccess(lvalue)
-	} else {
-		panic(fmt.Sprintf("Invalid expression type: %v", expr))
+		// TODO: Should we also mark nodes as lvalue/rvalue?
+		t := c.checkFieldLValue(lvalue)
+		lvalue.Type = t
+		return t
+	} else if fieldAcc, ok := expr.(*ast.FieldAccess); ok {
+		t := c.checkFieldAccess(fieldAcc)
+		fieldAcc.Type = t
+		return t
 	}
+	panic(fmt.Sprintf("Invalid expression type: %v", expr))
 }
 
 func (c *TypeChecker) checkLiteral(lit *ast.Literal) ast.Type {
@@ -180,7 +198,7 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) ast.Type {
 		}
 		targetType = ptrType.ElementType
 	} else if lvalue, ok := assignment.Target.(*ast.FieldLValue); ok {
-		return c.checkFieldAccess(lvalue)
+		return c.checkFieldLValue(lvalue)
 	} else {
 		panic(fmt.Errorf("%s: invalid lvalue %s in assignment", assignment.Loc, assignment.Target))
 	}
@@ -290,7 +308,7 @@ func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) {
 	// noop
 }
 
-func (c *TypeChecker) checkFieldAccess(lvalue *ast.FieldLValue) ast.Type {
+func (c *TypeChecker) checkFieldLValue(lvalue *ast.FieldLValue) ast.Type {
 	// TODO: Check that Object is actually an lvalue!
 	objectType := c.checkExpression(lvalue.Object)
 
@@ -309,9 +327,36 @@ func (c *TypeChecker) checkFieldAccess(lvalue *ast.FieldLValue) ast.Type {
 		c.errors = append(c.errors, fmt.Errorf("%s: cannot access field %s of a non-struct", lvalue.Loc, lvalue.FieldName))
 		return nil
 	}
-	fieldType := structDesc.GetField(lvalue.FieldName)
+	fieldType := structDesc.GetFieldType(lvalue.FieldName)
 	if fieldType == nil {
 		c.errors = append(c.errors, fmt.Errorf("%s: struct %s does not have field %s", lvalue.Loc, structDesc.Name, lvalue.FieldName))
+	}
+
+	return fieldType
+}
+
+// TODO: This is virtually identical to checkFieldLValue. Can we merge them?
+func (c *TypeChecker) checkFieldAccess(fa *ast.FieldAccess) ast.Type {
+	objectType := c.checkExpression(fa.Object)
+
+	structType, ok := objectType.(*ast.BaseType)
+	if !ok {
+		c.errors = append(c.errors, fmt.Errorf("%s: type %s used in field access is not a base type", fa.Loc, objectType))
+		return nil
+	}
+
+	structDesc, err := c.types.GetStruct(structType)
+	if err != nil {
+		c.errors = append(c.errors, fmt.Errorf("%s: %v", fa.Loc, err))
+	}
+
+	if structDesc == nil {
+		c.errors = append(c.errors, fmt.Errorf("%s: cannot access field %s of a non-struct", fa.Loc, fa.FieldName))
+		return nil
+	}
+	fieldType := structDesc.GetFieldType(fa.FieldName)
+	if fieldType == nil {
+		c.errors = append(c.errors, fmt.Errorf("%s: struct %s does not have field %s", fa.Loc, structDesc.Name, fa.FieldName))
 	}
 
 	return fieldType

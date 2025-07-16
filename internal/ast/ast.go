@@ -13,6 +13,7 @@ type Location = lexer.Location
 type AstNode interface {
 	fmt.Stringer
 	GetLocation() Location
+	GetType() Type
 }
 
 type Program struct {
@@ -24,6 +25,10 @@ type Program struct {
 
 func (p *Program) GetLocation() Location {
 	return p.Loc
+}
+
+func (p *Program) GetType() Type {
+	return nil
 }
 
 func (p *Program) String() string {
@@ -57,6 +62,10 @@ func (f *Function) GetLocation() Location {
 	return f.Loc
 }
 
+func (f *Function) GetType() Type {
+	return nil
+}
+
 func (f *Function) String() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("(func %s (", f.Name))
@@ -86,6 +95,10 @@ type ExternFunction struct {
 
 func (f *ExternFunction) GetLocation() Location {
 	return f.Loc
+}
+
+func (f *ExternFunction) GetType() Type {
+	return nil
 }
 
 func (f *ExternFunction) String() string {
@@ -148,6 +161,10 @@ func (f StructField) GetLocation() Location {
 	return f.Loc
 }
 
+func (f StructField) GetType() Type {
+	return f.Type
+}
+
 func (f StructField) String() string {
 	return fmt.Sprintf("(%s %s)", f.Name, f.Type.String())
 }
@@ -162,6 +179,10 @@ func (a Arg) GetLocation() Location {
 	return a.Loc
 }
 
+func (a Arg) GetType() Type {
+	return a.Type
+}
+
 func (a Arg) String() string {
 	return fmt.Sprintf("(%s %s)", a.Name, a.Type.String())
 }
@@ -173,6 +194,10 @@ type Block struct {
 
 func (b *Block) GetLocation() Location {
 	return b.Loc
+}
+
+func (b *Block) GetType() Type {
+	return nil
 }
 
 func (b *Block) String() string {
@@ -203,6 +228,10 @@ func (d *VariableDeclaration) GetLocation() Location {
 	return d.Loc
 }
 
+func (d *VariableDeclaration) GetType() Type {
+	return nil
+}
+
 func (d *VariableDeclaration) isStatement() {}
 
 func (d *VariableDeclaration) String() string {
@@ -218,6 +247,10 @@ func (s *ExpressionStatement) GetLocation() Location {
 	return s.Loc
 }
 
+func (s *ExpressionStatement) GetType() Type {
+	return nil
+}
+
 func (s *ExpressionStatement) isStatement() {}
 
 func (s *ExpressionStatement) String() string {
@@ -231,6 +264,10 @@ type ReturnStatement struct {
 
 func (r *ReturnStatement) GetLocation() Location {
 	return r.Loc
+}
+
+func (r *ReturnStatement) GetType() Type {
+	return nil
 }
 
 func (r *ReturnStatement) isStatement() {}
@@ -254,6 +291,10 @@ func (i *IfStatement) GetLocation() Location {
 	return i.Loc
 }
 
+func (i *IfStatement) GetType() Type {
+	return nil
+}
+
 func (i *IfStatement) isStatement() {}
 
 func (i *IfStatement) String() string {
@@ -274,6 +315,10 @@ func (w *WhileStatement) GetLocation() Location {
 	return w.Loc
 }
 
+func (w *WhileStatement) GetType() Type {
+	return nil
+}
+
 func (w *WhileStatement) isStatement() {}
 
 func (w *WhileStatement) String() string {
@@ -288,6 +333,10 @@ func (b *BreakStatement) GetLocation() Location {
 	return b.Loc
 }
 
+func (b *BreakStatement) GetType() Type {
+	return nil
+}
+
 func (b *BreakStatement) isStatement() {}
 
 func (b *BreakStatement) String() string {
@@ -300,6 +349,10 @@ type ContinueStatement struct {
 
 func (c *ContinueStatement) GetLocation() Location {
 	return c.Loc
+}
+
+func (c *ContinueStatement) GetType() Type {
+	return nil
 }
 
 func (c *ContinueStatement) isStatement() {}
@@ -324,10 +377,15 @@ type LValue interface {
 type VariableLValue struct {
 	Loc  Location
 	Name string
+	Type Type
 }
 
 func (v *VariableLValue) GetLocation() Location {
 	return v.Loc
+}
+
+func (v *VariableLValue) GetType() Type {
+	return v.Type
 }
 
 func (v *VariableLValue) isLValue() {}
@@ -341,10 +399,15 @@ func (v *VariableLValue) String() string {
 type DereferenceLValue struct {
 	Loc        Location
 	Expression Expression
+	Type       Type
 }
 
 func (d *DereferenceLValue) GetLocation() Location {
 	return d.Loc
+}
+
+func (d *DereferenceLValue) GetType() Type {
+	return d.Type
 }
 
 func (d *DereferenceLValue) isLValue() {}
@@ -359,10 +422,15 @@ type FieldLValue struct {
 	Loc       Location
 	Object    Expression
 	FieldName string
+	Type      Type
 }
 
 func (f *FieldLValue) GetLocation() Location {
 	return f.Loc
+}
+
+func (f *FieldLValue) GetType() Type {
+	return f.Type
 }
 
 func (f *FieldLValue) isLValue() {}
@@ -379,10 +447,15 @@ type Literal struct {
 	IntValue    *int32
 	Int64Value  *int64
 	BoolValue   *bool
+	Type        Type
 }
 
 func (l *Literal) GetLocation() Location {
 	return l.Loc
+}
+
+func (l *Literal) GetType() Type {
+	return l.Type
 }
 
 func (l *Literal) isExpression() {}
@@ -421,10 +494,15 @@ type Assignment struct {
 	Loc    Location
 	Target LValue
 	Value  Expression
+	Type   Type
 }
 
 func (a *Assignment) GetLocation() Location {
 	return a.Loc
+}
+
+func (a *Assignment) GetType() Type {
+	return a.Type
 }
 
 func (a *Assignment) isExpression() {}
@@ -436,10 +514,15 @@ func (a *Assignment) String() string {
 type VariableReference struct {
 	Loc  Location
 	Name string
+	Type Type
 }
 
 func (v *VariableReference) GetLocation() Location {
 	return v.Loc
+}
+
+func (v *VariableReference) GetType() Type {
+	return v.Type
 }
 
 func (v *VariableReference) isExpression() {}
@@ -453,10 +536,15 @@ type FunctionCall struct {
 	FunctionName string
 	Args         []Expression
 	Variadic     bool
+	Type         Type
 }
 
 func (f *FunctionCall) GetLocation() Location {
 	return f.Loc
+}
+
+func (f *FunctionCall) GetType() Type {
+	return f.Type
 }
 
 func (f *FunctionCall) isExpression() {}
@@ -477,10 +565,15 @@ type BinaryOperation struct {
 	Left     Expression
 	Operator string
 	Right    Expression
+	Type     Type
 }
 
 func (b *BinaryOperation) GetLocation() Location {
 	return b.Loc
+}
+
+func (b *BinaryOperation) GetType() Type {
+	return b.Type
 }
 
 func (b *BinaryOperation) isExpression() {}
@@ -493,10 +586,15 @@ type UnaryOperation struct {
 	Loc      Location
 	Operator string
 	Operand  Expression
+	Type     Type
 }
 
 func (u *UnaryOperation) GetLocation() Location {
 	return u.Loc
+}
+
+func (u *UnaryOperation) GetType() Type {
+	return u.Type
 }
 
 func (u *UnaryOperation) isExpression() {}
@@ -509,10 +607,15 @@ type FieldAccess struct {
 	Loc       Location
 	Object    Expression
 	FieldName string
+	Type      Type
 }
 
 func (f *FieldAccess) GetLocation() Location {
 	return f.Loc
+}
+
+func (f *FieldAccess) GetType() Type {
+	return f.Type
 }
 
 func (f *FieldAccess) isExpression() {}

@@ -198,7 +198,7 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) ast.Type {
 		}
 		targetType = ptrType.ElementType
 	} else if lvalue, ok := assignment.Target.(*ast.FieldLValue); ok {
-		return c.checkFieldLValue(lvalue)
+		targetType = c.checkFieldLValue(lvalue)
 	} else {
 		panic(fmt.Errorf("%s: invalid lvalue %s in assignment", assignment.Loc, assignment.Target))
 	}
@@ -264,7 +264,7 @@ func (c *TypeChecker) checkBinaryOperation(binOp *ast.BinaryOperation) ast.Type 
 
 func (c *TypeChecker) checkUnaryOperation(unaryOp *ast.UnaryOperation) ast.Type {
 	operandType := c.checkExpression(unaryOp.Operand)
-	resultType, ok := unaryOperationResult(unaryOp.Operator, operandType)
+	resultType, ok := c.unaryOperationResult(unaryOp.Operator, operandType)
 	if !ok {
 		c.errors = append(c.errors, fmt.Errorf("%s: unary operation %s cannot be applied to a value of type %s",
 			unaryOp.Loc,
@@ -348,6 +348,7 @@ func (c *TypeChecker) checkFieldAccess(fa *ast.FieldAccess) ast.Type {
 	structDesc, err := c.types.GetStruct(structType)
 	if err != nil {
 		c.errors = append(c.errors, fmt.Errorf("%s: %v", fa.Loc, err))
+		return nil
 	}
 
 	if structDesc == nil {
@@ -357,9 +358,30 @@ func (c *TypeChecker) checkFieldAccess(fa *ast.FieldAccess) ast.Type {
 	fieldType := structDesc.GetFieldType(fa.FieldName)
 	if fieldType == nil {
 		c.errors = append(c.errors, fmt.Errorf("%s: struct %s does not have field %s", fa.Loc, structDesc.Name, fa.FieldName))
+		return nil
 	}
 
 	return fieldType
+}
+
+func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, bool) {
+	switch op {
+	case "!":
+		return ast.Bool, val == ast.Bool
+	case "-":
+		return val, val == ast.Int || val == ast.Int64
+	case "&":
+		// We can make a pointer to any type.
+		// TODO: Check that we're only taking address of lvalues.
+		return ast.NewPointerType(val), true
+	case "*":
+		if ptr, ok := val.(*ast.PointerType); ok {
+			return ptr.ElementType, true
+		} else {
+			return nil, false
+		}
+	}
+	panic(fmt.Sprintf("unknown unary operation %s", op))
 }
 
 func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
@@ -387,24 +409,4 @@ func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 	}
 
 	panic(fmt.Sprintf("unknown binary operation %s", op))
-}
-
-func unaryOperationResult(op string, val ast.Type) (ast.Type, bool) {
-	switch op {
-	case "!":
-		return ast.Bool, val == ast.Bool
-	case "-":
-		return val, val == ast.Int || val == ast.Int64
-	case "&":
-		// We can make a pointer to any type.
-		// TODO: Check that we're only taking address of lvalues.
-		return ast.NewPointerType(val), true
-	case "*":
-		if ptr, ok := val.(*ast.PointerType); ok {
-			return ptr.ElementType, true
-		} else {
-			return nil, false
-		}
-	}
-	panic(fmt.Sprintf("unknown unary operation %s", op))
 }

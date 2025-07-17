@@ -15,5 +15,9 @@ func getBuiltins() []FuncProto {
 			Args:       []Arg{{"ch", ast.Int}},
 			ReturnType: ast.Int,
 		},
+		{
+			Name: "dispose",
+			Args: []Arg{{"p", ast.VoidPtr}},
+		},
 	}
 }

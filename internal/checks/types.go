@@ -171,7 +171,12 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) ast.Type {
 		}
 
 		expectedArgType := proto.Args[i].Typ
-		if !actualArgType.Equals(expectedArgType) {
+		if expectedArgType == ast.VoidPtr {
+			_, ok := actualArgType.(*ast.PointerType)
+			if !ok {
+				c.errors = append(c.errors, fmt.Errorf("%s: argument of %s must be a pointer, got %s", call.Loc, call.FunctionName, actualArgType))
+			}
+		} else if !actualArgType.Equals(expectedArgType) {
 			c.errors = append(c.errors, fmt.Errorf("%s: argument #%d of function %s has wrong type: expected %s but got %s",
 				call.Loc, i+1, call.FunctionName, expectedArgType, actualArgType))
 		}

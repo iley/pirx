@@ -55,6 +55,8 @@ var (
 	String = &BaseType{Name: "string"}
 	Bool   = &BaseType{Name: "bool"}
 	Void   = &BaseType{Name: "void"}
+	// Not directly accessible to the user.
+	VoidPtr = &BaseType{Name: "voidptr"}
 )
 
 // Helper functions for creating types

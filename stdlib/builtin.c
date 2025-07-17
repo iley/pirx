@@ -1,7 +1,5 @@
 #include "builtin.h"
 
-#include <stdio.h>
+#include <stdlib.h>
 
-void stdlib_demo() {
-  printf("hello from Pirx stdlib!\n");
-}
+void dispose(void *ptr) { free(ptr); }

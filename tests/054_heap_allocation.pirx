@@ -6,5 +6,7 @@ func main(): int {
 
   printf("%d\n", *p);
 
+  dispose(p);
+
   return 0;
 }

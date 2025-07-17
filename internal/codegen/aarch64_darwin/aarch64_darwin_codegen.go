@@ -85,25 +85,6 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		}
 	}
 
-	// Space on the stack for local variables including function arguments.
-	// For now we're going to assume that all variables are 64-bit.
-	// This does not include space for storing X29 and X30.
-	frameSize := 0
-	for _, size := range lsizes {
-		frameSize += size
-	}
-	// SP must always be aligned by 16 bytes.
-	frameSize = util.Align(frameSize, 16)
-
-	// Save X29 and X30
-	fmt.Fprintf(cc.output, "  sub sp, sp, #16\n")
-	fmt.Fprintf(cc.output, "  stp x29, x30, [sp]\n")
-
-	// Save frame start in X29.
-	fmt.Fprintf(cc.output, "  mov x29, sp\n")
-	// Shift SP.
-	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", frameSize)
-
 	// Map from local variable name to its offset on the stack.
 	locals := make(map[string]int)
 
@@ -119,12 +100,34 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		if offset > MAX_SP_OFFSET {
 			panic(fmt.Errorf("too many locals: maximum offset supported is %d", MAX_SP_OFFSET))
 		}
-		// Align each slot by its size (e.g. all 64-bit/8-byte value are 8-byte aligned).
+		// Align each slot by either 4 bytes (for 32-bit types) or 8 bytes for everything else.
 		// This should be a no-op for most slots because of the sorting above.
-		offset = util.Align(offset, lsizes[lname])
+		var align int
+		if lsizes[lname] == 4 {
+			align = 4
+		} else {
+			align = 8
+		}
+
+		offset = util.Align(offset, align)
 		locals[lname] = offset
 		offset += lsizes[lname]
 	}
+
+	// Space on the stack for local variables including function arguments.
+	// For now we're going to assume that all variables are 64-bit.
+	// This does not include space for storing X29 and X30.
+	// SP must always be aligned by 16 bytes.
+	frameSize := util.Align(offset, 16)
+
+	// Save X29 and X30
+	fmt.Fprintf(cc.output, "  sub sp, sp, #16\n")
+	fmt.Fprintf(cc.output, "  stp x29, x30, [sp]\n")
+
+	// Save frame start in X29.
+	fmt.Fprintf(cc.output, "  mov x29, sp\n")
+	// Shift SP.
+	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", frameSize)
 
 	// For each argument store the value passed to us in the register to the slot on the stack.
 	for i, arg := range f.Args {

@@ -160,6 +160,7 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) ast.Type {
 
 	for i, expr := range call.Args {
 		actualArgType := c.checkExpression(expr)
+		// TODO: Check that the type is valid!
 
 		if i >= len(proto.Args) {
 			continue
@@ -309,7 +310,7 @@ func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) {
 }
 
 func (c *TypeChecker) checkFieldLValue(lvalue *ast.FieldLValue) ast.Type {
-	// TODO: Check that Object is actually an lvalue!
+	// TODO: Check that Object is a valid type and actually an lvalue!
 	objectType := c.checkExpression(lvalue.Object)
 
 	structType, ok := objectType.(*ast.BaseType)

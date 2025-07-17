@@ -233,6 +233,16 @@ func generateExpressionAddrOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
 			return ops, arg
 		}
 		panic(fmt.Errorf("unsupported unary operation %s in generateExpressionAddrOps", op.Operator))
+	} else if fa, ok := node.(*ast.FieldLValue); ok {
+		// FIXME: This is identical to FieldAccess below. Deduplicate?
+		ops, objArg := generateExpressionAddrOps(ic, fa.Object)
+		// Add offset.
+		addrTemp := ic.allocTemp(types.WORD_SIZE)
+		field := getField(ic, fa.Object.GetType(), fa.FieldName)
+		offset := int64(field.Offset)
+		ops = append(ops, BinaryOp{Result: addrTemp, Left: objArg, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		// Dereference.
+		return ops, Arg{Variable: addrTemp}
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
 		ops, objArg := generateExpressionAddrOps(ic, fa.Object)
 		// Add offset.

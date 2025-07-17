@@ -296,7 +296,8 @@ func (a Arg) String() string {
 
 // Optimize runs IR optimizations on the given IR program.
 func Optimize(irp IrProgram) IrProgram {
-	irp = eliminateIneffectiveAssignments(irp)
+	// Assignment elimination is disabled for now because it's oblivious of structs.
+	// irp = eliminateIneffectiveAssignments(irp)
 	return irp
 }
 

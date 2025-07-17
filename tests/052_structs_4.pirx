@@ -1,0 +1,29 @@
+struct Row {
+  c1: int;
+  c2: int;
+  c3: int;
+}
+
+struct Matrix {
+  r1: Row;
+  r2: Row;
+  r3: Row;
+}
+
+func PrintMatrix(m: *Matrix) {
+  printf("%d %d %d\n", (*m).r1.c1, (*m).r1.c2, (*m).r1.c3);
+  printf("%d %d %d\n", (*m).r2.c1, (*m).r2.c2, (*m).r2.c3);
+  printf("%d %d %d\n", (*m).r3.c1, (*m).r3.c2, (*m).r3.c3);
+}
+
+func main(): int {
+  var m: Matrix;
+
+  m.r1.c1 = 1;
+  m.r2.c2 = 2;
+  m.r3.c3 = 3;
+
+  PrintMatrix(&m);
+
+  return 0;
+}

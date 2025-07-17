@@ -57,6 +57,7 @@ var keywords = map[string]bool{
 	"false":    true,
 	"extern":   true,
 	"struct":   true,
+	"new":      true,
 }
 
 // Single-character operators and punctuation

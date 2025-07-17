@@ -293,6 +293,44 @@ func (p *Parser) parseType() (ast.Type, error) {
 	return ast.NewBaseType(lex.Str), nil
 }
 
+func (p *Parser) parseNewExpression() (ast.Expression, error) {
+	// consume 'new'
+	newLex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	newLoc := locationFromLexeme(newLex)
+
+	// consume '('
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation("(") {
+		return nil, fmt.Errorf("%s: expected '(' after 'new', got %v", lex.Loc, lex)
+	}
+
+	// parse type
+	typeExpr, err := p.parseType()
+	if err != nil {
+		return nil, err
+	}
+
+	// consume ')'
+	lex, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation(")") {
+		return nil, fmt.Errorf("%s: expected ')' after type in new expression, got %v", lex.Loc, lex)
+	}
+
+	return &ast.NewExpression{
+		Loc:      newLoc,
+		TypeExpr: typeExpr,
+	}, nil
+}
+
 func (p *Parser) parseArguments() ([]ast.Arg, error) {
 	args := []ast.Arg{}
 
@@ -584,6 +622,11 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		} else if lex.IsKeyword("false") {
 			p.consume()
 			expr = ast.NewBoolLiteral(false)
+		} else if lex.IsKeyword("new") {
+			expr, err = p.parseNewExpression()
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			return nil, fmt.Errorf("%s: unexpected keyword %s when parsing a primary expression", lex.Loc, lex.Str)
 		}

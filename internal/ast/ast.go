@@ -623,3 +623,23 @@ func (f *FieldAccess) isExpression() {}
 func (f *FieldAccess) String() string {
 	return fmt.Sprintf("(. %s %s)", f.Object.String(), f.FieldName)
 }
+
+type NewExpression struct {
+	Loc      Location
+	TypeExpr Type
+	Type     Type
+}
+
+func (n *NewExpression) GetLocation() Location {
+	return n.Loc
+}
+
+func (n *NewExpression) GetType() Type {
+	return n.Type
+}
+
+func (n *NewExpression) isExpression() {}
+
+func (n *NewExpression) String() string {
+	return fmt.Sprintf("(new %s)", n.TypeExpr.String())
+}

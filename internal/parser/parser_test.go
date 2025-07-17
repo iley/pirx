@@ -3199,6 +3199,7 @@ func TestParseExpression_FieldAccess_Error_MissingFieldName(t *testing.T) {
 		t.Errorf("Expected error containing %q, got %q", expectedError, err.Error())
 	}
 }
+
 func TestParseExpression_FieldAccess_Error_NumberAsFieldName(t *testing.T) {
 	src := `func main() { x.123; }`
 	expectedError := "expected field name after '.'"
@@ -3211,5 +3212,101 @@ func TestParseExpression_FieldAccess_Error_NumberAsFieldName(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), expectedError) {
 		t.Errorf("Expected error containing %q, got %q", expectedError, err.Error())
+	}
+}
+
+func TestParseExpression_NewOperator(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected ast.Expression
+	}{
+		{
+			name: "new with primitive type",
+			src:  `func main() { new(int); }`,
+			expected: &ast.NewExpression{
+				TypeExpr: ast.NewBaseType("int"),
+			},
+		},
+		{
+			name: "new with pointer type",
+			src:  `func main() { new(*int); }`,
+			expected: &ast.NewExpression{
+				TypeExpr: ast.NewPointerType(ast.NewBaseType("int")),
+			},
+		},
+		{
+			name: "new with custom type",
+			src:  `func main() { new(MyStruct); }`,
+			expected: &ast.NewExpression{
+				TypeExpr: ast.NewBaseType("MyStruct"),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
+			parser := New(lex)
+			prog, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("ParseProgram() error = %v", err)
+			}
+
+			// Extract the expression from the program structure
+			if len(prog.Functions) != 1 {
+				t.Fatalf("Expected 1 function, got %d", len(prog.Functions))
+			}
+			if len(prog.Functions[0].Body.Statements) != 1 {
+				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
+			}
+			stmt := prog.Functions[0].Body.Statements[0]
+			exprStmt, ok := stmt.(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
+			}
+
+			if !compareASTIgnoreLocation(exprStmt.Expression, tc.expected) {
+				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
+			}
+		})
+	}
+}
+
+func TestParseExpression_NewOperator_Error(t *testing.T) {
+	testCases := []struct {
+		name          string
+		src           string
+		expectedError string
+	}{
+		{
+			name:          "new without parentheses",
+			src:           `func main() { new int; }`,
+			expectedError: "expected '(' after 'new'",
+		},
+		{
+			name:          "new with missing closing parenthesis",
+			src:           `func main() { new(int; }`,
+			expectedError: "expected ')' after type in new expression",
+		},
+		{
+			name:          "new with empty parentheses",
+			src:           `func main() { new(); }`,
+			expectedError: "expected type",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
+			parser := New(lex)
+			_, err := parser.ParseProgram()
+			if err == nil {
+				t.Fatalf("Expected error, got nil")
+			}
+			if !strings.Contains(err.Error(), tc.expectedError) {
+				t.Errorf("Expected error containing %q, got %q", tc.expectedError, err.Error())
+			}
+		})
 	}
 }

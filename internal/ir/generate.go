@@ -222,7 +222,7 @@ func generateExpressionAddrOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
 	// Literals, function calls, assignments etc. are not supported.
 	if ref, ok := node.(*ast.VariableReference); ok {
 		res := ic.allocTemp(types.WORD_SIZE)
-		ops := []Op{UnaryOp{Result: res, Operation: "&", Value: Arg{Variable: ref.Name},  Size: types.WORD_SIZE}}
+		ops := []Op{UnaryOp{Result: res, Operation: "&", Value: Arg{Variable: ref.Name}, Size: types.WORD_SIZE}}
 		return ops, Arg{Variable: res}
 	} else if op, ok := node.(*ast.UnaryOperation); ok {
 		if op.Operator == "*" {

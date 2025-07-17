@@ -155,7 +155,7 @@ func compileTest(config *CompilationConfig, testCase TestCase, testsDir string) 
 	}
 
 	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
+	ldArgs := append([]string{"-o", binFile, objFile, "stdlib/libpirx.a"}, config.LinkerFlags...)
 	ldCmd := exec.Command(config.Linker, ldArgs...)
 	if output, err := ldCmd.CombinedOutput(); err != nil {
 		return "", generatedFiles, fmt.Errorf("linking failed: %w\nOutput: %s", err, string(output))
@@ -368,7 +368,7 @@ func compileProgram(config *CompilationConfig, pirxFile, testsDir, baseName stri
 	}
 
 	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile}, config.LinkerFlags...)
+	ldArgs := append([]string{"-o", binFile, objFile, "stdlib/libpirx.a"}, config.LinkerFlags...)
 	ldCmd := exec.Command(config.Linker, ldArgs...)
 	if output, err := ldCmd.CombinedOutput(); err != nil {
 		errorMsg := fmt.Sprintf("linking failed: %v\nOutput: %s", err, string(output))

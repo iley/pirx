@@ -203,16 +203,12 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
 		return ops, Arg{Variable: temp}, resultSize
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
-		// TODO: Delegate all of this to generateExpressionAddrOps?
-		ops, objArg := generateExpressionAddrOps(ic, fa.Object)
-		// Add offset.
-		addrTemp := ic.allocTemp(types.WORD_SIZE)
+		// Get field address using generateExpressionAddrOps.
+		ops, addrArg := generateExpressionAddrOps(ic, fa)
+		// Dereference to get the value.
 		field := getField(ic, fa.Object.GetType(), fa.FieldName)
-		offset := int64(field.Offset)
-		ops = append(ops, BinaryOp{Result: addrTemp, Left: objArg, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
-		// Dereference.
 		res := ic.allocTemp(field.Size)
-		ops = append(ops, UnaryOp{Result: res, Value: Arg{Variable: addrTemp}, Operation: "*", Size: field.Size})
+		ops = append(ops, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: field.Size})
 		return ops, Arg{Variable: res}, field.Size
 	} else if ne, ok := node.(*ast.NewExpression); ok {
 		allocSize, err := ic.types.GetSize(ne.TypeExpr)
@@ -222,12 +218,12 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 		res := ic.allocTemp(types.WORD_SIZE)
 		// TODO: Maybe make a helper function for generating function calls?
 		mallocCall := Call{
-				Result: res,
-				Function: "malloc",
-				Args: []Arg{{LiteralInt64: util.Int64Ptr(int64(allocSize))}},
-				ArgSizes: []int{types.WORD_SIZE},
-				NamedArgs: 1,
-				Size: types.WORD_SIZE,
+			Result:    res,
+			Function:  "malloc",
+			Args:      []Arg{{LiteralInt64: util.Int64Ptr(int64(allocSize))}},
+			ArgSizes:  []int{types.WORD_SIZE},
+			NamedArgs: 1,
+			Size:      types.WORD_SIZE,
 		}
 		return []Op{mallocCall}, Arg{Variable: res}, types.WORD_SIZE
 	}

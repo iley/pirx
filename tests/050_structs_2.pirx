@@ -1,0 +1,20 @@
+// Test assigning struct fields via a pointer.
+
+struct Vector {
+  x: int;
+  y: int;
+}
+
+func main(): int {
+  var v: Vector;
+  var p: *Vector;
+
+  p = &v;
+
+  (*p).x = 1;
+  (*p).y = 2;
+
+  printf("(%d, %d)\n", v.x, v.y);
+
+  return 0;
+}

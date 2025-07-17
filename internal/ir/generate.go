@@ -201,20 +201,49 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
 		return ops, Arg{Variable: temp}, resultSize
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
-		ops, objArg, _ := generateExpressionOps(ic, fa.Object)
-		addrTemp := ic.allocTemp(types.WORD_SIZE)
-		// Take address of the struct.
-		ops = append(ops, UnaryOp{Result: addrTemp, Value: objArg, Operation: "&", Size: types.WORD_SIZE})
+		// TODO: Delegate all of this to generateExpressionAddrOps?
+		ops, objArg := generateExpressionAddrOps(ic, fa.Object)
 		// Add offset.
+		addrTemp := ic.allocTemp(types.WORD_SIZE)
 		field := getField(ic, fa.Object.GetType(), fa.FieldName)
 		offset := int64(field.Offset)
-		ops = append(ops, BinaryOp{Result: addrTemp, Left: Arg{Variable: addrTemp}, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		ops = append(ops, BinaryOp{Result: addrTemp, Left: objArg, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
 		// Dereference.
 		res := ic.allocTemp(field.Size)
 		ops = append(ops, UnaryOp{Result: res, Value: Arg{Variable: addrTemp}, Operation: "*", Size: field.Size})
 		return ops, Arg{Variable: res}, field.Size
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
+}
+
+// generateExpressionAddrOps is similar to generateExpressionOps but it produces the address of the result rather than the value.
+// The size is always WORD_SIZE.
+func generateExpressionAddrOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
+	// Literals, function calls, assignments etc. are not supported.
+	if ref, ok := node.(*ast.VariableReference); ok {
+		res := ic.allocTemp(types.WORD_SIZE)
+		ops := []Op{UnaryOp{Result: res, Operation: "&", Value: Arg{Variable: ref.Name},  Size: types.WORD_SIZE}}
+		return ops, Arg{Variable: res}
+	} else if op, ok := node.(*ast.UnaryOperation); ok {
+		if op.Operator == "*" {
+			ops, arg, size := generateExpressionOps(ic, op.Operand)
+			if size != types.WORD_SIZE {
+				panic(fmt.Errorf("invalid expression size in dereference: %d, expected word size", size))
+			}
+			return ops, arg
+		}
+		panic(fmt.Errorf("unsupported unary operation %s in generateExpressionAddrOps", op.Operator))
+	} else if fa, ok := node.(*ast.FieldAccess); ok {
+		ops, objArg := generateExpressionAddrOps(ic, fa.Object)
+		// Add offset.
+		addrTemp := ic.allocTemp(types.WORD_SIZE)
+		field := getField(ic, fa.Object.GetType(), fa.FieldName)
+		offset := int64(field.Offset)
+		ops = append(ops, BinaryOp{Result: addrTemp, Left: objArg, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		// Dereference.
+		return ops, Arg{Variable: addrTemp}
+	}
+	panic(fmt.Errorf("unsupported expression in generateExpressionAddrOps: %#v", node))
 }
 
 func generateIfOps(ic *IrContext, stmt ast.IfStatement) []Op {
@@ -283,18 +312,22 @@ func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if fieldAccess, ok := assgn.Target.(*ast.FieldLValue); ok {
-		// FIXME: This won't work with chains e.g. foo.bar.baz = 1.
-		ops, objArg, objSize := generateExpressionOps(ic, fieldAccess.Object)
+		// Get address of struct's start in memory.
+		ops, baseAddrArg := generateExpressionAddrOps(ic, fieldAccess.Object)
+		// Calculate the rvalue we're assigning.
 		rvalueOps, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
 		ops = append(ops, rvalueOps...)
-		addrTemp := ic.allocTemp(types.WORD_SIZE)
-		ops = append(ops, UnaryOp{Result: addrTemp, Value: objArg, Operation: "&", Size: types.WORD_SIZE})
+		// Find the field's offset from struct's start.
 		lvalueType := fieldAccess.Object.GetType()
 		field := getField(ic, lvalueType, fieldAccess.FieldName)
 		offset := int64(field.Offset)
-		ops = append(ops, BinaryOp{Result: addrTemp, Left: Arg{Variable: addrTemp}, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		// Add base and offset to calculate the final address we're writing to.
+		addrTemp := ic.allocTemp(types.WORD_SIZE)
+		ops = append(ops, BinaryOp{Result: addrTemp, Left: baseAddrArg, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		// Write to the address.
 		ops = append(ops, AssignByAddr{Target: Arg{Variable: addrTemp}, Value: rvalueArg, Size: rvalueSize})
-		return ops, objArg, objSize
+		// Propagate the result.
+		return ops, rvalueArg, rvalueSize
 	}
 	panic(fmt.Errorf("invalid assignment: %#v", assgn))
 }

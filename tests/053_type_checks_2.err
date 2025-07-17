@@ -1,0 +1,2 @@
+tests/053_type_checks_2.pirx:1:1: error in struct declaration: type Inner is not fully defined
+exit status 1

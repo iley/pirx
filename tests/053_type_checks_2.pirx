@@ -1,0 +1,12 @@
+struct Outer {
+  inner: Inner;
+}
+
+struct Inner {
+  value: int;
+}
+
+func main(): int {
+  var o: Outer;
+  return 0;
+}

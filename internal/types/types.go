@@ -148,6 +148,9 @@ func (tt *TypeTable) GetSize(typ ast.Type) (int, error) {
 		if !ok {
 			return 0, fmt.Errorf("unknown type %s", baseType)
 		}
+		if td == nil {
+			return 0, fmt.Errorf("type %s is not fully defined", baseType.Name)
+		}
 		return td.GetSize(), nil
 	}
 

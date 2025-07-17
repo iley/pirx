@@ -143,26 +143,8 @@ func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 // generateExpressionOps generates a seequence of ops for a given expression.
 // Returns a slice of ops, Arg representing the value (typically an intermediary), and the size of the value in bytes.
 func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) {
-	// TODO: Extract individual cases into functions?
 	if literal, ok := node.(*ast.Literal); ok {
-		if literal.IntValue != nil {
-			return []Op{}, Arg{LiteralInt: literal.IntValue}, 4
-		} else if literal.Int64Value != nil {
-			return []Op{}, Arg{LiteralInt64: literal.Int64Value}, 8
-		} else if literal.StringValue != nil {
-			return []Op{}, Arg{LiteralString: literal.StringValue}, 8
-		} else if literal.BoolValue != nil {
-			// Translate booleans into 32-bit integers.
-			var intValue int32
-			if *literal.BoolValue == true {
-				intValue = 1
-			} else {
-				intValue = 0
-			}
-			return []Op{}, Arg{LiteralInt: &intValue}, 4
-		} else {
-			panic(fmt.Sprintf("Invalid literal: %v. Only int and string are currently supported", literal))
-		}
+		return generateLiteralOps(ic, literal)
 	} else if assignment, ok := node.(*ast.Assignment); ok {
 		return generateAssignmentOps(ic, assignment)
 	} else if call, ok := node.(*ast.FunctionCall); ok {
@@ -170,64 +152,101 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 	} else if ref, ok := node.(*ast.VariableReference); ok {
 		return []Op{}, Arg{Variable: ref.Name}, ic.vars[ref.Name]
 	} else if binOp, ok := node.(*ast.BinaryOperation); ok {
-		leftOps, leftArg, leftSize := generateExpressionOps(ic, binOp.Left)
-		rightOps, rightArg, rightSize := generateExpressionOps(ic, binOp.Right)
-		if leftSize != rightSize {
-			panic(fmt.Sprintf("%s: size mismatch between operands of %s", binOp.Loc, binOp.Operator))
-		}
-		ops := append(leftOps, rightOps...)
-		temp := ic.allocTemp(leftSize)
-		resultSize := binaryOperationSize(binOp.Operator, leftSize)
-		ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: binOp.Operator, Size: resultSize})
-		return ops, Arg{Variable: temp}, leftSize
+		return generateBinaryOperationOps(ic, binOp)
 	} else if op, ok := node.(*ast.UnaryOperation); ok {
-		ops, arg, operandSize := generateExpressionOps(ic, op.Operand)
-		var resultSize int
-		switch op.Operator {
-		case "&":
-			resultSize = types.WORD_SIZE
-		case "*":
-			pointerType, ok := op.Operand.GetType().(*ast.PointerType)
-			if !ok {
-				panic(fmt.Errorf("expected a pointer type in dereference, got %v", op.Operand.GetType()))
-			}
-			var err error
-			resultSize, err = ic.types.GetSize(pointerType.ElementType)
-			if err != nil {
-				panic(fmt.Errorf("cannot find type size in dereference: %v", err))
-			}
-		default:
-			resultSize = operandSize
-		}
-		temp := ic.allocTemp(resultSize)
-		ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
-		return ops, Arg{Variable: temp}, resultSize
+		return generateUnaryOperationOps(ic, op)
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
-		// Get field address using generateExpressionAddrOps.
-		ops, addrArg := generateExpressionAddrOps(ic, fa)
-		// Dereference to get the value.
-		field := getField(ic, fa.Object.GetType(), fa.FieldName)
-		res := ic.allocTemp(field.Size)
-		ops = append(ops, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: field.Size})
-		return ops, Arg{Variable: res}, field.Size
+		return generateFieldAccessOps(ic, fa)
 	} else if ne, ok := node.(*ast.NewExpression); ok {
-		allocSize, err := ic.types.GetSize(ne.TypeExpr)
-		if err != nil {
-			panic(err)
-		}
-		res := ic.allocTemp(types.WORD_SIZE)
-		// TODO: Maybe make a helper function for generating function calls?
-		mallocCall := Call{
-			Result:    res,
-			Function:  "malloc",
-			Args:      []Arg{{LiteralInt64: util.Int64Ptr(int64(allocSize))}},
-			ArgSizes:  []int{types.WORD_SIZE},
-			NamedArgs: 1,
-			Size:      types.WORD_SIZE,
-		}
-		return []Op{mallocCall}, Arg{Variable: res}, types.WORD_SIZE
+		return generateNewExpressionOps(ic, ne)
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
+}
+
+func generateBinaryOperationOps(ic *IrContext, binOp *ast.BinaryOperation) ([]Op, Arg, int) {
+	leftOps, leftArg, leftSize := generateExpressionOps(ic, binOp.Left)
+	rightOps, rightArg, rightSize := generateExpressionOps(ic, binOp.Right)
+	if leftSize != rightSize {
+		panic(fmt.Sprintf("%s: size mismatch between operands of %s", binOp.Loc, binOp.Operator))
+	}
+	ops := append(leftOps, rightOps...)
+	temp := ic.allocTemp(leftSize)
+	resultSize := binaryOperationSize(binOp.Operator, leftSize)
+	ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: binOp.Operator, Size: resultSize})
+	return ops, Arg{Variable: temp}, leftSize
+}
+
+func generateUnaryOperationOps(ic *IrContext, op *ast.UnaryOperation) ([]Op, Arg, int) {
+	ops, arg, operandSize := generateExpressionOps(ic, op.Operand)
+	var resultSize int
+	switch op.Operator {
+	case "&":
+		resultSize = types.WORD_SIZE
+	case "*":
+		pointerType, ok := op.Operand.GetType().(*ast.PointerType)
+		if !ok {
+			panic(fmt.Errorf("expected a pointer type in dereference, got %v", op.Operand.GetType()))
+		}
+		var err error
+		resultSize, err = ic.types.GetSize(pointerType.ElementType)
+		if err != nil {
+			panic(fmt.Errorf("cannot find type size in dereference: %v", err))
+		}
+	default:
+		resultSize = operandSize
+	}
+	temp := ic.allocTemp(resultSize)
+	ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
+	return ops, Arg{Variable: temp}, resultSize
+}
+
+func generateFieldAccessOps(ic *IrContext, fa *ast.FieldAccess) ([]Op, Arg, int) {
+	// Get field address using generateExpressionAddrOps.
+	ops, addrArg := generateExpressionAddrOps(ic, fa)
+	// Dereference to get the value.
+	field := getField(ic, fa.Object.GetType(), fa.FieldName)
+	res := ic.allocTemp(field.Size)
+	ops = append(ops, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: field.Size})
+	return ops, Arg{Variable: res}, field.Size
+}
+
+func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, int) {
+	allocSize, err := ic.types.GetSize(ne.TypeExpr)
+	if err != nil {
+		panic(err)
+	}
+	res := ic.allocTemp(types.WORD_SIZE)
+	// TODO: Maybe make a helper function for generating function calls?
+	mallocCall := Call{
+		Result:    res,
+		Function:  "malloc",
+		Args:      []Arg{{LiteralInt64: util.Int64Ptr(int64(allocSize))}},
+		ArgSizes:  []int{types.WORD_SIZE},
+		NamedArgs: 1,
+		Size:      types.WORD_SIZE,
+	}
+	return []Op{mallocCall}, Arg{Variable: res}, types.WORD_SIZE
+}
+
+func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
+	if literal.IntValue != nil {
+		return []Op{}, Arg{LiteralInt: literal.IntValue}, 4
+	} else if literal.Int64Value != nil {
+		return []Op{}, Arg{LiteralInt64: literal.Int64Value}, 8
+	} else if literal.StringValue != nil {
+		return []Op{}, Arg{LiteralString: literal.StringValue}, 8
+	} else if literal.BoolValue != nil {
+		// Translate booleans into 32-bit integers.
+		var intValue int32
+		if *literal.BoolValue == true {
+			intValue = 1
+		} else {
+			intValue = 0
+		}
+		return []Op{}, Arg{LiteralInt: &intValue}, 4
+	} else {
+		panic(fmt.Sprintf("Invalid literal: %v. Only int and string are currently supported", literal))
+	}
 }
 
 // generateExpressionAddrOps is similar to generateExpressionOps but it produces the address of the result rather than the value.

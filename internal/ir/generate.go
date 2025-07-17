@@ -5,6 +5,7 @@ import (
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/types"
+	"github.com/iley/pirx/internal/util"
 )
 
 type IrContext struct {
@@ -142,6 +143,7 @@ func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 // generateExpressionOps generates a seequence of ops for a given expression.
 // Returns a slice of ops, Arg representing the value (typically an intermediary), and the size of the value in bytes.
 func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) {
+	// TODO: Extract individual cases into functions?
 	if literal, ok := node.(*ast.Literal); ok {
 		if literal.IntValue != nil {
 			return []Op{}, Arg{LiteralInt: literal.IntValue}, 4
@@ -212,6 +214,22 @@ func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) 
 		res := ic.allocTemp(field.Size)
 		ops = append(ops, UnaryOp{Result: res, Value: Arg{Variable: addrTemp}, Operation: "*", Size: field.Size})
 		return ops, Arg{Variable: res}, field.Size
+	} else if ne, ok := node.(*ast.NewExpression); ok {
+		allocSize, err := ic.types.GetSize(ne.TypeExpr)
+		if err != nil {
+			panic(err)
+		}
+		res := ic.allocTemp(types.WORD_SIZE)
+		// TODO: Maybe make a helper function for generating function calls?
+		mallocCall := Call{
+				Result: res,
+				Function: "malloc",
+				Args: []Arg{{LiteralInt64: util.Int64Ptr(int64(allocSize))}},
+				ArgSizes: []int{types.WORD_SIZE},
+				NamedArgs: 1,
+				Size: types.WORD_SIZE,
+		}
+		return []Op{mallocCall}, Arg{Variable: res}, types.WORD_SIZE
 	}
 	panic(fmt.Sprintf("Unknown expression type: %v", node))
 }

@@ -127,6 +127,10 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Type {
 		t := c.checkFieldAccess(fieldAcc)
 		fieldAcc.Type = t
 		return t
+	} else if newEx, ok := expr.(*ast.NewExpression); ok {
+		t := c.checkNewExpression(newEx)
+		newEx.Type = t
+		return t
 	}
 	panic(fmt.Sprintf("Invalid expression type: %v", expr))
 }
@@ -363,6 +367,11 @@ func (c *TypeChecker) checkFieldAccess(fa *ast.FieldAccess) ast.Type {
 	}
 
 	return fieldType
+}
+
+func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) ast.Type {
+	// TODO: Check that TypeExpr is a valid type.
+	return &ast.PointerType{ElementType: n.TypeExpr}
 }
 
 func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, bool) {

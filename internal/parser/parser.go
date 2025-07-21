@@ -622,6 +622,9 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		} else if lex.IsKeyword("false") {
 			p.consume()
 			expr = ast.NewBoolLiteral(false)
+		} else if lex.IsKeyword("null") {
+			p.consume()
+			expr = ast.NewNullLiteral()
 		} else if lex.IsKeyword("new") {
 			expr, err = p.parseNewExpression()
 			if err != nil {

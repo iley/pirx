@@ -3310,3 +3310,110 @@ func TestParseExpression_NewOperator_Error(t *testing.T) {
 		})
 	}
 }
+
+func TestParseExpression_NullLiteral(t *testing.T) {
+	src := `func main() { null; }`
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
+	parser := New(lex)
+	prog, err := parser.ParseProgram()
+	if err != nil {
+		t.Fatalf("ParseProgram() error = %v", err)
+	}
+
+	// Extract the expression from the program structure
+	if len(prog.Functions) != 1 {
+		t.Fatalf("Expected 1 function, got %d", len(prog.Functions))
+	}
+	if len(prog.Functions[0].Body.Statements) != 1 {
+		t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
+	}
+	stmt := prog.Functions[0].Body.Statements[0]
+	exprStmt, ok := stmt.(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
+	}
+
+	expected := ast.NewNullLiteral()
+	if !compareASTIgnoreLocation(exprStmt.Expression, expected) {
+		t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, expected)
+	}
+}
+
+func TestParseExpression_NullAssignment(t *testing.T) {
+	src := `func main() { var x: *int; x = null; }`
+	lex := lexer.New(strings.NewReader(src), "test.pirx")
+	parser := New(lex)
+	prog, err := parser.ParseProgram()
+	if err != nil {
+		t.Fatalf("ParseProgram() error = %v", err)
+	}
+
+	// Extract the assignment expression
+	if len(prog.Functions) != 1 {
+		t.Fatalf("Expected 1 function, got %d", len(prog.Functions))
+	}
+	if len(prog.Functions[0].Body.Statements) != 2 {
+		t.Fatalf("Expected 2 statements (decl + assignment), got %d", len(prog.Functions[0].Body.Statements))
+	}
+	stmt := prog.Functions[0].Body.Statements[1] // Second statement is the assignment
+	exprStmt, ok := stmt.(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
+	}
+	assignment, ok := exprStmt.Expression.(*ast.Assignment)
+	if !ok {
+		t.Fatalf("Expected Assignment, got %+v", exprStmt.Expression)
+	}
+
+	expected := ast.NewNullLiteral()
+	if !compareASTIgnoreLocation(assignment.Value, expected) {
+		t.Errorf("Assignment value got = %+v, want %+v", assignment.Value, expected)
+	}
+}
+
+func TestParseExpression_BooleanLiterals(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected ast.Expression
+	}{
+		{
+			name:     "true literal",
+			src:      `func main() { true; }`,
+			expected: ast.NewBoolLiteral(true),
+		},
+		{
+			name:     "false literal",
+			src:      `func main() { false; }`,
+			expected: ast.NewBoolLiteral(false),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
+			parser := New(lex)
+			prog, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("ParseProgram() error = %v", err)
+			}
+
+			// Extract the expression from the program structure
+			if len(prog.Functions) != 1 {
+				t.Fatalf("Expected 1 function, got %d", len(prog.Functions))
+			}
+			if len(prog.Functions[0].Body.Statements) != 1 {
+				t.Fatalf("Expected 1 statement, got %d", len(prog.Functions[0].Body.Statements))
+			}
+			stmt := prog.Functions[0].Body.Statements[0]
+			exprStmt, ok := stmt.(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("Expected ExpressionStatement, got %+v", stmt)
+			}
+
+			if !compareASTIgnoreLocation(exprStmt.Expression, tc.expected) {
+				t.Errorf("Expression got = %+v, want %+v", exprStmt.Expression, tc.expected)
+			}
+		})
+	}
+}

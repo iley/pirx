@@ -55,6 +55,7 @@ var keywords = map[string]bool{
 	"continue": true,
 	"true":     true,
 	"false":    true,
+	"null":     true,
 	"extern":   true,
 	"struct":   true,
 	"new":      true,

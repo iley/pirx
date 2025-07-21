@@ -447,6 +447,7 @@ type Literal struct {
 	IntValue    *int32
 	Int64Value  *int64
 	BoolValue   *bool
+	NullValue   bool // true if this is a null literal
 	Type        Type
 }
 
@@ -469,6 +470,8 @@ func (l *Literal) String() string {
 		return fmt.Sprintf("%d", *l.Int64Value)
 	} else if l.BoolValue != nil {
 		return fmt.Sprintf("%v", *l.BoolValue)
+	} else if l.NullValue {
+		return "null"
 	}
 	panic(fmt.Sprintf("unknown literal type: %v", *l))
 }
@@ -488,6 +491,10 @@ func NewStringLiteral(value string) *Literal {
 
 func NewBoolLiteral(value bool) *Literal {
 	return &Literal{BoolValue: &value}
+}
+
+func NewNullLiteral() *Literal {
+	return &Literal{NullValue: true}
 }
 
 type Assignment struct {

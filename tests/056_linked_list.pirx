@@ -1,0 +1,44 @@
+struct Node {
+  value: int;
+  next: *Node;
+}
+
+func PrintList(head: *Node) {
+  while head != null {
+    printf("%d ", (*head).value);
+    head = (*head).next;
+  }
+  printf("\n");
+}
+
+func DisposeList(head: *Node) {
+  var next: *Node;
+  while head != null {
+    next = (*head).next;
+    dispose(head);
+    head = next;
+  }
+}
+
+func Prepend(value: int, list: *Node): *Node {
+  var node: *Node;
+  node = new(Node);
+  (*node).value = value;
+  (*node).next = list;
+  return node;
+}
+
+func main(): int {
+  var head: *Node;
+  head = null;
+
+  head = Prepend(1, head);
+  head = Prepend(2, head);
+  head = Prepend(3, head);
+
+  PrintList(head);
+
+  DisposeList(head);
+
+  return 0;
+}

@@ -186,13 +186,13 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 		}
 		fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
 	} else if jump, ok := op.(ir.Jump); ok {
-		fmt.Fprintf(cc.output, "  b .L%s\n", jump.Goto)
+		fmt.Fprintf(cc.output, "  b .L%s_%s\n", cc.functionName, jump.Goto)
 	} else if jumpUnless, ok := op.(ir.JumpUnless); ok {
 		generateRegisterLoad(cc, 0, jumpUnless.Size, jumpUnless.Condition)
 		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
-		fmt.Fprintf(cc.output, "  beq .L%s\n", jumpUnless.Goto)
+		fmt.Fprintf(cc.output, "  beq .L%s_%s\n", cc.functionName, jumpUnless.Goto)
 	} else if anchor, ok := op.(ir.Anchor); ok {
-		fmt.Fprintf(cc.output, ".L%s:\n", anchor.Label)
+		fmt.Fprintf(cc.output, ".L%s_%s:\n", cc.functionName, anchor.Label)
 	} else {
 		panic(fmt.Errorf("unknown op type: %v", op))
 	}

@@ -129,15 +129,16 @@ func (o UnaryOp) GetSize() int {
 }
 
 type BinaryOp struct {
-	Result    string
-	Left      Arg
-	Right     Arg
-	Operation string
-	Size      int
+	Result      string
+	Left        Arg
+	Right       Arg
+	Operation   string
+	Size        int // result size
+	OperandSize int
 }
 
 func (o BinaryOp) String() string {
-	return fmt.Sprintf("BinaryOp%d(%s = %s %s %s)", o.Size, o.Result, o.Left, o.Operation, o.Right)
+	return fmt.Sprintf("BinaryOp%d(%s = %s/%d %s %s/%d)", o.Size, o.Result, o.Left, o.OperandSize, o.Operation, o.Right, o.OperandSize)
 }
 
 func (o BinaryOp) GetTarget() string {

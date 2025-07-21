@@ -402,7 +402,7 @@ func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, b
 }
 
 func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
-	if !left.Equals(right) {
+	if !areCompatibleTypes(left, right) {
 		return nil, false
 	}
 
@@ -426,4 +426,17 @@ func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 	}
 
 	panic(fmt.Sprintf("unknown binary operation %s", op))
+}
+
+func areCompatibleTypes(left, right ast.Type) bool {
+	if left.Equals(right) {
+		return true
+	}
+
+	if left == ast.NullPtr && ast.IsPointerType(right) || right == ast.NullPtr && ast.IsPointerType(left) {
+		// null can be used with pointers of any type.
+		return true
+	}
+
+	return false
 }

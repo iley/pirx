@@ -1,6 +1,18 @@
 func main(): int {
+  var x: int;
   var p: *int;
+
   p = null;
   printf("%p\n", p);
+
+  if p == null {
+    printf("null is null\n");
+  }
+
+  p = &x;
+  if p == null {
+    printf("this cannot be\n");
+  }
+
   return 0;
 }

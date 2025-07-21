@@ -172,8 +172,15 @@ func generateBinaryOperationOps(ic *IrContext, binOp *ast.BinaryOperation) ([]Op
 	ops := append(leftOps, rightOps...)
 	temp := ic.allocTemp(leftSize)
 	resultSize := binaryOperationSize(binOp.Operator, leftSize)
-	ops = append(ops, BinaryOp{Result: temp, Left: leftArg, Right: rightArg, Operation: binOp.Operator, Size: resultSize})
-	return ops, Arg{Variable: temp}, leftSize
+	ops = append(ops, BinaryOp{
+		Result: temp,
+		Left: leftArg,
+		Right: rightArg,
+		Operation: binOp.Operator,
+		Size: resultSize,
+		OperandSize: leftSize,
+	})
+	return ops, Arg{Variable: temp}, resultSize
 }
 
 func generateUnaryOperationOps(ic *IrContext, op *ast.UnaryOperation) ([]Op, Arg, int) {
@@ -276,7 +283,14 @@ func generateExpressionAddrOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
 		addrTemp := ic.allocTemp(types.WORD_SIZE)
 		field := getField(ic, fa.Object.GetType(), fa.FieldName)
 		offset := int64(field.Offset)
-		ops = append(ops, BinaryOp{Result: addrTemp, Left: objArg, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		ops = append(ops, BinaryOp{
+			Result: addrTemp,
+			Left: objArg,
+			Operation: "+",
+			Right: Arg{LiteralInt64: &offset},
+			Size: types.WORD_SIZE,
+			OperandSize: types.WORD_SIZE,
+		})
 		// Dereference.
 		return ops, Arg{Variable: addrTemp}
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
@@ -285,7 +299,14 @@ func generateExpressionAddrOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
 		addrTemp := ic.allocTemp(types.WORD_SIZE)
 		field := getField(ic, fa.Object.GetType(), fa.FieldName)
 		offset := int64(field.Offset)
-		ops = append(ops, BinaryOp{Result: addrTemp, Left: objArg, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		ops = append(ops, BinaryOp{
+			Result: addrTemp,
+			Left: objArg,
+			Operation: "+",
+			Right: Arg{LiteralInt64: &offset},
+			Size: types.WORD_SIZE,
+			OperandSize: types.WORD_SIZE,
+		})
 		// Dereference.
 		return ops, Arg{Variable: addrTemp}
 	}
@@ -299,6 +320,7 @@ func generateIfOps(ic *IrContext, stmt ast.IfStatement) []Op {
 		endLabel := ic.allocLabel()
 		condOps, condArg, condSize := generateExpressionOps(ic, stmt.Condition)
 		ops = append(ops, condOps...)
+		// FIXME: For some reason condSize is 8 when it should be 4???
 		ops = append(ops, JumpUnless{Condition: condArg, Goto: endLabel, Size: condSize})
 		blockOps := generateBlockOps(ic, stmt.ThenBlock)
 		ops = append(ops, blockOps...)
@@ -369,7 +391,15 @@ func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int
 		offset := int64(field.Offset)
 		// Add base and offset to calculate the final address we're writing to.
 		addrTemp := ic.allocTemp(types.WORD_SIZE)
-		ops = append(ops, BinaryOp{Result: addrTemp, Left: baseAddrArg, Operation: "+", Right: Arg{LiteralInt64: &offset}, Size: types.WORD_SIZE})
+		// TODO: Extract this into a funciton for generating address addition, it's used in a couple of places now.
+		ops = append(ops, BinaryOp{
+			Result: addrTemp,
+			Left: baseAddrArg,
+			Operation: "+",
+			Right: Arg{LiteralInt64: &offset},
+			Size: types.WORD_SIZE,
+			OperandSize: types.WORD_SIZE,
+		})
 		// Write to the address.
 		ops = append(ops, AssignByAddr{Target: Arg{Variable: addrTemp}, Value: rvalueArg, Size: rvalueSize})
 		// Propagate the result.

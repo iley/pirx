@@ -353,12 +353,12 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 
 // TODO: Support unsigned operations.
 func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
-	generateRegisterLoad(cc, 0, binop.Size, binop.Left)
-	generateRegisterLoad(cc, 1, binop.Size, binop.Right)
+	generateRegisterLoad(cc, 0, binop.OperandSize, binop.Left)
+	generateRegisterLoad(cc, 1, binop.OperandSize, binop.Right)
 
-	r0 := registerByIndex(0, binop.Size)
-	r1 := registerByIndex(1, binop.Size)
-	r2 := registerByIndex(2, binop.Size)
+	r0 := registerByIndex(0, binop.OperandSize)
+	r1 := registerByIndex(1, binop.OperandSize)
+	r2 := registerByIndex(2, binop.OperandSize)
 
 	switch binop.Operation {
 	case "+":
@@ -401,6 +401,9 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 	default:
 		panic(fmt.Errorf("unsupported binary operation in aarch64-darwing codegen: %v", binop.Operation))
 	}
+
+	// Attention! This can be an implicit size cast!
+	// A typical example where this happens is "boolean = (int64 == int64)".
 	generateRegisterStore(cc, 0, binop.Size, binop.Result)
 	return nil
 }

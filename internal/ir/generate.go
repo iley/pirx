@@ -244,8 +244,11 @@ func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
 			intValue = 0
 		}
 		return []Op{}, Arg{LiteralInt: &intValue}, 4
+	} else if literal.NullValue {
+		value := int64(0)
+		return []Op{}, Arg{LiteralInt64: &value}, types.WORD_SIZE
 	} else {
-		panic(fmt.Sprintf("Invalid literal: %v. Only int and string are currently supported", literal))
+		panic(fmt.Sprintf("invalid literal type: %#v", literal))
 	}
 }
 

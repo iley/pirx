@@ -144,6 +144,8 @@ func (c *TypeChecker) checkLiteral(lit *ast.Literal) ast.Type {
 		return ast.Int64
 	} else if lit.BoolValue != nil {
 		return ast.Bool
+	} else if lit.NullValue {
+		return ast.NullPtr
 	}
 	panic(fmt.Sprintf("unknown literal type: %v", *lit))
 }
@@ -172,8 +174,7 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) ast.Type {
 
 		expectedArgType := proto.Args[i].Typ
 		if expectedArgType == ast.VoidPtr {
-			_, ok := actualArgType.(*ast.PointerType)
-			if !ok {
+			if !ast.IsPointerType(actualArgType) {
 				c.errors = append(c.errors, fmt.Errorf("%s: argument of %s must be a pointer, got %s", call.Loc, call.FunctionName, actualArgType))
 			}
 		} else if !actualArgType.Equals(expectedArgType) {
@@ -214,7 +215,8 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) ast.Type {
 	}
 
 	valueType := c.checkExpression(assignment.Value)
-	if !valueType.Equals(targetType) {
+	isValidNullAssignment := ast.IsPointerType(targetType) && valueType.Equals(ast.NullPtr)
+	if !valueType.Equals(targetType) && !isValidNullAssignment {
 		c.errors = append(c.errors, fmt.Errorf("%s: cannot assign value of type %s to lvalue of type %s",
 			assignment.Loc,
 			valueType,

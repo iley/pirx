@@ -48,6 +48,11 @@ func (p *PointerType) Equals(other Type) bool {
 	return false
 }
 
+func IsPointerType(typ Type) bool {
+	_, ok := typ.(*PointerType)
+	return ok
+}
+
 // Common base types - singleton instances
 var (
 	Int    = &BaseType{Name: "int"}
@@ -57,6 +62,8 @@ var (
 	Void   = &BaseType{Name: "void"}
 	// Not directly accessible to the user.
 	VoidPtr = &BaseType{Name: "voidptr"}
+	// Not directly accessible to the user.
+	NullPtr = &BaseType{Name: "nullptr"}
 )
 
 // Helper functions for creating types

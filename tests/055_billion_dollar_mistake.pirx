@@ -1,0 +1,6 @@
+func main(): int {
+  var p: *int;
+  p = null;
+  printf("%p\n", p);
+  return 0;
+}

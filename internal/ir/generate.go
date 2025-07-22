@@ -173,11 +173,11 @@ func generateBinaryOperationOps(ic *IrContext, binOp *ast.BinaryOperation) ([]Op
 	temp := ic.allocTemp(leftSize)
 	resultSize := binaryOperationSize(binOp.Operator, leftSize)
 	ops = append(ops, BinaryOp{
-		Result: temp,
-		Left: leftArg,
-		Right: rightArg,
-		Operation: binOp.Operator,
-		Size: resultSize,
+		Result:      temp,
+		Left:        leftArg,
+		Right:       rightArg,
+		Operation:   binOp.Operator,
+		Size:        resultSize,
 		OperandSize: leftSize,
 	})
 	return ops, Arg{Variable: temp}, resultSize
@@ -205,16 +205,6 @@ func generateUnaryOperationOps(ic *IrContext, op *ast.UnaryOperation) ([]Op, Arg
 	temp := ic.allocTemp(resultSize)
 	ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
 	return ops, Arg{Variable: temp}, resultSize
-}
-
-func generateFieldAccessOps(ic *IrContext, fa *ast.FieldAccess) ([]Op, Arg, int) {
-	// Get field address using generateExpressionAddrOps.
-	ops, addrArg := generateExpressionAddrOps(ic, fa)
-	// Dereference to get the value.
-	field := getField(ic, fa.Object.GetType(), fa.FieldName)
-	res := ic.allocTemp(field.Size)
-	ops = append(ops, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: field.Size})
-	return ops, Arg{Variable: res}, field.Size
 }
 
 func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, int) {
@@ -277,40 +267,49 @@ func generateExpressionAddrOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
 		}
 		panic(fmt.Errorf("unsupported unary operation %s in generateExpressionAddrOps", op.Operator))
 	} else if fa, ok := node.(*ast.FieldLValue); ok {
-		// FIXME: This is identical to FieldAccess below. Deduplicate?
-		ops, objArg := generateExpressionAddrOps(ic, fa.Object)
-		// Add offset.
-		addrTemp := ic.allocTemp(types.WORD_SIZE)
-		field := getField(ic, fa.Object.GetType(), fa.FieldName)
-		offset := int64(field.Offset)
-		ops = append(ops, BinaryOp{
-			Result: addrTemp,
-			Left: objArg,
-			Operation: "+",
-			Right: Arg{LiteralInt64: &offset},
-			Size: types.WORD_SIZE,
-			OperandSize: types.WORD_SIZE,
-		})
-		// Dereference.
-		return ops, Arg{Variable: addrTemp}
+		return generateFieldAccessAddrOps(ic, fa.Object, fa.FieldName)
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
-		ops, objArg := generateExpressionAddrOps(ic, fa.Object)
-		// Add offset.
-		addrTemp := ic.allocTemp(types.WORD_SIZE)
-		field := getField(ic, fa.Object.GetType(), fa.FieldName)
-		offset := int64(field.Offset)
-		ops = append(ops, BinaryOp{
-			Result: addrTemp,
-			Left: objArg,
-			Operation: "+",
-			Right: Arg{LiteralInt64: &offset},
-			Size: types.WORD_SIZE,
-			OperandSize: types.WORD_SIZE,
-		})
-		// Dereference.
-		return ops, Arg{Variable: addrTemp}
+		return generateFieldAccessAddrOps(ic, fa.Object, fa.FieldName)
 	}
 	panic(fmt.Errorf("unsupported expression in generateExpressionAddrOps: %#v", node))
+}
+
+func generateFieldAccessOps(ic *IrContext, fa *ast.FieldAccess) ([]Op, Arg, int) {
+	// Get field address using generateExpressionAddrOps.
+	ops, addrArg := generateExpressionAddrOps(ic, fa)
+	// Dereference to get the value.
+	field := getField(ic, fa.Object.GetType(), fa.FieldName)
+	res := ic.allocTemp(field.Size)
+	ops = append(ops, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: field.Size})
+	return ops, Arg{Variable: res}, field.Size
+}
+
+func generateFieldAccessAddrOps(ic *IrContext, object ast.Expression, fieldName string) ([]Op, Arg) {
+	var ops []Op
+	var objArg Arg
+
+	if ast.IsPointerType(object.GetType()) {
+		// If left side is a pointer to the struct, just evaluate it.
+		ops, objArg, _ = generateExpressionOps(ic, object)
+	} else {
+		// If struct value, get the address.
+		ops, objArg = generateExpressionAddrOps(ic, object)
+	}
+
+	// Add offset.
+	addrTemp := ic.allocTemp(types.WORD_SIZE)
+	field := getField(ic, object.GetType(), fieldName)
+	offset := int64(field.Offset)
+	ops = append(ops, BinaryOp{
+		Result:      addrTemp,
+		Left:        objArg,
+		Operation:   "+",
+		Right:       Arg{LiteralInt64: &offset},
+		Size:        types.WORD_SIZE,
+		OperandSize: types.WORD_SIZE,
+	})
+	// Dereference.
+	return ops, Arg{Variable: addrTemp}
 }
 
 func generateIfOps(ic *IrContext, stmt ast.IfStatement) []Op {
@@ -393,11 +392,11 @@ func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int
 		addrTemp := ic.allocTemp(types.WORD_SIZE)
 		// TODO: Extract this into a funciton for generating address addition, it's used in a couple of places now.
 		ops = append(ops, BinaryOp{
-			Result: addrTemp,
-			Left: baseAddrArg,
-			Operation: "+",
-			Right: Arg{LiteralInt64: &offset},
-			Size: types.WORD_SIZE,
+			Result:      addrTemp,
+			Left:        baseAddrArg,
+			Operation:   "+",
+			Right:       Arg{LiteralInt64: &offset},
+			Size:        types.WORD_SIZE,
 			OperandSize: types.WORD_SIZE,
 		})
 		// Write to the address.
@@ -452,7 +451,15 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 }
 
 func getField(ic *IrContext, objType ast.Type, fieldName string) *types.StructField {
-	structDesc, err := ic.types.GetStruct(objType)
+	var structType ast.Type
+
+	if ptrType, ok := objType.(*ast.PointerType); ok {
+		structType = ptrType.ElementType
+	} else {
+		structType = objType
+	}
+
+	structDesc, err := ic.types.GetStruct(structType)
 	if err != nil {
 		panic(fmt.Errorf("field access for non-struct types is not (yet) supported. type %v, error: %v", objType, err))
 	}

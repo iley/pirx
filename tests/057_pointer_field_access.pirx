@@ -1,0 +1,17 @@
+struct Vector {
+  x: int;
+  y: int;
+}
+
+func main(): int {
+  var v: Vector;
+  v.x = 1;
+  v.y = 2;
+
+  var p: *Vector;
+  p = &v;
+
+  printf("(%d, %d)\n", p.x, p.y);
+
+  return 0;
+}

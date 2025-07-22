@@ -323,6 +323,11 @@ func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) {
 func (c *TypeChecker) checkFieldAccess(loc ast.Location, object ast.Expression, fieldName string) ast.Type {
 	objectType := c.checkExpression(object)
 
+	if ptrType, ok := objectType.(*ast.PointerType); ok {
+		// Auto-dereference structs in field access.
+		objectType = ptrType.ElementType
+	}
+
 	structType, ok := objectType.(*ast.BaseType)
 	if !ok {
 		c.errors = append(c.errors, fmt.Errorf("%s: type %s used in field access is not a base type", loc, objectType))

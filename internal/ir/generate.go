@@ -379,39 +379,16 @@ func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if fieldAccess, ok := assgn.Target.(*ast.FieldLValue); ok {
-		// TODO: Factor this out into its own function.
-		var ops []Op
-		var baseAddrArg Arg
-
-		// Get address of struct's start in memory.
-		if ast.IsPointerType(fieldAccess.Object.GetType()) {
-			// Auto-dereference.
-			ops, baseAddrArg, _ = generateExpressionOps(ic, fieldAccess.Object)
-		} else {
-			ops, baseAddrArg = generateExpressionAddrOps(ic, fieldAccess.Object)
-		}
+		// Get the field's address using the existing helper function.
+		fieldAddrOps, fieldAddrArg := generateFieldAccessAddrOps(ic, fieldAccess.Object, fieldAccess.FieldName)
 
 		// Calculate the rvalue we're assigning.
 		rvalueOps, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
-		ops = append(ops, rvalueOps...)
-		// Find the field's offset from struct's start.
-		lvalueType := fieldAccess.Object.GetType()
-		field := getField(ic, lvalueType, fieldAccess.FieldName)
-		offset := int64(field.Offset)
-		// Add base and offset to calculate the final address we're writing to.
-		addrTemp := ic.allocTemp(types.WORD_SIZE)
-		// TODO: Extract this into a funciton for generating address addition, it's used in a couple of places now.
-		ops = append(ops, BinaryOp{
-			Result:      addrTemp,
-			Left:        baseAddrArg,
-			Operation:   "+",
-			Right:       Arg{LiteralInt64: &offset},
-			Size:        types.WORD_SIZE,
-			OperandSize: types.WORD_SIZE,
-		})
-		// Write to the address.
-		ops = append(ops, AssignByAddr{Target: Arg{Variable: addrTemp}, Value: rvalueArg, Size: rvalueSize})
-		// Propagate the result.
+
+		// Combine operations and write to the field address.
+		ops := append(fieldAddrOps, rvalueOps...)
+		ops = append(ops, AssignByAddr{Target: fieldAddrArg, Value: rvalueArg, Size: rvalueSize})
+
 		return ops, rvalueArg, rvalueSize
 	}
 	panic(fmt.Errorf("invalid assignment: %#v", assgn))

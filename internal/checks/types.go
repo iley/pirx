@@ -120,12 +120,12 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Type {
 		return t
 	} else if lvalue, ok := expr.(*ast.FieldLValue); ok {
 		// TODO: Should we also mark nodes as lvalue/rvalue?
-		t := c.checkFieldLValue(lvalue)
+		t := c.checkFieldAccess(lvalue.Loc, lvalue.Object, lvalue.FieldName)
 		lvalue.Type = t
 		return t
-	} else if fieldAcc, ok := expr.(*ast.FieldAccess); ok {
-		t := c.checkFieldAccess(fieldAcc)
-		fieldAcc.Type = t
+	} else if fa, ok := expr.(*ast.FieldAccess); ok {
+		t := c.checkFieldAccess(fa.Loc, fa.Object, fa.FieldName)
+		fa.Type = t
 		return t
 	} else if newEx, ok := expr.(*ast.NewExpression); ok {
 		t := c.checkNewExpression(newEx)
@@ -209,7 +209,7 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) ast.Type {
 		}
 		targetType = ptrType.ElementType
 	} else if lvalue, ok := assignment.Target.(*ast.FieldLValue); ok {
-		targetType = c.checkFieldLValue(lvalue)
+		targetType = c.checkFieldAccess(lvalue.Loc, lvalue.Object, lvalue.FieldName)
 	} else {
 		panic(fmt.Errorf("%s: invalid lvalue %s in assignment", assignment.Loc, assignment.Target))
 	}
@@ -320,56 +320,28 @@ func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) {
 	// noop
 }
 
-func (c *TypeChecker) checkFieldLValue(lvalue *ast.FieldLValue) ast.Type {
-	// TODO: Check that Object is a valid type and actually an lvalue!
-	objectType := c.checkExpression(lvalue.Object)
+func (c *TypeChecker) checkFieldAccess(loc ast.Location, object ast.Expression, fieldName string) ast.Type {
+	objectType := c.checkExpression(object)
 
 	structType, ok := objectType.(*ast.BaseType)
 	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%s: type %s used in field access is not a base type", lvalue.Loc, objectType))
+		c.errors = append(c.errors, fmt.Errorf("%s: type %s used in field access is not a base type", loc, objectType))
 		return nil
 	}
 
 	structDesc, err := c.types.GetStruct(structType)
 	if err != nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: %v", lvalue.Loc, err))
-	}
-
-	if structDesc == nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: cannot access field %s of a non-struct", lvalue.Loc, lvalue.FieldName))
-		return nil
-	}
-	fieldType := structDesc.GetFieldType(lvalue.FieldName)
-	if fieldType == nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: struct %s does not have field %s", lvalue.Loc, structDesc.Name, lvalue.FieldName))
-	}
-
-	return fieldType
-}
-
-// TODO: This is virtually identical to checkFieldLValue. Can we merge them?
-func (c *TypeChecker) checkFieldAccess(fa *ast.FieldAccess) ast.Type {
-	objectType := c.checkExpression(fa.Object)
-
-	structType, ok := objectType.(*ast.BaseType)
-	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%s: type %s used in field access is not a base type", fa.Loc, objectType))
-		return nil
-	}
-
-	structDesc, err := c.types.GetStruct(structType)
-	if err != nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: %v", fa.Loc, err))
+		c.errors = append(c.errors, fmt.Errorf("%s: %v", loc, err))
 		return nil
 	}
 
 	if structDesc == nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: cannot access field %s of a non-struct", fa.Loc, fa.FieldName))
+		c.errors = append(c.errors, fmt.Errorf("%s: cannot access field %s of a non-struct", loc, fieldName))
 		return nil
 	}
-	fieldType := structDesc.GetFieldType(fa.FieldName)
+	fieldType := structDesc.GetFieldType(fieldName)
 	if fieldType == nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: struct %s does not have field %s", fa.Loc, structDesc.Name, fa.FieldName))
+		c.errors = append(c.errors, fmt.Errorf("%s: struct %s does not have field %s", loc, structDesc.Name, fieldName))
 		return nil
 	}
 

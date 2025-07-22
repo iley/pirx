@@ -13,5 +13,10 @@ func main(): int {
 
   printf("(%d, %d)\n", p.x, p.y);
 
+  p.x = 3;
+  p.y = 4;
+
+  printf("(%d, %d)\n", v.x, v.y);
+
   return 0;
 }

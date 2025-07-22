@@ -379,8 +379,18 @@ func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if fieldAccess, ok := assgn.Target.(*ast.FieldLValue); ok {
+		// TODO: Factor this out into its own function.
+		var ops []Op
+		var baseAddrArg Arg
+
 		// Get address of struct's start in memory.
-		ops, baseAddrArg := generateExpressionAddrOps(ic, fieldAccess.Object)
+		if ast.IsPointerType(fieldAccess.Object.GetType()) {
+			// Auto-dereference.
+			ops, baseAddrArg, _ = generateExpressionOps(ic, fieldAccess.Object)
+		} else {
+			ops, baseAddrArg = generateExpressionAddrOps(ic, fieldAccess.Object)
+		}
+
 		// Calculate the rvalue we're assigning.
 		rvalueOps, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
 		ops = append(ops, rvalueOps...)

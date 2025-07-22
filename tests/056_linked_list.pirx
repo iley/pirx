@@ -5,8 +5,8 @@ struct Node {
 
 func PrintList(head: *Node) {
   while head != null {
-    printf("%d ", (*head).value);
-    head = (*head).next;
+    printf("%d ", head.value);
+    head = head.next;
   }
   printf("\n");
 }
@@ -14,7 +14,7 @@ func PrintList(head: *Node) {
 func DisposeList(head: *Node) {
   var next: *Node;
   while head != null {
-    next = (*head).next;
+    next = head.next;
     dispose(head);
     head = next;
   }
@@ -23,8 +23,8 @@ func DisposeList(head: *Node) {
 func Prepend(value: int, list: *Node): *Node {
   var node: *Node;
   node = new(Node);
-  (*node).value = value;
-  (*node).next = list;
+  node.value = value;
+  node.next = list;
   return node;
 }
 

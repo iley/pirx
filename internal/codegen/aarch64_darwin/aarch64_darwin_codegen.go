@@ -325,9 +325,6 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 		if spShift > 0 {
 			fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", spShift)
 		}
-
-		// Store the result.
-		generateRegisterStore(cc, 0, call.Size, call.Result)
 	} else {
 		// Non-variadic functions are much easier: put arguments into X0-X7.
 		// We're ignoring functions with more than 8 arguments for now.
@@ -337,8 +334,11 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 			generateRegisterLoad(cc, i, argSize, arg)
 		}
 		fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
-		generateRegisterStore(cc, 0, call.Size, call.Result)
 	}
+
+	// Store the result.
+	generateFunctionResultStore(cc, call.Size, call.Result)
+
 	return nil
 }
 
@@ -426,16 +426,46 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 }
 
 func generateReturn(cc *CodegenContext, ret ir.Return) {
-	if ret.Value != nil {
-		if ret.Size > 8 {
-			panic(fmt.Errorf("unsupported return value size: %d", ret.Size))
-		}
-		generateRegisterLoad(cc, 0, ret.Size, *ret.Value)
-		if ret.Size == 4 {
-			fmt.Fprintf(cc.output, "  sxtw x0, w0\n")
-		}
+	emitB := func() {
+		fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
 	}
-	fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
+
+	if ret.Value == nil {
+		emitB()
+		return
+	}
+
+	switch ret.Size {
+	case 4:
+		generateRegisterLoad(cc, 0, ret.Size, *ret.Value)
+		fmt.Fprintf(cc.output, "  sxtw x0, w0\n")
+	case 8:
+		generateRegisterLoad(cc, 0, ret.Size, *ret.Value)
+	case 12, 16:
+		// Load first 8 bytes into x0...
+		generateRegisterLoadWithOffset(cc, 0, 8, *ret.Value, 0)
+		// And the rest into x1/w1.
+		generateRegisterLoadWithOffset(cc, 1, ret.Size-8, *ret.Value, 8)
+	default:
+		// TODO: Support sizes over 16 bytes via indirect return (caller allocates space and passess the address in x8).
+		panic(fmt.Errorf("unsupported return value size: %d", ret.Size))
+	}
+
+	emitB()
+}
+
+func generateFunctionResultStore(cc *CodegenContext, size int, target string) {
+	switch size {
+	case 4, 8:
+		generateRegisterStore(cc, 0, size, target)
+	case 12, 16:
+		generateRegisterStoreWithOffset(cc, 0, 8, target, 0)
+		generateRegisterStoreWithOffset(cc, 1, size-8, target, 8)
+	default:
+		// We shouldn't get any sizes over 16 bytes here because those use indirect return.
+		// Sizes that are not multiple of 4 are not supported by the backend at all.
+		panic(fmt.Errorf("unsupported result size in function call: %d", size))
+	}
 }
 
 // generateRegisterLoad generates code for loading a value into a register by its index and size.

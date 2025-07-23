@@ -1,0 +1,46 @@
+// Test returning values larger than 8 bytes from a function.
+
+// 12 bytes.
+struct Vec3 {
+  x: int;
+  y: int;
+  z: int;
+}
+
+// 16 bytes.
+struct Vec4 {
+  x: int;
+  y: int;
+  z: int;
+  w: int;
+}
+
+func MakeVec3(): Vec3 {
+  var v: Vec3;
+  v.x = 1;
+  v.y = 2;
+  v.z = 3;
+  return v;
+}
+
+func MakeVec4(): Vec4 {
+  var v: Vec4;
+  v.x = 10;
+  v.y = 20;
+  v.z = 30;
+  v.w = 40;
+  return v;
+}
+
+func main(): int {
+  var v3: Vec3;
+  var v4: Vec4;
+
+  v3 = MakeVec3();
+  v4 = MakeVec4();
+
+  printf("v3 = (%d, %d, %d)\n", v3.x, v3.y, v3.z);
+  printf("v4 = (%d, %d, %d, %d)\n", v4.x, v4.y, v4.z, v4.w);
+
+  return 0;
+}

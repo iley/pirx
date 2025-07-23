@@ -175,16 +175,7 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 	} else if unaryOp, ok := op.(ir.UnaryOp); ok {
 		return generateUnaryOp(cc, unaryOp)
 	} else if ret, ok := op.(ir.Return); ok {
-		if ret.Value != nil {
-			if ret.Size > 8 {
-				panic(fmt.Errorf("unsupported return value size: %d", ret.Size))
-			}
-			generateRegisterLoad(cc, 0, ret.Size, *ret.Value)
-			if ret.Size == 4 {
-				fmt.Fprintf(cc.output, "  sxtw x0, w0\n")
-			}
-		}
-		fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
+		generateReturn(cc, ret)
 	} else if jump, ok := op.(ir.Jump); ok {
 		fmt.Fprintf(cc.output, "  b .L%s_%s\n", cc.functionName, jump.Goto)
 	} else if jumpUnless, ok := op.(ir.JumpUnless); ok {
@@ -432,6 +423,19 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 		panic(fmt.Errorf("unsupported unary operation %s", op.Operation))
 	}
 	return nil
+}
+
+func generateReturn(cc *CodegenContext, ret ir.Return) {
+	if ret.Value != nil {
+		if ret.Size > 8 {
+			panic(fmt.Errorf("unsupported return value size: %d", ret.Size))
+		}
+		generateRegisterLoad(cc, 0, ret.Size, *ret.Value)
+		if ret.Size == 4 {
+			fmt.Fprintf(cc.output, "  sxtw x0, w0\n")
+		}
+	}
+	fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
 }
 
 // generateRegisterLoad generates code for loading a value into a register by its index and size.

@@ -1,0 +1,82 @@
+func FunctionWithManyArgs(
+  a: int, b: int, c: int, d: int, e: int, f: int, g: int,
+  h: int, i: int, j: int, k: int, l: int, m: int, n: int,
+  o: int, p: int, q: int, r: int, s: int, t: int, u: int,
+  v: int, w: int, x: int, y: int, z: int): int {
+  return a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w + x + y + z;
+}
+
+struct Big {
+  a: int;
+  b: int;
+  c: int;
+  d: int;
+  e: int;
+  f: int;
+  g: int;
+  h: int;
+  i: int;
+  j: int;
+  k: int;
+  l: int;
+  m: int;
+  n: int;
+  o: int;
+  p: int;
+  q: int;
+  r: int;
+  s: int;
+  t: int;
+  u: int;
+  v: int;
+  w: int;
+  x: int;
+  y: int;
+  z: int;
+}
+
+func FunctionWithLargeArg(s: Big): int {
+  // return s.a + s.b + s.c + s.d + s.e + s.f + s.g + s.h + s.i + s.j + s.k + s.l + s.m + s.n + s.o + s.p + s.q + s.r + s.s + s.t + s.u + s.v + s.w + s.x + s.y + s.z;
+  return s.a + s.z;
+}
+
+func main(): int {
+  var result1: int;
+
+  result1 = FunctionWithManyArgs(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26);
+  printf("%d\n", result1);
+
+  var s: Big;
+  s.a = 1;
+  s.b = 2;
+  s.c = 3;
+  s.d = 4;
+  s.e = 5;
+  s.f = 6;
+  s.g = 7;
+  s.h = 8;
+  s.i = 9;
+  s.j = 10;
+  s.k = 11;
+  s.l = 12;
+  s.m = 13;
+  s.n = 14;
+  s.o = 15;
+  s.p = 16;
+  s.q = 17;
+  s.r = 18;
+  s.s = 19;
+  s.t = 20;
+  s.u = 21;
+  s.v = 22;
+  s.w = 23;
+  s.x = 24;
+  s.y = 25;
+  s.z = 26;
+
+  var result2: int;
+  result2 = FunctionWithLargeArg(s);
+  printf("%d\n", result2);
+
+  return 0;
+}

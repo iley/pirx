@@ -205,7 +205,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 	}
 
 	if assign.Value.Variable != "" {
-		generateMemoryCopy(cc, assign.Value, 0, assign.Size, "sp", int64(cc.locals[assign.Target]))
+		generateMemoryCopy(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 4 {
@@ -277,9 +277,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 	for i, arg := range call.Args {
 		argSize := call.ArgSizes[i]
 		offset += argSize
-		// TODO: Support larger arugment sizes!
-		generateRegisterLoad(cc, 0, argSize, arg)
-		generateRegisterStore(cc, 0, argSize, "sp", -offset)
+		generateMemoryCopy(cc, arg, argSize, "sp", -offset)
 	}
 
 	// Save x19 to the stack because it currently holds this function's result address.
@@ -441,7 +439,7 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 func generateReturn(cc *CodegenContext, ret ir.Return) {
 	// Copy the return value into the slot provided by the caller via x19.
 	if ret.Value != nil {
-		generateMemoryCopy(cc, *ret.Value, 0, ret.Size, "x19", 0)
+		generateMemoryCopy(cc, *ret.Value, ret.Size, "x19", 0)
 	}
 
 	fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
@@ -585,16 +583,18 @@ func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Ar
 }
 
 // generateMemoryCopy generates code for copying memory from source to a base register + offset.
-func generateMemoryCopy(cc *CodegenContext, source ir.Arg, regIndex int, size int, baseReg string, baseOffset int64) {
+// Trashes x9.
+func generateMemoryCopy(cc *CodegenContext, source ir.Arg, size int, baseReg string, baseOffset int) {
+	tmpRegister := 9
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			generateRegisterLoadWithOffset(cc, regIndex, 8, source, offset)
-			generateRegisterStore(cc, regIndex, 8, baseReg, int(baseOffset)+offset)
+			generateRegisterLoadWithOffset(cc, tmpRegister, 8, source, offset)
+			generateRegisterStore(cc, tmpRegister, 8, baseReg, baseOffset+offset)
 			offset += 8
 		} else {
-			generateRegisterLoadWithOffset(cc, regIndex, 4, source, offset)
-			generateRegisterStore(cc, regIndex, 4, baseReg, int(baseOffset)+offset)
+			generateRegisterLoadWithOffset(cc, tmpRegister, 4, source, offset)
+			generateRegisterStore(cc, tmpRegister, 4, baseReg, baseOffset+offset)
 			offset += 4
 		}
 	}

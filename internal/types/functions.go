@@ -39,7 +39,7 @@ func GetFunctionTable(program *ast.Program) []FuncProto {
 			Name:       fn.Name,
 			Args:       []Arg{},
 			ReturnType: fn.ReturnType,
-			External: true,
+			External:   true,
 		}
 		for _, p := range fn.Args {
 			proto.Args = append(proto.Args, Arg{p.Name, p.Type})

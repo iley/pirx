@@ -15,8 +15,8 @@ type IrContext struct {
 	continueLabel  string
 	funcs          map[string]types.FuncProto
 	// Local variables: name -> size in bytes.
-	vars  map[string]int
-	types *types.TypeTable
+	vars               map[string]int
+	types              *types.TypeTable
 	isExternalFunction bool
 }
 
@@ -456,11 +456,11 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 		})
 	} else {
 		ops = append(ops, Call{
-			Result:    temp,
-			Function:  call.FunctionName,
-			Args:      args,
-			ArgSizes:  sizes,
-			Size:      size,
+			Result:   temp,
+			Function: call.FunctionName,
+			Args:     args,
+			ArgSizes: sizes,
+			Size:     size,
 		})
 	}
 

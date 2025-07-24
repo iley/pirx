@@ -36,8 +36,7 @@ struct Big {
 }
 
 func FunctionWithLargeArg(s: Big): int {
-  // return s.a + s.b + s.c + s.d + s.e + s.f + s.g + s.h + s.i + s.j + s.k + s.l + s.m + s.n + s.o + s.p + s.q + s.r + s.s + s.t + s.u + s.v + s.w + s.x + s.y + s.z;
-  return s.a + s.z;
+  return s.a + s.b + s.c + s.d + s.e + s.f + s.g + s.h + s.i + s.j + s.k + s.l + s.m + s.n + s.o + s.p + s.q + s.r + s.s + s.t + s.u + s.v + s.w + s.x + s.y + s.z;
 }
 
 func main(): int {
@@ -47,32 +46,32 @@ func main(): int {
   printf("%d\n", result1);
 
   var s: Big;
-  s.a = 1;
-  s.b = 2;
-  s.c = 3;
-  s.d = 4;
-  s.e = 5;
-  s.f = 6;
-  s.g = 7;
-  s.h = 8;
-  s.i = 9;
-  s.j = 10;
-  s.k = 11;
-  s.l = 12;
-  s.m = 13;
-  s.n = 14;
-  s.o = 15;
-  s.p = 16;
-  s.q = 17;
-  s.r = 18;
-  s.s = 19;
-  s.t = 20;
-  s.u = 21;
-  s.v = 22;
-  s.w = 23;
-  s.x = 24;
-  s.y = 25;
-  s.z = 26;
+  s.a = 10;
+  s.b = 20;
+  s.c = 30;
+  s.d = 40;
+  s.e = 50;
+  s.f = 60;
+  s.g = 70;
+  s.h = 80;
+  s.i = 90;
+  s.j = 100;
+  s.k = 110;
+  s.l = 120;
+  s.m = 130;
+  s.n = 140;
+  s.o = 150;
+  s.p = 160;
+  s.q = 170;
+  s.r = 180;
+  s.s = 190;
+  s.t = 200;
+  s.u = 210;
+  s.v = 220;
+  s.w = 230;
+  s.x = 240;
+  s.y = 250;
+  s.z = 260;
 
   var result2: int;
   result2 = FunctionWithLargeArg(s);

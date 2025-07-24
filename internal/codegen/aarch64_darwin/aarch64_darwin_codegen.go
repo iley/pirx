@@ -92,9 +92,6 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// Generate offsets from SP for all locals.
 	offset := 0
 	for _, lname := range sortedLocals {
-		if offset > MAX_SP_OFFSET {
-			panic(fmt.Errorf("too many locals: maximum offset supported is %d", MAX_SP_OFFSET))
-		}
 		// Align each slot by either 4 bytes (for 32-bit types) or 8 bytes for everything else.
 		// This should be a no-op for most slots because of the sorting above.
 		var align int

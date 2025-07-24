@@ -600,6 +600,29 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 			break
 		}
 
+		// "i8" suffix indicates an int8 literal
+		if r == 'i' {
+			nextR, _, err := l.readRune()
+			if err != nil {
+				if err == io.EOF {
+					// Just "i" at EOF, treat as end of number
+					l.unreadRune()
+					break
+				}
+				return Lexeme{}, err
+			}
+			if nextR == '8' {
+				// It's an i8 suffix
+				num += "i8"
+				break
+			} else {
+				// Not an i8 suffix, put back both characters
+				l.unreadRune() // put back the second character
+				l.unreadRune() // put back the 'i'
+				break
+			}
+		}
+
 		if !unicode.IsDigit(r) {
 			l.unreadRune()
 			break
@@ -632,6 +655,29 @@ func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, er
 		if r == 'l' {
 			num += string(r)
 			break
+		}
+
+		// "i8" suffix indicates an int8 literal
+		if r == 'i' {
+			nextR, _, err := l.readRune()
+			if err != nil {
+				if err == io.EOF {
+					// Just "i" at EOF, treat as end of number
+					l.unreadRune()
+					break
+				}
+				return Lexeme{}, err
+			}
+			if nextR == '8' {
+				// It's an i8 suffix
+				num += "i8"
+				break
+			} else {
+				// Not an i8 suffix, put back both characters
+				l.unreadRune() // put back the second character
+				l.unreadRune() // put back the 'i'
+				break
+			}
 		}
 
 		// Check for valid hex digit

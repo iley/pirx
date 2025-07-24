@@ -130,6 +130,39 @@ func TestLexer(t *testing.T) {
 			},
 		},
 		{
+			name:  "int8 numbers",
+			input: "42i8 123i8 0i8",
+			expected: []Lexeme{
+				{Type: LEX_NUMBER, Str: "42i8", Loc: Location{Filename: "test.pirx", Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "123i8", Loc: Location{Filename: "test.pirx", Line: 1, Col: 6}},
+				{Type: LEX_NUMBER, Str: "0i8", Loc: Location{Filename: "test.pirx", Line: 1, Col: 12}},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "hexadecimal numbers with i8 suffix",
+			input: "0x42i8 0xdeadbeefi8 0X123ABCi8",
+			expected: []Lexeme{
+				{Type: LEX_NUMBER, Str: "0x42i8", Loc: Location{Filename: "test.pirx", Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "0xdeadbeefi8", Loc: Location{Filename: "test.pirx", Line: 1, Col: 8}},
+				{Type: LEX_NUMBER, Str: "0X123ABCi8", Loc: Location{Filename: "test.pirx", Line: 1, Col: 21}},
+				{Type: LEX_EOF},
+			},
+		},
+		{
+			name:  "mixed number suffixes",
+			input: "42 42l 42i8 0x42 0x42l 0x42i8",
+			expected: []Lexeme{
+				{Type: LEX_NUMBER, Str: "42", Loc: Location{Filename: "test.pirx", Line: 1, Col: 1}},
+				{Type: LEX_NUMBER, Str: "42l", Loc: Location{Filename: "test.pirx", Line: 1, Col: 4}},
+				{Type: LEX_NUMBER, Str: "42i8", Loc: Location{Filename: "test.pirx", Line: 1, Col: 8}},
+				{Type: LEX_NUMBER, Str: "0x42", Loc: Location{Filename: "test.pirx", Line: 1, Col: 13}},
+				{Type: LEX_NUMBER, Str: "0x42l", Loc: Location{Filename: "test.pirx", Line: 1, Col: 18}},
+				{Type: LEX_NUMBER, Str: "0x42i8", Loc: Location{Filename: "test.pirx", Line: 1, Col: 24}},
+				{Type: LEX_EOF},
+			},
+		},
+		{
 			name:  "string literals",
 			input: `"hello" "world" "with spaces"`,
 			expected: []Lexeme{

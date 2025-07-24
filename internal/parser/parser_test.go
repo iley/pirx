@@ -948,6 +948,31 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 			src:      `extern func main() { 0xdeadbeefl; }`,
 			expected: ast.NewInt64Literal(0xdeadbeef),
 		},
+		{
+			name:     "int8 literal",
+			src:      `extern func main() { 42i8; }`,
+			expected: ast.NewInt8Literal(42),
+		},
+		{
+			name:     "int8 literal zero",
+			src:      `extern func main() { 0i8; }`,
+			expected: ast.NewInt8Literal(0),
+		},
+		{
+			name:     "int8 literal max value",
+			src:      `extern func main() { 127i8; }`,
+			expected: ast.NewInt8Literal(127),
+		},
+		{
+			name:     "hexadecimal int8 literal",
+			src:      `extern func main() { 0x42i8; }`,
+			expected: ast.NewInt8Literal(0x42),
+		},
+		{
+			name:     "hexadecimal int8 literal uppercase",
+			src:      `extern func main() { 0X7Fi8; }`,
+			expected: ast.NewInt8Literal(0x7F),
+		},
 	}
 
 	for _, tc := range testCases {

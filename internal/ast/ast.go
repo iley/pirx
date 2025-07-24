@@ -414,6 +414,7 @@ type Literal struct {
 	Loc         Location
 	StringValue *string
 	IntValue    *int32
+	Int8Value   *int8
 	Int64Value  *int64
 	BoolValue   *bool
 	NullValue   bool // true if this is a null literal
@@ -435,6 +436,8 @@ func (l *Literal) String() string {
 		return fmt.Sprintf("\"%s\"", util.EscapeString(*l.StringValue))
 	} else if l.IntValue != nil {
 		return fmt.Sprintf("%d", *l.IntValue)
+	} else if l.Int8Value != nil {
+		return fmt.Sprintf("%d", *l.Int8Value)
 	} else if l.Int64Value != nil {
 		return fmt.Sprintf("%d", *l.Int64Value)
 	} else if l.BoolValue != nil {
@@ -448,6 +451,10 @@ func (l *Literal) String() string {
 // Helper functions for creating Literal values
 func NewIntLiteral(value int32) *Literal {
 	return &Literal{IntValue: &value}
+}
+
+func NewInt8Literal(value int8) *Literal {
+	return &Literal{Int8Value: &value}
 }
 
 func NewInt64Literal(value int64) *Literal {

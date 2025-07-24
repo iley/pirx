@@ -727,9 +727,14 @@ func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 
 	// Determine if this is a 64-bit literal (has 'l' suffix)
 	is64Bit := strings.HasSuffix(lex.Str, "l")
+	// Determine if this is an 8-bit literal (has 'i8' suffix)
+	is8Bit := strings.HasSuffix(lex.Str, "i8")
+
 	str := lex.Str
 	if is64Bit {
 		str, _ = strings.CutSuffix(lex.Str, "l")
+	} else if is8Bit {
+		str, _ = strings.CutSuffix(lex.Str, "i8")
 	}
 
 	// Determine the base
@@ -746,6 +751,13 @@ func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 			return nil, fmt.Errorf("%s: could not parse 64-bit integer: %w", lex.Loc, err)
 		}
 		literal = ast.NewInt64Literal(val)
+	} else if is8Bit {
+		// int8 literal
+		val, err := strconv.ParseInt(str, base, 8)
+		if err != nil {
+			return nil, fmt.Errorf("%s: could not parse 8-bit integer: %w", lex.Loc, err)
+		}
+		literal = ast.NewInt8Literal(int8(val))
 	} else {
 		// int literal (32 bit)
 		val, err := strconv.ParseInt(str, base, 32)

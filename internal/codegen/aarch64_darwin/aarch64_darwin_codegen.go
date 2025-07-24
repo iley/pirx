@@ -205,9 +205,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 	}
 
 	if assign.Value.Variable != "" {
-		generateMemoryCopy(cc, assign.Value, 0, assign.Size, func(regIndex, regSize, offset int) {
-			generateStoreToLocalWithOffset(cc, regIndex, regSize, assign.Target, offset)
-		})
+		generateMemoryCopy(cc, assign.Value, 0, assign.Size, "sp", int64(cc.locals[assign.Target]))
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 4 {
@@ -246,9 +244,7 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error 
 	}
 	if assign.Value.Variable != "" {
 		// Variable to variable.
-		generateMemoryCopy(cc, assign.Value, 0, assign.Size, func(regIndex, regSize, offset int) {
-			generateStoreByAddr(cc, regIndex, regSize, assign.Target, offset)
-		})
+		generateMemoryCopyByAddr(cc, assign.Value, 0, assign.Size, assign.Target)
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 4 {
@@ -445,9 +441,7 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 func generateReturn(cc *CodegenContext, ret ir.Return) {
 	// Copy the return value into the slot provided by the caller via x19.
 	if ret.Value != nil {
-		generateMemoryCopy(cc, *ret.Value, 0, ret.Size, func(regIndex, regSize, offset int) {
-			generateRegisterStore(cc, regIndex, regSize, "x19", offset)
-		})
+		generateMemoryCopy(cc, *ret.Value, 0, ret.Size, "x19", 0)
 	}
 
 	fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
@@ -590,21 +584,33 @@ func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Ar
 	fmt.Fprintf(cc.output, "  str %s, [%s]\n", srcReg, addrReg)
 }
 
-// generateMemoryCopy generates code for copying memory from source to destination in chunks.
-// Uses the given register for the intermediate value and calls storeFunc for each chunk.
-// TODO: Can we simplify generateMemoryCopy to not require a function argument?
-type storeFunc func(regIndex, regSize, offset int)
-
-func generateMemoryCopy(cc *CodegenContext, source ir.Arg, regIndex int, size int, storeFunc storeFunc) {
+// generateMemoryCopy generates code for copying memory from source to a base register + offset.
+func generateMemoryCopy(cc *CodegenContext, source ir.Arg, regIndex int, size int, baseReg string, baseOffset int64) {
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
 			generateRegisterLoadWithOffset(cc, regIndex, 8, source, offset)
-			storeFunc(regIndex, 8, offset)
+			generateRegisterStore(cc, regIndex, 8, baseReg, int(baseOffset)+offset)
 			offset += 8
 		} else {
 			generateRegisterLoadWithOffset(cc, regIndex, 4, source, offset)
-			storeFunc(regIndex, 4, offset)
+			generateRegisterStore(cc, regIndex, 4, baseReg, int(baseOffset)+offset)
+			offset += 4
+		}
+	}
+}
+
+// generateMemoryCopyByAddr generates code for copying memory from source to an address.
+func generateMemoryCopyByAddr(cc *CodegenContext, source ir.Arg, regIndex int, size int, target ir.Arg) {
+	offset := 0
+	for offset < size {
+		if size-offset >= 8 {
+			generateRegisterLoadWithOffset(cc, regIndex, 8, source, offset)
+			generateStoreByAddr(cc, regIndex, 8, target, offset)
+			offset += 8
+		} else {
+			generateRegisterLoadWithOffset(cc, regIndex, 4, source, offset)
+			generateStoreByAddr(cc, regIndex, 4, target, offset)
 			offset += 4
 		}
 	}

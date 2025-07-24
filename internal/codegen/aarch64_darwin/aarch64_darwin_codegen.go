@@ -205,19 +205,9 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 	}
 
 	if assign.Value.Variable != "" {
-		offset := 0
-		// TODO: Consider falling back to memcpy() for really large blocks.
-		for offset < assign.Size {
-			if assign.Size-offset >= 8 {
-				generateRegisterLoadWithOffset(cc, 0, 8, assign.Value, offset)
-				generateStoreToLocalWithOffset(cc, 0, 8, assign.Target, offset)
-				offset += 8
-			} else {
-				generateRegisterLoadWithOffset(cc, 0, 4, assign.Value, offset)
-				generateStoreToLocalWithOffset(cc, 0, 4, assign.Target, offset)
-				offset += 4
-			}
-		}
+		generateMemoryCopy(cc, assign.Value, 0, assign.Size, func(regIndex, regSize, offset int) {
+			generateStoreToLocalWithOffset(cc, regIndex, regSize, assign.Target, offset)
+		})
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 4 {
@@ -256,18 +246,9 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error 
 	}
 	if assign.Value.Variable != "" {
 		// Variable to variable.
-		offset := 0
-		for offset < assign.Size {
-			if assign.Size-offset >= 8 {
-				generateRegisterLoad(cc, 0, 8, assign.Value)
-				generateStoreByAddr(cc, 0, 8, assign.Target, offset)
-				offset += 8
-			} else {
-				generateRegisterLoad(cc, 0, 4, assign.Value)
-				generateStoreByAddr(cc, 0, 4, assign.Target, offset)
-				offset += 4
-			}
-		}
+		generateMemoryCopy(cc, assign.Value, 0, assign.Size, func(regIndex, regSize, offset int) {
+			generateStoreByAddr(cc, regIndex, regSize, assign.Target, offset)
+		})
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		if assign.Size != 4 {
@@ -464,25 +445,9 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 func generateReturn(cc *CodegenContext, ret ir.Return) {
 	// Copy the return value into the slot provided by the caller via x19.
 	if ret.Value != nil {
-		// TODO: Can we factor out the adhoc memcopy that we're doing in multiple places?
-		offset := 0
-		for offset < ret.Size {
-			if ret.Size-offset >= 8 {
-				generateRegisterLoadWithOffset(cc, 0, 8, *ret.Value, offset)
-				fmt.Fprintf(cc.output, "  str x0, [x19]\n")
-				if offset+8 < ret.Size {
-					fmt.Fprintf(cc.output, "  add x19, x19, #%d\n", 8)
-				}
-				offset += 8
-			} else {
-				generateRegisterLoadWithOffset(cc, 0, 4, *ret.Value, offset)
-				fmt.Fprintf(cc.output, "  str w0, [x19]\n")
-				if offset+4 < ret.Size {
-					fmt.Fprintf(cc.output, "  add x19, x19, #%d\n", 8)
-				}
-				offset += 4
-			}
-		}
+		generateMemoryCopy(cc, *ret.Value, 0, ret.Size, func(regIndex, regSize, offset int) {
+			generateRegisterStore(cc, regIndex, regSize, "x19", offset)
+		})
 	}
 
 	fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
@@ -623,6 +588,26 @@ func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Ar
 		fmt.Fprintf(cc.output, "  add %s, %s, #%d\n", addrReg, addrReg, offset)
 	}
 	fmt.Fprintf(cc.output, "  str %s, [%s]\n", srcReg, addrReg)
+}
+
+// generateMemoryCopy generates code for copying memory from source to destination in chunks.
+// Uses the given register for the intermediate value and calls storeFunc for each chunk.
+// TODO: Can we simplify generateMemoryCopy to not require a function argument?
+type storeFunc func(regIndex, regSize, offset int)
+
+func generateMemoryCopy(cc *CodegenContext, source ir.Arg, regIndex int, size int, storeFunc storeFunc) {
+	offset := 0
+	for offset < size {
+		if size-offset >= 8 {
+			generateRegisterLoadWithOffset(cc, regIndex, 8, source, offset)
+			storeFunc(regIndex, 8, offset)
+			offset += 8
+		} else {
+			generateRegisterLoadWithOffset(cc, regIndex, 4, source, offset)
+			storeFunc(regIndex, 4, offset)
+			offset += 4
+		}
+	}
 }
 
 func generateLiteralLoad(cc *CodegenContext, reg string, val int64) {

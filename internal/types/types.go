@@ -186,7 +186,8 @@ func (tt *TypeTable) GetStruct(typ ast.Type) (*StructDescriptor, error) {
 
 func declarePrimitiveTypes(types map[string]TypeDescriptor) {
 	types["int"] = &PrimitiveTypeDescriptor{"int", 4}
-	types["int64"] = &PrimitiveTypeDescriptor{"int", 8}
-	types["bool"] = &PrimitiveTypeDescriptor{"int", 4}
-	types["string"] = &PrimitiveTypeDescriptor{"int", 8}
+	types["int8"] = &PrimitiveTypeDescriptor{"int8", 1}
+	types["int64"] = &PrimitiveTypeDescriptor{"int64", 8}
+	types["bool"] = &PrimitiveTypeDescriptor{"bool", 4}
+	types["string"] = &PrimitiveTypeDescriptor{"string", 8}
 }

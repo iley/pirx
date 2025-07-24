@@ -144,6 +144,8 @@ func (c *TypeChecker) checkLiteral(lit *ast.Literal) ast.Type {
 		return ast.Int
 	} else if lit.Int64Value != nil {
 		return ast.Int64
+	} else if lit.Int8Value != nil {
+		return ast.Int8
 	} else if lit.BoolValue != nil {
 		return ast.Bool
 	} else if lit.NullValue {

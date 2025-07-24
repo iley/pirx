@@ -253,6 +253,9 @@ func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
 	if literal.IntValue != nil {
 		intValue := int64(*literal.IntValue)
 		return []Op{}, Arg{LiteralInt: &intValue}, 4
+	} else if literal.Int8Value != nil {
+		intValue := int64(*literal.Int8Value)
+		return []Op{}, Arg{LiteralInt: &intValue}, 1
 	} else if literal.Int64Value != nil {
 		return []Op{}, Arg{LiteralInt: literal.Int64Value}, 8
 	} else if literal.StringValue != nil {

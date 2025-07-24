@@ -66,7 +66,7 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 		},
 		{
 			name: "program with both extern and regular functions",
-			src:  `extern func printf(format: string): int; func main() {}`,
+			src:  `extern func printf(format: string): int; extern func main() {}`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -249,12 +249,12 @@ func TestParseProgram_ExternFunction_Error(t *testing.T) {
 		{
 			name:          "extern func missing semicolon",
 			src:           `extern func atoi(x: string): int`,
-			expectedError: "expected ';' after extern function declaration",
+			expectedError: "expected '{' or ';' after function signature",
 		},
 		{
 			name:          "extern void func missing semicolon",
 			src:           `extern func exit(status: int)`,
-			expectedError: "expected ';' after extern function declaration",
+			expectedError: "expected '{' or ';' after function signature",
 		},
 	}
 
@@ -268,6 +268,127 @@ func TestParseProgram_ExternFunction_Error(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tc.expectedError) {
 				t.Errorf("ParseProgram() error = %q, want error containing %q", err.Error(), tc.expectedError)
+			}
+		})
+	}
+}
+
+func TestParseProgram_NewFunctionSyntax(t *testing.T) {
+	testCases := []struct {
+		name     string
+		src      string
+		expected *ast.Program
+	}{
+		{
+			name: "extern function with implementation",
+			src:  `extern func add(a: int, b: int): int { return a + b; }`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "add",
+						Args: []ast.Arg{
+							{Name: "a", Type: ast.Int},
+							{Name: "b", Type: ast.Int},
+						},
+						Body: &ast.Block{
+							Statements: []ast.Statement{
+								&ast.ReturnStatement{
+									Value: &ast.BinaryOperation{
+										Left:     &ast.VariableReference{Name: "a"},
+										Operator: "+",
+										Right:    &ast.VariableReference{Name: "b"},
+									},
+								},
+							},
+						},
+						ReturnType: ast.Int,
+						External:   true,
+					},
+				},
+			},
+		},
+		{
+			name: "function declaration without implementation",
+			src:  `func printf(format: string): int;`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "printf",
+						Args: []ast.Arg{
+							{Name: "format", Type: ast.String},
+						},
+						Body:       nil,
+						ReturnType: ast.Int,
+						External:   false,
+					},
+				},
+			},
+		},
+		{
+			name: "extern function declaration without implementation",
+			src:  `extern func malloc(size: int): int;`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "malloc",
+						Args: []ast.Arg{
+							{Name: "size", Type: ast.Int},
+						},
+						Body:       nil,
+						ReturnType: ast.Int,
+						External:   true,
+					},
+				},
+			},
+		},
+		{
+			name: "regular function with implementation",
+			src:  `func helper() { return; }`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "helper",
+						Args: []ast.Arg{},
+						Body: &ast.Block{
+							Statements: []ast.Statement{
+								&ast.ReturnStatement{Value: nil},
+							},
+						},
+						ReturnType: nil,
+						External:   false,
+					},
+				},
+			},
+		},
+		{
+			name: "main function with explicit extern",
+			src:  `extern func main() {}`,
+			expected: &ast.Program{
+				Functions: []ast.Function{
+					{
+						Name: "main",
+						Args: []ast.Arg{},
+						Body: &ast.Block{
+							Statements: []ast.Statement{},
+						},
+						ReturnType: nil,
+						External:   true,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lex := lexer.New(strings.NewReader(tc.src), "test.pirx")
+			parser := New(lex)
+			prog, err := parser.ParseProgram()
+			if err != nil {
+				t.Fatalf("ParseProgram() error = %v", err)
+			}
+			if !compareASTIgnoreLocation(prog, tc.expected) {
+				t.Errorf("ParseProgram() got = %#v, want %#v", prog, tc.expected)
 			}
 		})
 	}

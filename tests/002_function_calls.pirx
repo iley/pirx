@@ -11,7 +11,7 @@ func second(x: int, y: int) : int {
     return y;
 }
 
-func main(): int {
+extern func main(): int {
     var x: int;
     var y: int;
 

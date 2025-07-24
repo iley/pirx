@@ -79,7 +79,7 @@ func TestParseProgram(t *testing.T) {
 	}{
 		{
 			name: "trivial program",
-			src:  `func main() {}`,
+			src:  `extern func main() {}`,
 			expected: &ast.Program{
 				Loc: ast.Location{Line: 1, Col: 1},
 				Functions: []ast.Function{
@@ -95,7 +95,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with var declaration",
-			src:  `func main() { var x: int; }`,
+			src:  `extern func main() { var x: int; }`,
 			expected: &ast.Program{
 				Loc: ast.Location{Line: 1, Col: 1},
 				Functions: []ast.Function{
@@ -132,7 +132,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with expression statements",
-			src:  `func main() { foo(1, "two"); }`,
+			src:  `extern func main() { foo(1, "two"); }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -158,7 +158,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with multiple statements",
-			src:  `func main() { var x: int; var y: string; }`,
+			src:  `extern func main() { var x: int; var y: string; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -177,7 +177,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "program with two empty functions",
-			src:  `func main() {} func helper() {}`,
+			src:  `extern func main() {} func helper() {}`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -196,7 +196,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with return without value",
-			src:  `func main() { return; }`,
+			src:  `extern func main() { return; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -214,7 +214,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with return with integer value",
-			src:  `func main() { return 42; }`,
+			src:  `extern func main() { return 42; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -232,7 +232,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with return with string value",
-			src:  `func main() { return "hello"; }`,
+			src:  `extern func main() { return "hello"; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -252,7 +252,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with return with function call",
-			src:  `func main() { return foo(); }`,
+			src:  `extern func main() { return foo(); }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -275,7 +275,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with multiple return statements",
-			src:  `func main() { return 1; return "two"; return; }`,
+			src:  `extern func main() { return 1; return "two"; return; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -301,7 +301,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with mixed statements including return",
-			src:  `func main() { var x: int; return x; }`,
+			src:  `extern func main() { var x: int; return x; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -327,7 +327,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with break statement",
-			src:  `func main() { break; }`,
+			src:  `extern func main() { break; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -345,7 +345,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with multiple statements including break",
-			src:  `func main() { var x: int; break; return x; }`,
+			src:  `extern func main() { var x: int; break; return x; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -372,7 +372,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with continue statement",
-			src:  `func main() { continue; }`,
+			src:  `extern func main() { continue; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -390,7 +390,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "function with multiple statements including continue",
-			src:  `func main() { var x: int; continue; return x; }`,
+			src:  `extern func main() { var x: int; continue; return x; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -480,7 +480,7 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			name: "struct and function together",
-			src:  `struct Point { x: int; y: int; } func main() { var p: Point; }`,
+			src:  `struct Point { x: int; y: int; } extern func main() { var p: Point; }`,
 			expected: &ast.Program{
 				TypeDeclarations: []ast.TypeDeclaration{
 					&ast.StructDeclaration{
@@ -591,7 +591,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 		},
 		{
 			name: "variable declaration with pointer type",
-			src:  `func main() { var ptr: *int; }`,
+			src:  `extern func main() { var ptr: *int; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -609,7 +609,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 		},
 		{
 			name: "variable declaration with pointer to pointer type",
-			src:  `func main() { var ptr: **string; }`,
+			src:  `extern func main() { var ptr: **string; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -727,33 +727,33 @@ func TestParseProgram_Error(t *testing.T) {
 		},
 		{
 			name:          "missing opening parenthesis",
-			src:           `func main) {}`,
-			expectedError: "1:10: expected '('",
+			src:           `extern func main) {}`,
+			expectedError: "1:17: expected '('",
 		},
 		{
 			name:          "missing closing parenthesis in function call",
-			src:           `func main() { foo(1 }`,
-			expectedError: "1:21: expected ',' or ')'",
+			src:           `extern func main() { foo(1 }`,
+			expectedError: "1:28: expected ',' or ')'",
 		},
 		{
 			name:          "missing closing brace",
-			src:           `func main() {`,
+			src:           `extern func main() {`,
 			expectedError: "unexpected EOF",
 		},
 		{
 			name:          "incomplete var declaration",
-			src:           `func main() { var x; }`,
-			expectedError: "1:20: expected ':' after variable name",
+			src:           `extern func main() { var x; }`,
+			expectedError: "1:27: expected ':' after variable name",
 		},
 		{
 			name:          "missing semicolon",
-			src:           `func main() { var x: int }`,
-			expectedError: "1:26: expected ';' after statement",
+			src:           `extern func main() { var x: int }`,
+			expectedError: "1:33: expected ';' after statement",
 		},
 		{
 			name:          "missing colon in var declaration",
-			src:           `func main() { var x int; }`,
-			expectedError: "1:21: expected ':' after variable name",
+			src:           `extern func main() { var x int; }`,
+			expectedError: "1:28: expected ':' after variable name",
 		},
 		{
 			name:          "missing struct name",
@@ -805,7 +805,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 	}{
 		{
 			name: "function call with no arguments",
-			src:  `func main() { foo(); }`,
+			src:  `extern func main() { foo(); }`,
 			expected: &ast.FunctionCall{
 				FunctionName: "foo",
 				Args:         []ast.Expression{},
@@ -813,7 +813,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 		},
 		{
 			name: "function call with single integer argument",
-			src:  `func main() { foo(42); }`,
+			src:  `extern func main() { foo(42); }`,
 			expected: &ast.FunctionCall{
 				FunctionName: "foo",
 				Args: []ast.Expression{
@@ -823,7 +823,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 		},
 		{
 			name: "function call with single string argument",
-			src:  `func main() { foo("hello"); }`,
+			src:  `extern func main() { foo("hello"); }`,
 			expected: &ast.FunctionCall{
 				FunctionName: "foo",
 				Args: []ast.Expression{
@@ -833,7 +833,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 		},
 		{
 			name: "function call with multiple arguments",
-			src:  `func main() { foo(1, "two", 3); }`,
+			src:  `extern func main() { foo(1, "two", 3); }`,
 			expected: &ast.FunctionCall{
 				FunctionName: "foo",
 				Args: []ast.Expression{
@@ -845,7 +845,7 @@ func TestParseExpression_FunctionCall(t *testing.T) {
 		},
 		{
 			name: "nested function calls",
-			src:  `func main() { foo(bar()); }`,
+			src:  `extern func main() { foo(bar()); }`,
 			expected: &ast.FunctionCall{
 				FunctionName: "foo",
 				Args: []ast.Expression{
@@ -895,57 +895,57 @@ func TestParseExpression_IntegerLiteral(t *testing.T) {
 	}{
 		{
 			name:     "zero",
-			src:      `func main() { 0; }`,
+			src:      `extern func main() { 0; }`,
 			expected: ast.NewIntLiteral(0),
 		},
 		{
 			name:     "positive integer",
-			src:      `func main() { 42; }`,
+			src:      `extern func main() { 42; }`,
 			expected: ast.NewIntLiteral(42),
 		},
 		{
 			name:     "large integer",
-			src:      `func main() { 999999; }`,
+			src:      `extern func main() { 999999; }`,
 			expected: ast.NewIntLiteral(999999),
 		},
 		{
 			name:     "single digit",
-			src:      `func main() { 7; }`,
+			src:      `extern func main() { 7; }`,
 			expected: ast.NewIntLiteral(7),
 		},
 		{
 			name:     "hexadecimal lowercase",
-			src:      `func main() { 0x42; }`,
+			src:      `extern func main() { 0x42; }`,
 			expected: ast.NewIntLiteral(0x42),
 		},
 		{
 			name:     "hexadecimal uppercase",
-			src:      `func main() { 0X42; }`,
+			src:      `extern func main() { 0X42; }`,
 			expected: ast.NewIntLiteral(0x42),
 		},
 		{
 			name:     "hexadecimal with letters",
-			src:      `func main() { 0xdeadl; }`,
+			src:      `extern func main() { 0xdeadl; }`,
 			expected: ast.NewInt64Literal(0xdead),
 		},
 		{
 			name:     "hexadecimal mixed case",
-			src:      `func main() { 0XaBc; }`,
+			src:      `extern func main() { 0XaBc; }`,
 			expected: ast.NewIntLiteral(0xaBc),
 		},
 		{
 			name:     "hexadecimal zero",
-			src:      `func main() { 0x0; }`,
+			src:      `extern func main() { 0x0; }`,
 			expected: ast.NewIntLiteral(0x0),
 		},
 		{
 			name:     "hexadecimal 64-bit",
-			src:      `func main() { 0x42l; }`,
+			src:      `extern func main() { 0x42l; }`,
 			expected: ast.NewInt64Literal(0x42),
 		},
 		{
 			name:     "hexadecimal 64-bit large",
-			src:      `func main() { 0xdeadbeefl; }`,
+			src:      `extern func main() { 0xdeadbeefl; }`,
 			expected: ast.NewInt64Literal(0xdeadbeef),
 		},
 	}
@@ -987,27 +987,27 @@ func TestParseExpression_StringLiteral(t *testing.T) {
 	}{
 		{
 			name:     "empty string",
-			src:      `func main() { ""; }`,
+			src:      `extern func main() { ""; }`,
 			expected: ast.NewStringLiteral(""),
 		},
 		{
 			name:     "simple string",
-			src:      `func main() { "hello"; }`,
+			src:      `extern func main() { "hello"; }`,
 			expected: ast.NewStringLiteral("hello"),
 		},
 		{
 			name:     "string with spaces",
-			src:      `func main() { "hello world"; }`,
+			src:      `extern func main() { "hello world"; }`,
 			expected: ast.NewStringLiteral("hello world"),
 		},
 		{
 			name:     "string with numbers",
-			src:      `func main() { "abc123"; }`,
+			src:      `extern func main() { "abc123"; }`,
 			expected: ast.NewStringLiteral("abc123"),
 		},
 		{
 			name:     "string with special characters",
-			src:      `func main() { "hello, world!"; }`,
+			src:      `extern func main() { "hello, world!"; }`,
 			expected: ast.NewStringLiteral("hello, world!"),
 		},
 	}
@@ -1049,27 +1049,27 @@ func TestParseExpression_Error(t *testing.T) {
 	}{
 		{
 			name:          "function call with malformed argument",
-			src:           `func main() { foo(123abc); }`,
+			src:           `extern func main() { foo(123abc); }`,
 			expectedError: "expected ',' or ')'",
 		},
 		{
 			name:          "function call missing closing parenthesis",
-			src:           `func main() { foo(1; }`,
+			src:           `extern func main() { foo(1; }`,
 			expectedError: "expected ',' or ')'",
 		},
 		{
 			name:          "function call with invalid comma placement",
-			src:           `func main() { foo(,1); }`,
+			src:           `extern func main() { foo(,1); }`,
 			expectedError: "unknown expression",
 		},
 		{
 			name:          "function call missing opening parenthesis",
-			src:           `func main() { foo 1); }`,
+			src:           `extern func main() { foo 1); }`,
 			expectedError: "expected ';' after statement",
 		},
 		{
 			name:          "empty expression",
-			src:           `func main() { ; }`,
+			src:           `extern func main() { ; }`,
 			expectedError: "unknown expression",
 		},
 	}
@@ -1097,7 +1097,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 	}{
 		{
 			name: "assignment with integer literal",
-			src:  `func main() { x = 42; }`,
+			src:  `extern func main() { x = 42; }`,
 			expected: &ast.Assignment{
 				Target: &ast.VariableLValue{Name: "x"},
 				Value:  ast.NewIntLiteral(42),
@@ -1105,7 +1105,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "assignment with string literal",
-			src:  `func main() { name = "hello"; }`,
+			src:  `extern func main() { name = "hello"; }`,
 			expected: &ast.Assignment{
 				Target: &ast.VariableLValue{Name: "name"},
 				Value:  ast.NewStringLiteral("hello"),
@@ -1113,7 +1113,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "assignment with function call",
-			src:  `func main() { result = foo(); }`,
+			src:  `extern func main() { result = foo(); }`,
 			expected: &ast.Assignment{
 				Target: &ast.VariableLValue{Name: "result"},
 				Value: &ast.FunctionCall{
@@ -1124,7 +1124,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "assignment with function call with args",
-			src:  `func main() { result = add(1, 2); }`,
+			src:  `extern func main() { result = add(1, 2); }`,
 			expected: &ast.Assignment{
 				Target: &ast.VariableLValue{Name: "result"},
 				Value: &ast.FunctionCall{
@@ -1138,7 +1138,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "assignment with zero",
-			src:  `func main() { counter = 0; }`,
+			src:  `extern func main() { counter = 0; }`,
 			expected: &ast.Assignment{
 				Target: &ast.VariableLValue{Name: "counter"},
 				Value:  ast.NewIntLiteral(0),
@@ -1146,7 +1146,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "assignment with empty string",
-			src:  `func main() { text = ""; }`,
+			src:  `extern func main() { text = ""; }`,
 			expected: &ast.Assignment{
 				Target: &ast.VariableLValue{Name: "text"},
 				Value:  ast.NewStringLiteral(""),
@@ -1154,7 +1154,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "chained assignment",
-			src:  `func main() { x = y = 1; }`,
+			src:  `extern func main() { x = y = 1; }`,
 			expected: &ast.Assignment{
 				Target: &ast.VariableLValue{Name: "x"},
 				Value: &ast.Assignment{
@@ -1165,7 +1165,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "assignment with variable",
-			src:  `func main() { x = y; }`,
+			src:  `extern func main() { x = y; }`,
 			expected: &ast.Assignment{
 				Target: &ast.VariableLValue{Name: "x"},
 				Value: &ast.VariableReference{
@@ -1175,7 +1175,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "pointer dereference assignment",
-			src:  `func main() { *p = 42; }`,
+			src:  `extern func main() { *p = 42; }`,
 			expected: &ast.Assignment{
 				Target: &ast.DereferenceLValue{
 					Expression: &ast.VariableReference{Name: "p"},
@@ -1185,7 +1185,7 @@ func TestParseExpression_Assignment(t *testing.T) {
 		},
 		{
 			name: "complex pointer dereference assignment",
-			src:  `func main() { *(ptr + 1) = value; }`,
+			src:  `extern func main() { *(ptr + 1) = value; }`,
 			expected: &ast.Assignment{
 				Target: &ast.DereferenceLValue{
 					Expression: &ast.BinaryOperation{
@@ -1236,17 +1236,17 @@ func TestParseExpression_Assignment_Error(t *testing.T) {
 	}{
 		{
 			name:          "assignment missing equals sign",
-			src:           `func main() { x 42; }`,
+			src:           `extern func main() { x 42; }`,
 			expectedError: "expected ';' after statement",
 		},
 		{
 			name:          "assignment missing value",
-			src:           `func main() { x = ; }`,
+			src:           `extern func main() { x = ; }`,
 			expectedError: "unknown expression",
 		},
 		{
 			name:          "assignment with invalid variable name",
-			src:           `func main() { 123 = 42; }`,
+			src:           `extern func main() { 123 = 42; }`,
 			expectedError: "invalid assignment target",
 		},
 	}
@@ -1274,17 +1274,17 @@ func TestParseExpression_AddressOf_Error(t *testing.T) {
 	}{
 		{
 			name:          "address-of with function call",
-			src:           `func main() { &foo(); }`,
+			src:           `extern func main() { &foo(); }`,
 			expectedError: "expected ';' after statement",
 		},
 		{
 			name:          "address-of with literal",
-			src:           `func main() { &42; }`,
+			src:           `extern func main() { &42; }`,
 			expectedError: "expected variable name",
 		},
 		{
 			name:          "address-of with string literal",
-			src:           `func main() { &"hello"; }`,
+			src:           `extern func main() { &"hello"; }`,
 			expectedError: "expected variable name",
 		},
 	}
@@ -1972,7 +1972,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 	}{
 		{
 			name: "simple if statement without else",
-			src:  `func main() { if x == 5 { return; } }`,
+			src:  `extern func main() { if x == 5 { return; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2002,7 +2002,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 		},
 		{
 			name: "if statement with else",
-			src:  `func main() { if x > 0 { y = 1; } else { y = 0; } }`,
+			src:  `extern func main() { if x > 0 { y = 1; } else { y = 0; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2046,7 +2046,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 		},
 		{
 			name: "if statement with complex boolean condition",
-			src:  `func main() { if (x > 0) && (y < 10) { return x; } }`,
+			src:  `extern func main() { if (x > 0) && (y < 10) { return x; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2086,7 +2086,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 		},
 		{
 			name: "if statement with unary not condition",
-			src:  `func main() { if !flag { return; } }`,
+			src:  `extern func main() { if !flag { return; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2115,7 +2115,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 		},
 		{
 			name: "nested if statements",
-			src:  `func main() { if x > 0 { if y > 0 { return 1; } } }`,
+			src:  `extern func main() { if x > 0 { if y > 0 { return 1; } } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2181,23 +2181,23 @@ func TestParseStatement_IfStatement_Error(t *testing.T) {
 	}{
 		{
 			name: "if without condition",
-			src:  `func main() { if { return; } }`,
+			src:  `extern func main() { if { return; } }`,
 		},
 		{
 			name: "if without opening brace",
-			src:  `func main() { if x > 0  return; } }`,
+			src:  `extern func main() { if x > 0  return; } }`,
 		},
 		{
 			name: "if without closing brace",
-			src:  `func main() { if x > 0 { return; }`,
+			src:  `extern func main() { if x > 0 { return; }`,
 		},
 		{
 			name: "else without opening brace",
-			src:  `func main() { if x > 0 { return; } else  return; } }`,
+			src:  `extern func main() { if x > 0 { return; } else  return; } }`,
 		},
 		{
 			name: "else without closing brace",
-			src:  `func main() { if x > 0 { return; } else { return; }`,
+			src:  `extern func main() { if x > 0 { return; } else { return; }`,
 		},
 	}
 
@@ -2221,7 +2221,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 	}{
 		{
 			name: "simple else if",
-			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } }`,
+			src:  `extern func main() { if x == 1 { return 1; } else if x == 2 { return 2; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2271,7 +2271,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 		},
 		{
 			name: "else if with final else",
-			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else { return 0; } }`,
+			src:  `extern func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else { return 0; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2327,7 +2327,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 		},
 		{
 			name: "multiple else if chain",
-			src:  `func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else if x == 3 { return 3; } else { return 0; } }`,
+			src:  `extern func main() { if x == 1 { return 1; } else if x == 2 { return 2; } else if x == 3 { return 3; } else { return 0; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2401,7 +2401,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 		},
 		{
 			name: "else if with complex condition",
-			src:  `func main() { if x > 10 { return 1; } else if (x > 5) && (x <= 10) { return 2; } else { return 0; } }`,
+			src:  `extern func main() { if x > 10 { return 1; } else if (x > 5) && (x <= 10) { return 2; } else { return 0; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2488,7 +2488,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 	}{
 		{
 			name: "simple while loop",
-			src:  `func main() { while x > 0 { x = x - 1; } }`,
+			src:  `extern func main() { while x > 0 { x = x - 1; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2526,7 +2526,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 		},
 		{
 			name: "while loop with complex condition",
-			src:  `func main() { while (x > 0) && (y < 10) { printf("loop\n"); } }`,
+			src:  `extern func main() { while (x > 0) && (y < 10) { printf("loop\n"); } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2570,7 +2570,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 		},
 		{
 			name: "while loop with unary not condition",
-			src:  `func main() { while !done { done = check(); } }`,
+			src:  `extern func main() { while !done { done = check(); } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2606,7 +2606,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 		},
 		{
 			name: "nested while loops",
-			src:  `func main() { while x > 0 { while y > 0 { y = y - 1; } x = x - 1; } }`,
+			src:  `extern func main() { while x > 0 { while y > 0 { y = y - 1; } x = x - 1; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2665,7 +2665,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 		},
 		{
 			name: "while loop with multiple statements in body",
-			src:  `func main() { while i < 10 { printf("i = %d\n", i); i = i + 1; } }`,
+			src:  `extern func main() { while i < 10 { printf("i = %d\n", i); i = i + 1; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2734,15 +2734,15 @@ func TestParseStatement_WhileStatement_Error(t *testing.T) {
 	}{
 		{
 			name: "while without condition",
-			src:  `func main() { while { printf("loop\n"); } }`,
+			src:  `extern func main() { while { printf("loop\n"); } }`,
 		},
 		{
 			name: "while without opening brace",
-			src:  `func main() { while x > 0  printf("loop\n"); } }`,
+			src:  `extern func main() { while x > 0  printf("loop\n"); } }`,
 		},
 		{
 			name: "while without closing brace",
-			src:  `func main() { while x > 0 { printf("loop\n"); }`,
+			src:  `extern func main() { while x > 0 { printf("loop\n"); }`,
 		},
 	}
 
@@ -2766,7 +2766,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 	}{
 		{
 			name: "simple break statement",
-			src:  `func main() { break; }`,
+			src:  `extern func main() { break; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2784,7 +2784,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 		},
 		{
 			name: "break statement in while loop",
-			src:  `func main() { while x > 0 { break; } }`,
+			src:  `extern func main() { while x > 0 { break; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2813,7 +2813,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 		},
 		{
 			name: "break statement with other statements",
-			src:  `func main() { while x > 0 { printf("before break\n"); break; printf("after break\n"); } }`,
+			src:  `extern func main() { while x > 0 { printf("before break\n"); break; printf("after break\n"); } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2858,7 +2858,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 		},
 		{
 			name: "multiple break statements",
-			src:  `func main() { while x > 0 { if x == 5 { break; } break; } }`,
+			src:  `extern func main() { while x > 0 { if x == 5 { break; } break; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2923,7 +2923,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 	}{
 		{
 			name: "simple continue statement",
-			src:  `func main() { continue; }`,
+			src:  `extern func main() { continue; }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2941,7 +2941,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 		},
 		{
 			name: "continue statement in while loop",
-			src:  `func main() { while x > 0 { continue; } }`,
+			src:  `extern func main() { while x > 0 { continue; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -2970,7 +2970,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 		},
 		{
 			name: "continue statement with other statements",
-			src:  `func main() { while x > 0 { printf("before continue\n"); continue; printf("after continue\n"); } }`,
+			src:  `extern func main() { while x > 0 { printf("before continue\n"); continue; printf("after continue\n"); } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -3015,7 +3015,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 		},
 		{
 			name: "continue and break statements together",
-			src:  `func main() { while x > 0 { if x == 5 { continue; } break; } }`,
+			src:  `extern func main() { while x > 0 { if x == 5 { continue; } break; } }`,
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
@@ -3073,7 +3073,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 }
 
 func TestParseExpression_FieldAccess_Simple(t *testing.T) {
-	src := `func main() { x.field; }`
+	src := `extern func main() { x.field; }`
 	expected := &ast.FieldAccess{
 		Object:    &ast.VariableReference{Name: "x"},
 		FieldName: "field",
@@ -3101,7 +3101,7 @@ func TestParseExpression_FieldAccess_Simple(t *testing.T) {
 }
 
 func TestParseExpression_FieldAccess_Nested(t *testing.T) {
-	src := `func main() { x.field.subfield; }`
+	src := `extern func main() { x.field.subfield; }`
 	expected := &ast.FieldAccess{
 		Object: &ast.FieldAccess{
 			Object:    &ast.VariableReference{Name: "x"},
@@ -3132,7 +3132,7 @@ func TestParseExpression_FieldAccess_Nested(t *testing.T) {
 }
 
 func TestParseExpression_FieldAccess_InBinaryOperation(t *testing.T) {
-	src := `func main() { x.field + 1; }`
+	src := `extern func main() { x.field + 1; }`
 	expected := &ast.BinaryOperation{
 		Left: &ast.FieldAccess{
 			Object:    &ast.VariableReference{Name: "x"},
@@ -3164,7 +3164,7 @@ func TestParseExpression_FieldAccess_InBinaryOperation(t *testing.T) {
 }
 
 func TestParseExpression_FieldAccess_Assignment(t *testing.T) {
-	src := `func main() { x.field = 42; }`
+	src := `extern func main() { x.field = 42; }`
 	expected := &ast.Assignment{
 		Target: &ast.FieldLValue{
 			Object:    &ast.VariableReference{Name: "x"},
@@ -3195,7 +3195,7 @@ func TestParseExpression_FieldAccess_Assignment(t *testing.T) {
 }
 
 func TestParseExpression_FieldAccess_NestedAssignment(t *testing.T) {
-	src := `func main() { x.field.subfield = 42; }`
+	src := `extern func main() { x.field.subfield = 42; }`
 	expected := &ast.Assignment{
 		Target: &ast.FieldLValue{
 			Object: &ast.FieldLValue{
@@ -3228,7 +3228,7 @@ func TestParseExpression_FieldAccess_NestedAssignment(t *testing.T) {
 	}
 }
 func TestParseExpression_FieldAccess_Error_MissingFieldName(t *testing.T) {
-	src := `func main() { x.; }`
+	src := `extern func main() { x.; }`
 	expectedError := "expected field name after '.'"
 
 	lex := lexer.New(strings.NewReader(src), "test.pirx")
@@ -3243,7 +3243,7 @@ func TestParseExpression_FieldAccess_Error_MissingFieldName(t *testing.T) {
 }
 
 func TestParseExpression_FieldAccess_Error_NumberAsFieldName(t *testing.T) {
-	src := `func main() { x.123; }`
+	src := `extern func main() { x.123; }`
 	expectedError := "expected field name after '.'"
 
 	lex := lexer.New(strings.NewReader(src), "test.pirx")
@@ -3265,21 +3265,21 @@ func TestParseExpression_NewOperator(t *testing.T) {
 	}{
 		{
 			name: "new with primitive type",
-			src:  `func main() { new(int); }`,
+			src:  `extern func main() { new(int); }`,
 			expected: &ast.NewExpression{
 				TypeExpr: ast.NewBaseType("int"),
 			},
 		},
 		{
 			name: "new with pointer type",
-			src:  `func main() { new(*int); }`,
+			src:  `extern func main() { new(*int); }`,
 			expected: &ast.NewExpression{
 				TypeExpr: ast.NewPointerType(ast.NewBaseType("int")),
 			},
 		},
 		{
 			name: "new with custom type",
-			src:  `func main() { new(MyStruct); }`,
+			src:  `extern func main() { new(MyStruct); }`,
 			expected: &ast.NewExpression{
 				TypeExpr: ast.NewBaseType("MyStruct"),
 			},
@@ -3323,17 +3323,17 @@ func TestParseExpression_NewOperator_Error(t *testing.T) {
 	}{
 		{
 			name:          "new without parentheses",
-			src:           `func main() { new int; }`,
+			src:           `extern func main() { new int; }`,
 			expectedError: "expected '(' after 'new'",
 		},
 		{
 			name:          "new with missing closing parenthesis",
-			src:           `func main() { new(int; }`,
+			src:           `extern func main() { new(int; }`,
 			expectedError: "expected ')' after type in new expression",
 		},
 		{
 			name:          "new with empty parentheses",
-			src:           `func main() { new(); }`,
+			src:           `extern func main() { new(); }`,
 			expectedError: "expected type",
 		},
 	}
@@ -3354,7 +3354,7 @@ func TestParseExpression_NewOperator_Error(t *testing.T) {
 }
 
 func TestParseExpression_NullLiteral(t *testing.T) {
-	src := `func main() { null; }`
+	src := `extern func main() { null; }`
 	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	prog, err := parser.ParseProgram()
@@ -3382,7 +3382,7 @@ func TestParseExpression_NullLiteral(t *testing.T) {
 }
 
 func TestParseExpression_NullAssignment(t *testing.T) {
-	src := `func main() { var x: *int; x = null; }`
+	src := `extern func main() { var x: *int; x = null; }`
 	lex := lexer.New(strings.NewReader(src), "test.pirx")
 	parser := New(lex)
 	prog, err := parser.ParseProgram()
@@ -3421,12 +3421,12 @@ func TestParseExpression_BooleanLiterals(t *testing.T) {
 	}{
 		{
 			name:     "true literal",
-			src:      `func main() { true; }`,
+			src:      `extern func main() { true; }`,
 			expected: ast.NewBoolLiteral(true),
 		},
 		{
 			name:     "false literal",
-			src:      `func main() { false; }`,
+			src:      `extern func main() { false; }`,
 			expected: ast.NewBoolLiteral(false),
 		},
 	}

@@ -1,4 +1,4 @@
-func main(): int {
+extern func main(): int {
   var x0: int;
   var x1: int;
   var x2: int;

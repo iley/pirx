@@ -16,7 +16,7 @@ func PrintMatrix(m: *Matrix) {
   printf("%d %d %d\n", (*m).r3.c1, (*m).r3.c2, (*m).r3.c3);
 }
 
-func main(): int {
+extern func main(): int {
   var m: Matrix;
 
   m.r1.c1 = 1;

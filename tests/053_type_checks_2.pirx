@@ -6,7 +6,7 @@ struct Inner {
   value: int;
 }
 
-func main(): int {
+extern func main(): int {
   var o: Outer;
   return 0;
 }

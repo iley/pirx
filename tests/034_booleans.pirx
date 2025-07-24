@@ -1,4 +1,4 @@
-func main(): int {
+extern func main(): int {
   var flag: bool;
   flag = 1 < 2;
   if flag {

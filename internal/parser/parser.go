@@ -72,13 +72,7 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 				return nil, err
 			}
 			typeDeclarations = append(typeDeclarations, structDecl)
-		} else if lex.IsKeyword("extern") {
-			externFn, err := p.parseExternFunction()
-			if err != nil {
-				return nil, err
-			}
-			functions = append(functions, externFn)
-		} else if lex.IsKeyword("func") {
+		} else if lex.IsKeyword("extern") || lex.IsKeyword("func") {
 			fn, err := p.parseFunction()
 			if err != nil {
 				return nil, err
@@ -93,103 +87,24 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 }
 
 func (p *Parser) parseFunction() (ast.Function, error) {
-	lex, err := p.consume()
-	if err != nil {
-		return ast.Function{}, err
-	}
-	if !lex.IsKeyword("func") {
-		return ast.Function{}, fmt.Errorf("%s: expected 'func', got %v", lex.Loc, lex)
-	}
-	funcLoc := locationFromLexeme(lex)
-	// function name
-	lex, err = p.consume()
-	if err != nil {
-		return ast.Function{}, err
-	}
-	if lex.Type != lexer.LEX_IDENT {
-		return ast.Function{}, fmt.Errorf("%s: expected function name, got %v", lex.Loc, lex)
-	}
-	name := lex.Str
-	// '('
-	lex, err = p.consume()
-	if err != nil {
-		return ast.Function{}, err
-	}
-	if !lex.IsPunctuation("(") {
-		return ast.Function{}, fmt.Errorf("%s: expected '(', got %v", lex.Loc, lex)
-	}
-
-	args, err := p.parseArguments()
+	// Check if it starts with 'extern'
+	lex, err := p.peek()
 	if err != nil {
 		return ast.Function{}, err
 	}
 
-	// ')'
-	lex, err = p.consume()
-	if err != nil {
-		return ast.Function{}, err
-	}
-	if !lex.IsPunctuation(")") {
-		return ast.Function{}, fmt.Errorf("%s: expected ')', got %v", lex.Loc, lex)
-	}
+	var isExternal bool
+	var startLoc ast.Location
 
-	lex, err = p.peek()
-	if err != nil {
-		return ast.Function{}, err
-	}
-
-	var returnType ast.Type
-	if lex.IsPunctuation(":") {
-		// return type specifier
-		p.consume() // ":"
-
-		// return type
-		returnType, err = p.parseType()
+	if lex.IsKeyword("extern") {
+		// consume 'extern'
+		lex, err = p.consume()
 		if err != nil {
 			return ast.Function{}, err
 		}
-	}
-
-	// '{'
-	lex, err = p.consume()
-	if err != nil {
-		return ast.Function{}, err
-	}
-	if !lex.IsPunctuation("{") {
-		return ast.Function{}, fmt.Errorf("%s: expected '{', got %v", lex.Loc, lex)
-	}
-
-	body, err := p.parseBlock()
-	if err != nil {
-		return ast.Function{}, err
-	}
-
-	// FIXME: This is a hack until we add syntax for externally linked functions.
-	isExternal := false
-	if name == "main" {
 		isExternal = true
+		startLoc = locationFromLexeme(lex)
 	}
-
-	return ast.Function{
-		Loc:        funcLoc,
-		Name:       name,
-		Args:       args,
-		Body:       body,
-		ReturnType: returnType,
-		External:   isExternal,
-	}, nil
-}
-
-func (p *Parser) parseExternFunction() (ast.Function, error) {
-	// consume 'extern'
-	lex, err := p.consume()
-	if err != nil {
-		return ast.Function{}, err
-	}
-	if !lex.IsKeyword("extern") {
-		return ast.Function{}, fmt.Errorf("%s: expected 'extern', got %v", lex.Loc, lex)
-	}
-	externLoc := locationFromLexeme(lex)
 
 	// consume 'func'
 	lex, err = p.consume()
@@ -197,10 +112,18 @@ func (p *Parser) parseExternFunction() (ast.Function, error) {
 		return ast.Function{}, err
 	}
 	if !lex.IsKeyword("func") {
-		return ast.Function{}, fmt.Errorf("%s: expected 'func' after 'extern', got %v", lex.Loc, lex)
+		if isExternal {
+			return ast.Function{}, fmt.Errorf("%s: expected 'func' after 'extern', got %v", lex.Loc, lex)
+		} else {
+			return ast.Function{}, fmt.Errorf("%s: expected 'func', got %v", lex.Loc, lex)
+		}
 	}
 
-	// function name
+	if !isExternal {
+		startLoc = locationFromLexeme(lex)
+	}
+
+	// Parse function name
 	lex, err = p.consume()
 	if err != nil {
 		return ast.Function{}, err
@@ -210,7 +133,7 @@ func (p *Parser) parseExternFunction() (ast.Function, error) {
 	}
 	name := lex.Str
 
-	// '('
+	// Parse '('
 	lex, err = p.consume()
 	if err != nil {
 		return ast.Function{}, err
@@ -219,12 +142,13 @@ func (p *Parser) parseExternFunction() (ast.Function, error) {
 		return ast.Function{}, fmt.Errorf("%s: expected '(', got %v", lex.Loc, lex)
 	}
 
+	// Parse arguments
 	args, err := p.parseArguments()
 	if err != nil {
 		return ast.Function{}, err
 	}
 
-	// ')'
+	// Parse ')'
 	lex, err = p.consume()
 	if err != nil {
 		return ast.Function{}, err
@@ -233,7 +157,7 @@ func (p *Parser) parseExternFunction() (ast.Function, error) {
 		return ast.Function{}, fmt.Errorf("%s: expected ')', got %v", lex.Loc, lex)
 	}
 
-	// Return type is optional for extern functions (void functions)
+	// Parse optional return type
 	lex, err = p.peek()
 	if err != nil {
 		return ast.Function{}, err
@@ -251,22 +175,35 @@ func (p *Parser) parseExternFunction() (ast.Function, error) {
 		}
 	}
 
-	// Require semicolon after extern function declaration
-	lex, err = p.consume()
+	// Check what comes next: '{' for implementation or ';' for declaration
+	lex, err = p.peek()
 	if err != nil {
 		return ast.Function{}, err
 	}
-	if !lex.IsPunctuation(";") {
-		return ast.Function{}, fmt.Errorf("%s: expected ';' after extern function declaration, got %v", lex.Loc, lex)
+
+	var body *ast.Block
+	if lex.IsPunctuation("{") {
+		// Function has implementation
+		p.consume() // consume '{'
+		body, err = p.parseBlock()
+		if err != nil {
+			return ast.Function{}, err
+		}
+	} else if lex.IsPunctuation(";") {
+		// Function declaration only
+		p.consume() // consume ';'
+		body = nil
+	} else {
+		return ast.Function{}, fmt.Errorf("%s: expected '{' or ';' after function signature, got %v", lex.Loc, lex)
 	}
 
 	return ast.Function{
-		Loc:        externLoc,
+		Loc:        startLoc,
 		Name:       name,
 		Args:       args,
-		Body:       nil,
+		Body:       body,
 		ReturnType: returnType,
-		External:   true,
+		External:   isExternal,
 	}, nil
 }
 

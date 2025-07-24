@@ -28,7 +28,7 @@ func Prepend(value: int, list: *Node): *Node {
   return node;
 }
 
-func main(): int {
+extern func main(): int {
   var head: *Node;
   head = null;
 

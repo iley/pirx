@@ -32,7 +32,7 @@ func MakeVec4(): Vec4 {
   return v;
 }
 
-func main(): int {
+extern func main(): int {
   var v3: Vec3;
   var v4: Vec4;
 

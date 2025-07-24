@@ -1,4 +1,4 @@
-func main(): int {
+extern func main(): int {
   printf("first\n");
   return 0;
   printf("second\n");

@@ -6,7 +6,7 @@ func add(x: int, y: int): int {
   return x + y;
 }
 
-func main(): int {
+extern func main(): int {
 	var x: int;
 	x = "foo";
   2 + "foo";

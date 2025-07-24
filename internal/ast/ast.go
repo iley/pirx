@@ -19,7 +19,6 @@ type AstNode interface {
 type Program struct {
 	Loc              Location
 	Functions        []Function
-	ExternFunctions  []ExternFunction
 	TypeDeclarations []TypeDeclaration
 }
 
@@ -38,10 +37,6 @@ func (p *Program) String() string {
 		sb.WriteString(" ")
 		sb.WriteString(decl.String())
 	}
-	for _, fn := range p.ExternFunctions {
-		sb.WriteString(" ")
-		sb.WriteString(fn.String())
-	}
 	for _, fn := range p.Functions {
 		sb.WriteString(" ")
 		sb.WriteString(fn.String())
@@ -54,7 +49,7 @@ type Function struct {
 	Loc        Location
 	Name       string
 	Args       []Arg
-	Body       Block
+	Body       *Block
 	ReturnType Type
 	// TODO: Clean up the confusion between Funciton{External: true} and ExternFunction.
 	External bool
@@ -70,42 +65,11 @@ func (f *Function) GetType() Type {
 
 func (f *Function) String() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("(func %s (", f.Name))
-	for i, arg := range f.Args {
-		sb.WriteString(arg.String())
-		if i != len(f.Args)-1 {
-			sb.WriteString(" ")
-		}
-	}
-	sb.WriteString(") ")
-	if f.ReturnType == nil {
-		sb.WriteString("() ")
+	if f.External {
+		sb.WriteString(fmt.Sprintf("(extern func %s (", f.Name))
 	} else {
-		sb.WriteString(f.ReturnType.String() + " ")
+		sb.WriteString(fmt.Sprintf("(func %s (", f.Name))
 	}
-	sb.WriteString(f.Body.String())
-	sb.WriteString(")")
-	return sb.String()
-}
-
-type ExternFunction struct {
-	Loc        Location
-	Name       string
-	Args       []Arg
-	ReturnType Type
-}
-
-func (f *ExternFunction) GetLocation() Location {
-	return f.Loc
-}
-
-func (f *ExternFunction) GetType() Type {
-	return nil
-}
-
-func (f *ExternFunction) String() string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("(extern func %s (", f.Name))
 	for i, arg := range f.Args {
 		sb.WriteString(arg.String())
 		if i != len(f.Args)-1 {
@@ -115,6 +79,10 @@ func (f *ExternFunction) String() string {
 	sb.WriteString(")")
 	if f.ReturnType != nil {
 		sb.WriteString(": " + f.ReturnType.String())
+	}
+	if f.Body != nil {
+		sb.WriteString(" ")
+		sb.WriteString(f.Body.String())
 	}
 	sb.WriteString(")")
 	return sb.String()

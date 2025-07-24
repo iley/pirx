@@ -88,7 +88,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body:     ast.Block{Loc: ast.Location{Line: 1, Col: 14}, Statements: []ast.Statement{}},
+						Body:     &ast.Block{Loc: ast.Location{Line: 1, Col: 14}, Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -104,7 +104,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Loc: ast.Location{Line: 1, Col: 15},
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Loc: ast.Location{Line: 1, Col: 15}, Name: "x", Type: ast.Int},
@@ -125,7 +125,7 @@ func TestParseProgram(t *testing.T) {
 							{Name: "a", Type: ast.Int},
 							{Name: "b", Type: ast.Int},
 						},
-						Body: ast.Block{Statements: []ast.Statement{}},
+						Body: &ast.Block{Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -139,7 +139,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.ExpressionStatement{
 									Expression: &ast.FunctionCall{
@@ -165,7 +165,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Name: "x", Type: ast.Int},
 								&ast.VariableDeclaration{Name: "y", Type: ast.String},
@@ -184,12 +184,12 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body:     ast.Block{Statements: []ast.Statement{}},
+						Body:     &ast.Block{Statements: []ast.Statement{}},
 					},
 					{
 						Name: "helper",
 						Args: []ast.Arg{},
-						Body: ast.Block{Statements: []ast.Statement{}},
+						Body: &ast.Block{Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -203,7 +203,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{Value: nil},
 							},
@@ -221,7 +221,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{Value: ast.NewIntLiteral(42)},
 							},
@@ -239,7 +239,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{
 									Value: ast.NewStringLiteral("hello"),
@@ -259,7 +259,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{
 									Value: &ast.FunctionCall{
@@ -282,7 +282,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{
 									Value: ast.NewIntLiteral(1),
@@ -308,7 +308,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
 									Name: "x",
@@ -334,7 +334,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.BreakStatement{},
 							},
@@ -352,7 +352,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
 									Name: "x",
@@ -379,7 +379,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.ContinueStatement{},
 							},
@@ -397,7 +397,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
 									Name: "x",
@@ -496,7 +496,7 @@ func TestParseProgram(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Name: "p", Type: ast.NewBaseType("Point")},
 							},
@@ -538,7 +538,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 						Args: []ast.Arg{
 							{Name: "ptr", Type: ast.NewPointerType(ast.Int)},
 						},
-						Body: ast.Block{Statements: []ast.Statement{}},
+						Body: &ast.Block{Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -551,7 +551,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 					{
 						Name:       "getPtr",
 						Args:       []ast.Arg{},
-						Body:       ast.Block{Statements: []ast.Statement{}},
+						Body:       &ast.Block{Statements: []ast.Statement{}},
 						ReturnType: ast.NewPointerType(ast.String),
 					},
 				},
@@ -567,7 +567,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 						Args: []ast.Arg{
 							{Name: "ptr", Type: ast.NewPointerType(ast.NewPointerType(ast.Int))},
 						},
-						Body: ast.Block{Statements: []ast.Statement{}},
+						Body: &ast.Block{Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -584,7 +584,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 							{Name: "y", Type: ast.NewPointerType(ast.String)},
 							{Name: "z", Type: ast.NewPointerType(ast.NewPointerType(ast.Bool))},
 						},
-						Body: ast.Block{Statements: []ast.Statement{}},
+						Body: &ast.Block{Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -598,7 +598,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Name: "ptr", Type: ast.NewPointerType(ast.Int)},
 							},
@@ -616,7 +616,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Name: "ptr", Type: ast.NewPointerType(ast.NewPointerType(ast.String))},
 							},
@@ -629,13 +629,15 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 			name: "extern function with pointer parameter",
 			src:  `extern func malloc(size: *int): *int;`,
 			expected: &ast.Program{
-				ExternFunctions: []ast.ExternFunction{
+				Functions: []ast.Function{
 					{
 						Name: "malloc",
 						Args: []ast.Arg{
 							{Name: "size", Type: ast.NewPointerType(ast.Int)},
 						},
+						Body:       nil,
 						ReturnType: ast.NewPointerType(ast.Int),
+						External:   true,
 					},
 				},
 			},
@@ -684,7 +686,7 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 							{Name: "y", Type: ast.String},
 							{Name: "ptrptr", Type: ast.NewPointerType(ast.NewPointerType(ast.Bool))},
 						},
-						Body:       ast.Block{Statements: []ast.Statement{}},
+						Body:       &ast.Block{Statements: []ast.Statement{}},
 						ReturnType: ast.NewPointerType(ast.String),
 					},
 				},
@@ -1977,7 +1979,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.BinaryOperation{
@@ -2007,7 +2009,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.BinaryOperation{
@@ -2051,7 +2053,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.BinaryOperation{
@@ -2091,7 +2093,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.UnaryOperation{
@@ -2120,7 +2122,7 @@ func TestParseStatement_IfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.BinaryOperation{
@@ -2226,7 +2228,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.BinaryOperation{
@@ -2276,7 +2278,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.BinaryOperation{
@@ -2332,7 +2334,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.BinaryOperation{
@@ -2406,7 +2408,7 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
 									Condition: &ast.BinaryOperation{
@@ -2493,7 +2495,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -2531,7 +2533,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -2575,7 +2577,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.UnaryOperation{
@@ -2611,7 +2613,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -2670,7 +2672,7 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -2771,7 +2773,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.BreakStatement{},
 							},
@@ -2789,7 +2791,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -2818,7 +2820,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -2863,7 +2865,7 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -2928,7 +2930,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.ContinueStatement{},
 							},
@@ -2946,7 +2948,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -2975,7 +2977,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{
@@ -3020,7 +3022,7 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 						Name:     "main",
 						Args:     []ast.Arg{},
 						External: true,
-						Body: ast.Block{
+						Body: &ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
 									Condition: &ast.BinaryOperation{

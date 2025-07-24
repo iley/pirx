@@ -27,19 +27,7 @@ func GetFunctionTable(program *ast.Program) []FuncProto {
 			Name:       fn.Name,
 			Args:       []Arg{},
 			ReturnType: fn.ReturnType,
-		}
-		for _, p := range fn.Args {
-			proto.Args = append(proto.Args, Arg{p.Name, p.Type})
-		}
-		protos = append(protos, proto)
-	}
-
-	for _, fn := range program.ExternFunctions {
-		proto := FuncProto{
-			Name:       fn.Name,
-			Args:       []Arg{},
-			ReturnType: fn.ReturnType,
-			External:   true,
+			External:   fn.External,
 		}
 		for _, p := range fn.Args {
 			proto.Args = append(proto.Args, Arg{p.Name, p.Type})

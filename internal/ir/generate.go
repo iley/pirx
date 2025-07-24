@@ -53,6 +53,10 @@ func Generate(node *ast.Program) (IrProgram, error) {
 	}
 
 	for _, function := range node.Functions {
+		// Don't generate IR for functions that don't have a definition in the current compilation unit.
+		if function.Body == nil {
+			continue
+		}
 		irFunc := generateFunction(&ic, function)
 		irp.Functions = append(irp.Functions, irFunc)
 	}
@@ -79,7 +83,8 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 		irfunc.ArgSizes = append(irfunc.ArgSizes, ic.types.GetSizeNoError(arg.Type))
 	}
 
-	irfunc.Ops = generateBlockOps(&fic, node.Body)
+	// It's safe to dereference body here because we check the function has a body before generateFunction() is called.
+	irfunc.Ops = generateBlockOps(&fic, *node.Body)
 
 	// Add implicit return in case the function doesn't end with a return
 	// We assume that presence of return with the right type is checked upstream.

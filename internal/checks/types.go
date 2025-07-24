@@ -59,7 +59,9 @@ func (c *TypeChecker) checkFunction(fn ast.Function) {
 		c.declaredVars[arg.Name] = arg.Type
 	}
 
-	c.checkBlock(&fn.Body)
+	if fn.Body != nil {
+		c.checkBlock(fn.Body)
+	}
 
 	// TODO: Check that each possible execution path ends with a return.
 	if c.currentFunc.ReturnType != nil && !c.hasReturn {

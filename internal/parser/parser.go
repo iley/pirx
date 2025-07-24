@@ -55,7 +55,6 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 	programLoc := locationFromLexeme(lex)
 
 	functions := []ast.Function{}
-	externFunctions := []ast.ExternFunction{}
 	typeDeclarations := []ast.TypeDeclaration{}
 
 	for {
@@ -78,7 +77,7 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 			if err != nil {
 				return nil, err
 			}
-			externFunctions = append(externFunctions, externFn)
+			functions = append(functions, externFn)
 		} else if lex.IsKeyword("func") {
 			fn, err := p.parseFunction()
 			if err != nil {
@@ -90,7 +89,7 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 		}
 	}
 
-	return &ast.Program{Loc: programLoc, Functions: functions, ExternFunctions: externFunctions, TypeDeclarations: typeDeclarations}, nil
+	return &ast.Program{Loc: programLoc, Functions: functions, TypeDeclarations: typeDeclarations}, nil
 }
 
 func (p *Parser) parseFunction() (ast.Function, error) {
@@ -175,69 +174,69 @@ func (p *Parser) parseFunction() (ast.Function, error) {
 		Loc:        funcLoc,
 		Name:       name,
 		Args:       args,
-		Body:       *body,
+		Body:       body,
 		ReturnType: returnType,
 		External:   isExternal,
 	}, nil
 }
 
-func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
+func (p *Parser) parseExternFunction() (ast.Function, error) {
 	// consume 'extern'
 	lex, err := p.consume()
 	if err != nil {
-		return ast.ExternFunction{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsKeyword("extern") {
-		return ast.ExternFunction{}, fmt.Errorf("%s: expected 'extern', got %v", lex.Loc, lex)
+		return ast.Function{}, fmt.Errorf("%s: expected 'extern', got %v", lex.Loc, lex)
 	}
 	externLoc := locationFromLexeme(lex)
 
 	// consume 'func'
 	lex, err = p.consume()
 	if err != nil {
-		return ast.ExternFunction{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsKeyword("func") {
-		return ast.ExternFunction{}, fmt.Errorf("%s: expected 'func' after 'extern', got %v", lex.Loc, lex)
+		return ast.Function{}, fmt.Errorf("%s: expected 'func' after 'extern', got %v", lex.Loc, lex)
 	}
 
 	// function name
 	lex, err = p.consume()
 	if err != nil {
-		return ast.ExternFunction{}, err
+		return ast.Function{}, err
 	}
 	if lex.Type != lexer.LEX_IDENT {
-		return ast.ExternFunction{}, fmt.Errorf("%s: expected function name, got %v", lex.Loc, lex)
+		return ast.Function{}, fmt.Errorf("%s: expected function name, got %v", lex.Loc, lex)
 	}
 	name := lex.Str
 
 	// '('
 	lex, err = p.consume()
 	if err != nil {
-		return ast.ExternFunction{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsPunctuation("(") {
-		return ast.ExternFunction{}, fmt.Errorf("%s: expected '(', got %v", lex.Loc, lex)
+		return ast.Function{}, fmt.Errorf("%s: expected '(', got %v", lex.Loc, lex)
 	}
 
 	args, err := p.parseArguments()
 	if err != nil {
-		return ast.ExternFunction{}, err
+		return ast.Function{}, err
 	}
 
 	// ')'
 	lex, err = p.consume()
 	if err != nil {
-		return ast.ExternFunction{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsPunctuation(")") {
-		return ast.ExternFunction{}, fmt.Errorf("%s: expected ')', got %v", lex.Loc, lex)
+		return ast.Function{}, fmt.Errorf("%s: expected ')', got %v", lex.Loc, lex)
 	}
 
 	// Return type is optional for extern functions (void functions)
 	lex, err = p.peek()
 	if err != nil {
-		return ast.ExternFunction{}, err
+		return ast.Function{}, err
 	}
 
 	var returnType ast.Type
@@ -248,24 +247,26 @@ func (p *Parser) parseExternFunction() (ast.ExternFunction, error) {
 		// return type
 		returnType, err = p.parseType()
 		if err != nil {
-			return ast.ExternFunction{}, err
+			return ast.Function{}, err
 		}
 	}
 
 	// Require semicolon after extern function declaration
 	lex, err = p.consume()
 	if err != nil {
-		return ast.ExternFunction{}, err
+		return ast.Function{}, err
 	}
 	if !lex.IsPunctuation(";") {
-		return ast.ExternFunction{}, fmt.Errorf("%s: expected ';' after extern function declaration, got %v", lex.Loc, lex)
+		return ast.Function{}, fmt.Errorf("%s: expected ';' after extern function declaration, got %v", lex.Loc, lex)
 	}
 
-	return ast.ExternFunction{
+	return ast.Function{
 		Loc:        externLoc,
 		Name:       name,
 		Args:       args,
+		Body:       nil,
 		ReturnType: returnType,
+		External:   true,
 	}, nil
 }
 

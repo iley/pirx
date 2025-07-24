@@ -286,54 +286,47 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 		return fmt.Errorf("Too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
 	}
 
+	for i, arg := range call.Args[0:call.NamedArgs] {
+		argSize := call.ArgSizes[i]
+		generateRegisterLoad(cc, i, argSize, arg)
+	}
+
+	remainingArgs := call.Args[call.NamedArgs:]
+
+	var spShift int
+
 	// Check whether this is a variadic call.
-	if len(call.Args) != call.NamedArgs {
+	if len(remainingArgs) > 0 {
 		// Darwin deviates from the standard ARM64 ABI for variadic functions.
 		// Arguments go on the stack.
 		// First, move SP to allocate space for the args. Don't forget to align SP by 16.
-		var spShift int
-		if len(call.Args) > 1 {
-			spShift = util.Align(types.WORD_SIZE*(len(call.Args)-call.NamedArgs), 16)
-		}
+		// TODO: Walk the arguments and add their sizes up (including padding).
+		spShift = util.Align(types.WORD_SIZE*(len(remainingArgs)), 16)
 
-		// Then generate stack pushes for the arguments except the first one.
-		for i, arg := range call.Args[call.NamedArgs:] {
+		// Then generate the stack pushes.
+		for i, arg := range remainingArgs {
 			argSize := call.ArgSizes[i+call.NamedArgs]
-			generateRegisterLoad(cc, 0, argSize, arg)
+			generateRegisterLoad(cc, 10, argSize, arg)
 			// We extend all arguments to 64 bit.
 			if argSize == 4 {
 				// Sign extend 32-bit values to 64-bit
-				fmt.Fprintf(cc.output, "  sxtw x0, w0\n")
+				fmt.Fprintf(cc.output, "  sxtw x10, w10\n")
 			}
-			fmt.Fprintf(cc.output, "  str x0, [sp, #%d]\n", i*types.WORD_SIZE-int(spShift))
+			fmt.Fprintf(cc.output, "  str x10, [sp, #%d]\n", i*types.WORD_SIZE-int(spShift))
 		}
+	}
 
-		for i, arg := range call.Args[0:call.NamedArgs] {
-			argSize := call.ArgSizes[i]
-			generateRegisterLoad(cc, i, argSize, arg)
-		}
+	// Adjust SP just before making the call if we have arguments on the stack.
+	if spShift > 0 {
+		fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", spShift)
+	}
 
-		if spShift > 0 {
-			// Adjust SP just before making the call.
-			fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", spShift)
-		}
+	// Finally, call the function.
+	fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
 
-		// Finally, call the function.
-		fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
-
-		// Don't forget to clean up: move SP back.
-		if spShift > 0 {
-			fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", spShift)
-		}
-	} else {
-		// Non-variadic functions are much easier: put arguments into X0-X7.
-		// We're ignoring functions with more than 8 arguments for now.
-		// Those are supposed to go onto the stack.
-		for i, arg := range call.Args {
-			argSize := call.ArgSizes[i]
-			generateRegisterLoad(cc, i, argSize, arg)
-		}
-		fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
+	// Don't forget to clean up if we put have arguments on the stack.
+	if spShift > 0 {
+		fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", spShift)
 	}
 
 	// Store the result.

@@ -67,9 +67,10 @@ func TestParseProgram_ExternFunction(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
-						Body: ast.Block{Statements: []ast.Statement{}},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
+						Body:     ast.Block{Statements: []ast.Statement{}},
 					},
 				},
 				ExternFunctions: []ast.ExternFunction{

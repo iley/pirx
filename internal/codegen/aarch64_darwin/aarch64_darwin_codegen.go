@@ -70,11 +70,6 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// Map from local variable name to its size in bytes.
 	lsizes := make(map[string]int)
 
-	// Add args to locals.
-	for i := 0; i < len(f.Args); i++ {
-		lsizes[f.Args[i]] = f.ArgSizes[i]
-	}
-
 	// We need to know how many unique locals we have in total so we can allocate space on the stack below.
 	for _, op := range f.Ops {
 		if target := op.GetTarget(); target != "" {
@@ -94,7 +89,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		return lsizes[a] - lsizes[b]
 	})
 
-	// Generate offsets from SP for all locals and function arguments.
+	// Generate offsets from SP for all locals.
 	offset := 0
 	for _, lname := range sortedLocals {
 		if offset > MAX_SP_OFFSET {
@@ -114,34 +109,44 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		offset += lsizes[lname]
 	}
 
-	// Space on the stack for local variables including function arguments.
+	// Space on the stack for local variables.
 	// For now we're going to assume that all variables are 64-bit.
 	// This does not include space for storing X29 and X30.
-	// SP must always be aligned by 16 bytes.
-	frameSize := util.Align(offset, 16)
+	// SP must always be aligned.
+	frameSize := alignSP(offset)
 
-	// Save X29 and X30
-	fmt.Fprintf(cc.output, "  sub sp, sp, #16\n")
+	// Space on stack for the registers wa save (plus padding).
+	// * x29 is FP (frame pointer) by MacOS convention.
+	// * x30 is LR (link register), it holds the return address.
+	// * x19 Pirx uses for the return value address.
+	savedRegisters := 16
+
+	// Calculate the size of the arguments block on the stack.
+	argsBlockSize := 0
+	for _, argSize := range f.ArgSizes {
+		argsBlockSize += argSize
+	}
+	// Add one word for the saved x19.
+	argsBlockSize += types.WORD_SIZE
+	// Include SP padding.
+	argsBlockSize = alignSP(argsBlockSize)
+
+	// Function arguments are already on the stack above our frame.
+	// Calculate offsets for those.
+	argOffset := frameSize + savedRegisters + argsBlockSize
+	for i, arg := range f.Args {
+		argOffset -= f.ArgSizes[i]
+		locals[arg] = argOffset
+	}
+
+	// Save the registers.
+	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", savedRegisters)
 	fmt.Fprintf(cc.output, "  stp x29, x30, [sp]\n")
 
 	// Save frame start in X29.
 	fmt.Fprintf(cc.output, "  mov x29, sp\n")
 	// Shift SP.
 	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", frameSize)
-
-	// For each argument store the value passed to us in the register to the slot on the stack.
-	for i, arg := range f.Args {
-		argSize := f.ArgSizes[i]
-		offset = locals[arg]
-		switch argSize {
-		case 4:
-			fmt.Fprintf(cc.output, "  str w%d, [sp, #%d]\n", i, offset)
-		case 8:
-			fmt.Fprintf(cc.output, "  str x%d, [sp, #%d]\n", i, offset)
-		default:
-			panic(fmt.Errorf("invalid argument size when loading function arguments: %d", argSize))
-		}
-	}
 
 	cc.locals = locals
 	cc.frameSize = frameSize
@@ -158,7 +163,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	fmt.Fprintf(cc.output, ".L%s_exit:\n", f.Name)
 	fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", cc.frameSize)
 	fmt.Fprintf(cc.output, "  ldp x29, x30, [sp]\n")
-	fmt.Fprintf(cc.output, "  add sp, sp, #16\n")
+	fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", savedRegisters)
 	fmt.Fprintf(cc.output, "  ret\n")
 	return nil
 }
@@ -169,13 +174,17 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 	} else if assign, ok := op.(ir.AssignByAddr); ok {
 		return generateAssignmentByAddr(cc, assign)
 	} else if call, ok := op.(ir.Call); ok {
-		return generateFunctionCall(cc, call)
+		generateFunctionCall(cc, call)
+	} else if call, ok := op.(ir.ExternalCall); ok {
+		return generateExternalFunctionCall(cc, call)
 	} else if binop, ok := op.(ir.BinaryOp); ok {
 		return generateBinaryOp(cc, binop)
 	} else if unaryOp, ok := op.(ir.UnaryOp); ok {
 		return generateUnaryOp(cc, unaryOp)
 	} else if ret, ok := op.(ir.Return); ok {
 		generateReturn(cc, ret)
+	} else if ret, ok := op.(ir.ExternalReturn); ok {
+		generateExternalReturn(cc, ret)
 	} else if jump, ok := op.(ir.Jump); ok {
 		fmt.Fprintf(cc.output, "  b .L%s_%s\n", cc.functionName, jump.Goto)
 	} else if jumpUnless, ok := op.(ir.JumpUnless); ok {
@@ -281,7 +290,42 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error 
 	return nil
 }
 
-func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
+func generateFunctionCall(cc *CodegenContext, call ir.Call) {
+	// For Pirx-native functions we use a simpler calling convention:
+	//  * All arguments go on the stack.
+	//  * Caller always allocates space for the return value.
+	//  * The return value's address is passed in via x19.
+
+	offset := 0
+	for i, arg := range call.Args {
+		argSize := call.ArgSizes[i]
+		offset += argSize
+		// TODO: Support larger arugment sizes!
+		generateRegisterLoad(cc, 0, argSize, arg)
+		reg := registerByIndex(0, argSize)
+		fmt.Fprintf(cc.output, "  str %s, [sp, #-%d]\n", reg, offset)
+	}
+
+	// Save x19 to the stack because it currently holds this function's result address.
+	offset += types.WORD_SIZE
+	savedX19Offset := offset
+	fmt.Fprintf(cc.output, "  str x19, [sp, #-%d]\n", offset)
+
+	// Don't forget about stack alignment.
+	offset = alignSP(offset)
+
+	// Store the result address in x19.
+	fmt.Fprintf(cc.output, "  add x19, sp, #%d\n", cc.locals[call.Result])
+
+	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", offset)
+	fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
+	fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", offset)
+
+	// Restore x19.
+	fmt.Fprintf(cc.output, "  ldr x19, [sp, #-%d]\n", savedX19Offset)
+}
+
+func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) error {
 	if len(call.Args) > MAX_FUNC_ARGS {
 		return fmt.Errorf("Too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
 	}
@@ -299,9 +343,9 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) error {
 	if len(remainingArgs) > 0 {
 		// Darwin deviates from the standard ARM64 ABI for variadic functions.
 		// Arguments go on the stack.
-		// First, move SP to allocate space for the args. Don't forget to align SP by 16.
+		// First, move SP to allocate space for the args. Don't forget to align SP.
 		// TODO: Walk the arguments and add their sizes up (including padding).
-		spShift = util.Align(types.WORD_SIZE*(len(remainingArgs)), 16)
+		spShift = alignSP(types.WORD_SIZE*(len(remainingArgs)))
 
 		// Then generate the stack pushes.
 		for i, arg := range remainingArgs {
@@ -419,6 +463,34 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 }
 
 func generateReturn(cc *CodegenContext, ret ir.Return) {
+	// Copy the return value into the slot provided by the caller via x19.
+	if ret.Value != nil {
+		// TODO: Can we factor out the adhoc memcopy that we're doing in multiple places?
+		offset := 0
+		for offset < ret.Size {
+			if ret.Size-offset >= 8 {
+				generateRegisterLoadWithOffset(cc, 0, 8, *ret.Value, offset)
+				fmt.Fprintf(cc.output, "  str x0, [x19]\n")
+				if offset + 8 < ret.Size {
+					fmt.Fprintf(cc.output, "  add x19, x19, #%d\n", 8)
+				}
+				offset += 8
+			} else {
+				generateRegisterLoadWithOffset(cc, 0, 4, *ret.Value, offset)
+				fmt.Fprintf(cc.output, "  str w0, [x19]\n")
+				if offset + 4 < ret.Size {
+					fmt.Fprintf(cc.output, "  add x19, x19, #%d\n", 8)
+				}
+				offset += 4
+			}
+		}
+	}
+
+	fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
+}
+
+// Return from an externally referenced function i.e. C ABI compatible.
+func generateExternalReturn(cc *CodegenContext, ret ir.ExternalReturn) {
 	emitB := func() {
 		fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
 	}
@@ -440,7 +512,7 @@ func generateReturn(cc *CodegenContext, ret ir.Return) {
 		// And the rest into x1/w1.
 		generateRegisterLoadWithOffset(cc, 1, ret.Size-8, *ret.Value, 8)
 	default:
-		// TODO: Support sizes over 16 bytes via indirect return (caller allocates space and passess the address in x8).
+		// TODO: Support sizes over 16 bytes via indirect return (caller allocates space and passess the address in x19).
 		panic(fmt.Errorf("unsupported return value size: %d", ret.Size))
 	}
 
@@ -483,11 +555,20 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 			fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
 		}
 	} else if arg.LiteralInt != nil {
+		if offset != 0 {
+			panic("cannot load a literal int with offset")
+		}
 		// TODO: Generate 32-bit code.
 		generateLiteralLoad(cc, reg, int64(*arg.LiteralInt))
+		if offset != 0 {
+			panic("cannot load a literal int64 with offset")
+		}
 	} else if arg.LiteralInt64 != nil {
 		generateLiteralLoad(cc, reg, *arg.LiteralInt64)
 	} else if arg.LiteralString != nil {
+		if offset != 0 {
+			panic("cannot load a literal string with offset")
+		}
 		label := cc.stringLiterals[*arg.LiteralString]
 		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
 		fmt.Fprintf(cc.output, "  add %s, %s, %s@PAGEOFF\n", reg, reg, label)
@@ -562,4 +643,9 @@ func registerByIndex(index, size int) string {
 	default:
 		panic(fmt.Errorf("invalid register size %d", size))
 	}
+}
+
+func alignSP(offset int) int {
+	// SP must always be aligned by 16 bytes on ARM64.
+	return util.Align(offset, 16)
 }

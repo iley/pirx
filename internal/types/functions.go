@@ -9,6 +9,8 @@ type FuncProto struct {
 	Args       []Arg
 	ReturnType ast.Type
 	Variadic   bool
+	// For external functions we need to follow C ABI.
+	External bool
 }
 
 type Arg struct {
@@ -37,6 +39,7 @@ func GetFunctionTable(program *ast.Program) []FuncProto {
 			Name:       fn.Name,
 			Args:       []Arg{},
 			ReturnType: fn.ReturnType,
+			External: true,
 		}
 		for _, p := range fn.Args {
 			proto.Args = append(proto.Args, Arg{p.Name, p.Type})

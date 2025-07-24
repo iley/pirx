@@ -9,15 +9,18 @@ func getBuiltins() []FuncProto {
 			Args:       []Arg{{"fmt", ast.String}},
 			ReturnType: ast.Int,
 			Variadic:   true,
+			External:   true,
 		},
 		{
 			Name:       "putchar",
 			Args:       []Arg{{"ch", ast.Int}},
 			ReturnType: ast.Int,
+			External:   true,
 		},
 		{
-			Name: "dispose",
-			Args: []Arg{{"p", ast.VoidPtr}},
+			Name:     "dispose",
+			Args:     []Arg{{"p", ast.VoidPtr}},
+			External: true,
 		},
 	}
 }

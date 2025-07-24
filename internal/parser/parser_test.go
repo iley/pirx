@@ -84,10 +84,11 @@ func TestParseProgram(t *testing.T) {
 				Loc: ast.Location{Line: 1, Col: 1},
 				Functions: []ast.Function{
 					{
-						Loc:  ast.Location{Line: 1, Col: 1},
-						Name: "main",
-						Args: []ast.Arg{},
-						Body: ast.Block{Loc: ast.Location{Line: 1, Col: 14}, Statements: []ast.Statement{}},
+						Loc:      ast.Location{Line: 1, Col: 1},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
+						Body:     ast.Block{Loc: ast.Location{Line: 1, Col: 14}, Statements: []ast.Statement{}},
 					},
 				},
 			},
@@ -99,9 +100,10 @@ func TestParseProgram(t *testing.T) {
 				Loc: ast.Location{Line: 1, Col: 1},
 				Functions: []ast.Function{
 					{
-						Loc:  ast.Location{Line: 1, Col: 1},
-						Name: "main",
-						Args: []ast.Arg{},
+						Loc:      ast.Location{Line: 1, Col: 1},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Loc: ast.Location{Line: 1, Col: 15},
 							Statements: []ast.Statement{
@@ -134,8 +136,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.ExpressionStatement{
@@ -159,8 +162,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Name: "x", Type: ast.Int},
@@ -177,9 +181,10 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
-						Body: ast.Block{Statements: []ast.Statement{}},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
+						Body:     ast.Block{Statements: []ast.Statement{}},
 					},
 					{
 						Name: "helper",
@@ -195,8 +200,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{Value: nil},
@@ -212,8 +218,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{Value: ast.NewIntLiteral(42)},
@@ -229,8 +236,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{
@@ -248,8 +256,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{
@@ -270,8 +279,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.ReturnStatement{
@@ -295,8 +305,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
@@ -320,8 +331,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.BreakStatement{},
@@ -337,8 +349,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
@@ -363,8 +376,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.ContinueStatement{},
@@ -380,8 +394,9 @@ func TestParseProgram(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{
@@ -478,8 +493,9 @@ func TestParseProgram(t *testing.T) {
 				},
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Name: "p", Type: ast.NewBaseType("Point")},
@@ -579,8 +595,9 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Name: "ptr", Type: ast.NewPointerType(ast.Int)},
@@ -596,8 +613,9 @@ func TestParseProgram_PointerTypes(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.VariableDeclaration{Name: "ptr", Type: ast.NewPointerType(ast.NewPointerType(ast.String))},
@@ -1956,8 +1974,9 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -1985,8 +2004,9 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -2028,8 +2048,9 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -2067,8 +2088,9 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -2095,8 +2117,9 @@ func TestParseStatement_IfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -2200,8 +2223,9 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -2249,8 +2273,9 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -2304,8 +2329,9 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -2377,8 +2403,9 @@ func TestParseStatement_ElseIfStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.IfStatement{
@@ -2463,8 +2490,9 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2500,8 +2528,9 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2543,8 +2572,9 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2578,8 +2608,9 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2636,8 +2667,9 @@ func TestParseStatement_WhileStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2736,8 +2768,9 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.BreakStatement{},
@@ -2753,8 +2786,9 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2781,8 +2815,9 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2825,8 +2860,9 @@ func TestParseStatement_BreakStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2889,8 +2925,9 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.ContinueStatement{},
@@ -2906,8 +2943,9 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2934,8 +2972,9 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{
@@ -2978,8 +3017,9 @@ func TestParseStatement_ContinueStatement(t *testing.T) {
 			expected: &ast.Program{
 				Functions: []ast.Function{
 					{
-						Name: "main",
-						Args: []ast.Arg{},
+						Name:     "main",
+						Args:     []ast.Arg{},
+						External: true,
 						Body: ast.Block{
 							Statements: []ast.Statement{
 								&ast.WhileStatement{

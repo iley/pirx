@@ -165,12 +165,19 @@ func (p *Parser) parseFunction() (ast.Function, error) {
 		return ast.Function{}, err
 	}
 
+	// FIXME: This is a hack until we add syntax for externally linked functions.
+	isExternal := false
+	if name == "main" {
+		isExternal = true
+	}
+
 	return ast.Function{
 		Loc:        funcLoc,
 		Name:       name,
 		Args:       args,
 		Body:       *body,
 		ReturnType: returnType,
+		External:   isExternal,
 	}, nil
 }
 

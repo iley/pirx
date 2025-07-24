@@ -3,7 +3,6 @@ package ir
 import (
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 
 	"github.com/iley/pirx/internal/util"
@@ -154,12 +153,11 @@ func (o BinaryOp) GetSize() int {
 }
 
 type Call struct {
-	Result    string
-	Function  string
-	Args      []Arg
-	ArgSizes  []int
-	NamedArgs int // How many of the provided arguments correspond to named arguments. Everything else are treated as variadic args.
-	Size      int // Return type size.
+	Result   string
+	Function string
+	Args     []Arg
+	ArgSizes []int
+	Size     int // Result size.
 }
 
 func (c Call) String() string {
@@ -179,6 +177,35 @@ func (c Call) GetArgs() []Arg {
 }
 
 func (c Call) GetSize() int {
+	return c.Size
+}
+
+type ExternalCall struct {
+	Result    string
+	Function  string
+	Args      []Arg
+	ArgSizes  []int
+	NamedArgs int // How many of the provided arguments correspond to named arguments. Everything else are variadic args.
+	Size      int // Result size.
+}
+
+func (c ExternalCall) String() string {
+	args := []string{}
+	for i := 0; i < len(c.Args); i++ {
+		args = append(args, fmt.Sprintf("%s/%d", c.Args[i], c.ArgSizes[i]))
+	}
+	return fmt.Sprintf("ExternalCall%d(%s = %s(%s))", c.Size, c.Result, c.Function, strings.Join(args, ", "))
+}
+
+func (c ExternalCall) GetTarget() string {
+	return c.Result
+}
+
+func (c ExternalCall) GetArgs() []Arg {
+	return c.Args
+}
+
+func (c ExternalCall) GetSize() int {
 	return c.Size
 }
 
@@ -207,6 +234,34 @@ func (r Return) GetArgs() []Arg {
 }
 
 func (r Return) GetSize() int {
+	return r.Size
+}
+
+type ExternalReturn struct {
+	Value *Arg // nil for bare returns
+	Size  int
+}
+
+func (r ExternalReturn) String() string {
+	if r.Value != nil {
+		return fmt.Sprintf("ExternalReturn%d(%s)", r.Size, r.Value)
+	}
+	return "Return()"
+}
+
+func (r ExternalReturn) GetTarget() string {
+	return ""
+}
+
+func (r ExternalReturn) GetArgs() []Arg {
+	if r.Value == nil {
+		return []Arg{}
+	} else {
+		return []Arg{*r.Value}
+	}
+}
+
+func (r ExternalReturn) GetSize() int {
 	return r.Size
 }
 
@@ -297,67 +352,6 @@ func (a Arg) String() string {
 
 // Optimize runs IR optimizations on the given IR program.
 func Optimize(irp IrProgram) IrProgram {
-	// Assignment elimination is disabled for now because it's oblivious of structs.
-	// irp = eliminateIneffectiveAssignments(irp)
+	// TODO: Implement optimizations here.
 	return irp
-}
-
-// eliminateIneffectiveAssignments removes ineffective variable assignments.
-// An assingment is ineffective if either the variable is never used or it's not used before the next assignment happens.
-func eliminateIneffectiveAssignments(irp IrProgram) IrProgram {
-	res := IrProgram{
-		Functions: slices.Clone(irp.Functions),
-	}
-	for i := range res.Functions {
-		res.Functions[i].Ops = eliminateIneffectiveAssignmentOps(res.Functions[i].Ops)
-	}
-	return res
-}
-
-func eliminateIneffectiveAssignmentOps(ops []Op) []Op {
-	res := []Op{}
-	for i, op := range ops {
-		if !isIneffectiveAssignment(ops, i) {
-			res = append(res, op)
-		}
-	}
-	return res
-}
-
-func isIneffectiveAssignment(ops []Op, index int) bool {
-	first, ok := ops[index].(Assign)
-	if !ok {
-		return false // not an assignment
-	}
-
-	// Find the next assingment.
-	// If not found, default to end of the function.
-	nextIdx := len(ops)
-	for j := index + 1; j < len(ops); j++ {
-		if b, ok := ops[j].(Assign); ok && b.Target == first.Target {
-			nextIdx = j
-			break
-		}
-	}
-
-	for j := index + 1; j < nextIdx; j++ {
-		if _, ok := ops[j].(Jump); ok {
-			// It's a jump, all bets are off.
-			return false
-		}
-
-		if _, ok := ops[j].(JumpUnless); ok {
-			// It's a jump, all bets are off.
-			return false
-		}
-
-		args := ops[j].GetArgs()
-		for _, arg := range args {
-			if arg.Variable != "" && arg.Variable == first.Target {
-				return false
-			}
-		}
-	}
-
-	return true
 }

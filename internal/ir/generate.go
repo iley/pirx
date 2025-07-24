@@ -17,6 +17,7 @@ type IrContext struct {
 	// Local variables: name -> size in bytes.
 	vars  map[string]int
 	types *types.TypeTable
+	isExternalFunction bool
 }
 
 func (ic *IrContext) allocTemp(size int) string {
@@ -70,6 +71,7 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 	fic := *ic
 	fic.nextTempIndex = 1
 	fic.vars = make(map[string]int)
+	fic.isExternalFunction = node.External
 
 	for _, arg := range node.Args {
 		fic.vars[arg.Name] = ic.types.GetSizeNoError(arg.Type)
@@ -79,17 +81,26 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 
 	irfunc.Ops = generateBlockOps(&fic, node.Body)
 
-	// Add implicit return if the function doesn't end with a return
+	// Add implicit return in case the function doesn't end with a return
 	// We assume that presence of return with the right type is checked upstream.
-	if len(irfunc.Ops) == 0 {
-		// Empty function - add bare return
-		irfunc.Ops = append(irfunc.Ops, Return{Value: nil})
+	var implicitReturn Op
+	if node.External {
+		implicitReturn = ExternalReturn{Value: nil}
 	} else {
-		// Check if the last operation is a return
+		implicitReturn = Return{Value: nil}
+	}
+
+	if len(irfunc.Ops) == 0 {
+		// Empty function - add bare return.
+		irfunc.Ops = append(irfunc.Ops, implicitReturn)
+	} else {
+		// Check if the last operation is a return.
 		lastOp := irfunc.Ops[len(irfunc.Ops)-1]
-		if _, isReturn := lastOp.(Return); !isReturn {
-			// Last operation is not a return - add implicit bare return
-			irfunc.Ops = append(irfunc.Ops, Return{Value: nil})
+		_, isReturn := lastOp.(Return)
+		_, isExternalReturn := lastOp.(ExternalReturn)
+		if !isReturn && !isExternalReturn {
+			// Last operation is not a return - add implicit bare return.
+			irfunc.Ops = append(irfunc.Ops, implicitReturn)
 		}
 	}
 
@@ -121,10 +132,19 @@ func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 			// Return with value
 			exprOps, resultArg, resultSize := generateExpressionOps(ic, retStmt.Value)
 			ops = append(ops, exprOps...)
-			ops = append(ops, Return{Size: resultSize, Value: &resultArg})
+			// TODO: Maybe factor this out into a function that creates the right type of return?
+			if ic.isExternalFunction {
+				ops = append(ops, ExternalReturn{Size: resultSize, Value: &resultArg})
+			} else {
+				ops = append(ops, Return{Size: resultSize, Value: &resultArg})
+			}
 		} else {
 			// Bare return
-			ops = append(ops, Return{Value: nil})
+			if ic.isExternalFunction {
+				ops = append(ops, ExternalReturn{Value: nil})
+			} else {
+				ops = append(ops, Return{Value: nil})
+			}
 		}
 	} else if ifStmt, ok := node.(*ast.IfStatement); ok {
 		ops = generateIfOps(ic, *ifStmt)
@@ -213,8 +233,8 @@ func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, 
 		panic(err)
 	}
 	res := ic.allocTemp(types.WORD_SIZE)
-	// TODO: Maybe make a helper function for generating function calls?
-	mallocCall := Call{
+	// TODO: Maybe make a helper function for generating such function calls?
+	mallocCall := ExternalCall{
 		Result:    res,
 		Function:  "malloc",
 		Args:      []Arg{{LiteralInt64: util.Int64Ptr(int64(allocSize))}},
@@ -425,14 +445,24 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	}
 
 	temp := ic.allocTemp(size)
-	ops = append(ops, Call{
-		Result:    temp,
-		Function:  call.FunctionName,
-		Args:      args,
-		ArgSizes:  sizes,
-		NamedArgs: len(funcProto.Args),
-		Size:      size,
-	})
+	if funcProto.External {
+		ops = append(ops, ExternalCall{
+			Result:    temp,
+			Function:  call.FunctionName,
+			Args:      args,
+			ArgSizes:  sizes,
+			NamedArgs: len(funcProto.Args),
+			Size:      size,
+		})
+	} else {
+		ops = append(ops, Call{
+			Result:    temp,
+			Function:  call.FunctionName,
+			Args:      args,
+			ArgSizes:  sizes,
+			Size:      size,
+		})
+	}
 
 	return ops, Arg{Variable: temp}, size
 }

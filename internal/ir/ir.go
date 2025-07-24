@@ -329,8 +329,7 @@ func (a Anchor) GetSize() int {
 
 type Arg struct {
 	Variable      string
-	LiteralInt    *int32
-	LiteralInt64  *int64
+	LiteralInt    *int64
 	LiteralString *string
 	Zero          bool
 }
@@ -340,8 +339,6 @@ func (a Arg) String() string {
 		return a.Variable
 	} else if a.LiteralInt != nil {
 		return fmt.Sprintf("%d", *a.LiteralInt)
-	} else if a.LiteralInt64 != nil {
-		return fmt.Sprintf("%d", *a.LiteralInt64)
 	} else if a.LiteralString != nil {
 		return fmt.Sprintf("\"%s\"", util.EscapeString(*a.LiteralString))
 	} else if a.Zero {

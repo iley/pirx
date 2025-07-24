@@ -51,8 +51,7 @@ type Function struct {
 	Args       []Arg
 	Body       *Block
 	ReturnType Type
-	// TODO: Clean up the confusion between Funciton{External: true} and ExternFunction.
-	External bool
+	External   bool
 }
 
 func (f *Function) GetLocation() Location {

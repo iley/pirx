@@ -126,7 +126,6 @@ func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
 		size := ic.types.GetSizeNoError(varDecl.Type)
 		ic.vars[varDecl.Name] = size
-		// TODO: Handle more type sizes.
 		ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: Arg{Zero: true}})
 	} else if exprStmt, ok := node.(*ast.ExpressionStatement); ok {
 		// We ignore the result of the expression.
@@ -242,7 +241,7 @@ func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, 
 	mallocCall := ExternalCall{
 		Result:    res,
 		Function:  "malloc",
-		Args:      []Arg{{LiteralInt64: util.Int64Ptr(int64(allocSize))}},
+		Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(allocSize))}},
 		ArgSizes:  []int{types.WORD_SIZE},
 		NamedArgs: 1,
 		Size:      types.WORD_SIZE,
@@ -252,14 +251,15 @@ func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, 
 
 func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
 	if literal.IntValue != nil {
-		return []Op{}, Arg{LiteralInt: literal.IntValue}, 4
+		intValue := int64(*literal.IntValue)
+		return []Op{}, Arg{LiteralInt: &intValue}, 4
 	} else if literal.Int64Value != nil {
-		return []Op{}, Arg{LiteralInt64: literal.Int64Value}, 8
+		return []Op{}, Arg{LiteralInt: literal.Int64Value}, 8
 	} else if literal.StringValue != nil {
 		return []Op{}, Arg{LiteralString: literal.StringValue}, 8
 	} else if literal.BoolValue != nil {
 		// Translate booleans into 32-bit integers.
-		var intValue int32
+		var intValue int64
 		if *literal.BoolValue == true {
 			intValue = 1
 		} else {
@@ -268,7 +268,7 @@ func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
 		return []Op{}, Arg{LiteralInt: &intValue}, 4
 	} else if literal.NullValue {
 		value := int64(0)
-		return []Op{}, Arg{LiteralInt64: &value}, types.WORD_SIZE
+		return []Op{}, Arg{LiteralInt: &value}, types.WORD_SIZE
 	} else {
 		panic(fmt.Sprintf("invalid literal type: %#v", literal))
 	}
@@ -329,7 +329,7 @@ func generateFieldAccessAddrOps(ic *IrContext, object ast.Expression, fieldName 
 		Result:      addrTemp,
 		Left:        objArg,
 		Operation:   "+",
-		Right:       Arg{LiteralInt64: &offset},
+		Right:       Arg{LiteralInt: &offset},
 		Size:        types.WORD_SIZE,
 		OperandSize: types.WORD_SIZE,
 	})

@@ -205,18 +205,11 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 		generateMemoryCopy(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
-		if assign.Size != 4 {
-			panic(fmt.Errorf("invalid size %d for 32-bit literal %v", assign.Size, assign.Value))
+		if assign.Size != 4 && assign.Size != 8 {
+			panic(fmt.Errorf("invalid size %d for integer literal %v", assign.Size, assign.Value))
 		}
-		generateRegisterLoad(cc, 0, 4, assign.Value)
-		generateStoreToLocal(cc, 0, 4, assign.Target)
-	} else if assign.Value.LiteralInt64 != nil {
-		// Assign integer constant to variable.
-		if assign.Size != 8 {
-			panic(fmt.Errorf("invalid size %d for 64-bit literal %v", assign.Size, assign.Value))
-		}
-		generateRegisterLoad(cc, 0, 8, assign.Value)
-		generateStoreToLocal(cc, 0, 8, assign.Target)
+		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
+		generateStoreToLocal(cc, 0, assign.Size, assign.Target)
 	} else if assign.Value.Zero {
 		generateRegisterLoad(cc, 0, 8, assign.Value)
 		offset := 0
@@ -244,17 +237,10 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error 
 		generateMemoryCopyByAddr(cc, assign.Value, 0, assign.Size, assign.Target)
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
-		if assign.Size != 4 {
-			panic(fmt.Errorf("invalid size %d for 32-bit literal %v", assign.Size, assign.Value))
+		if assign.Size != 4 && assign.Size != 8 {
+			panic(fmt.Errorf("invalid size %d for integer literal %v", assign.Size, assign.Value))
 		}
-		generateRegisterLoad(cc, 0, 4, assign.Value)
-		generateStoreByAddr(cc, 0, assign.Size, assign.Target, 0)
-	} else if assign.Value.LiteralInt64 != nil {
-		// Assign integer constant to variable.
-		if assign.Size != 8 {
-			panic(fmt.Errorf("invalid size %d for 64-bit literal %v", assign.Size, assign.Value))
-		}
-		generateRegisterLoad(cc, 0, 8, assign.Value)
+		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
 		generateStoreByAddr(cc, 0, assign.Size, assign.Target, 0)
 	} else if assign.Value.Zero {
 		panic("TODO: zero assignment by address not supported yet")
@@ -509,15 +495,9 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 		}
 	} else if arg.LiteralInt != nil {
 		if offset != 0 {
-			panic("cannot load a literal int with offset")
-		}
-		// TODO: Generate 32-bit code.
-		generateLiteralLoad(cc, reg, int64(*arg.LiteralInt))
-		if offset != 0 {
 			panic("cannot load a literal int64 with offset")
 		}
-	} else if arg.LiteralInt64 != nil {
-		generateLiteralLoad(cc, reg, *arg.LiteralInt64)
+		generateLiteralLoad(cc, reg, *arg.LiteralInt)
 	} else if arg.LiteralString != nil {
 		if offset != 0 {
 			panic("cannot load a literal string with offset")

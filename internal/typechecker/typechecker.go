@@ -184,21 +184,28 @@ func (c *TypeChecker) checkLiteral(lit *ast.Literal) *ast.Literal {
 }
 
 func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *ast.VariableDeclaration {
-	// TODO: Type inference!
-
-	ok := c.vars.declare(decl.Name, decl.Type)
-	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is already declared", decl.Loc, decl.Name))
-	}
-
 	var checkedInitializer ast.Expression
+	typ := decl.Type
+
 	if decl.Initializer != nil {
 		checkedInitializer = c.checkExpression(decl.Initializer)
 
-		if !areCompatibleTypes(decl.Type, checkedInitializer.GetType()) {
+		if typ != nil && !areCompatibleTypes(decl.Type, checkedInitializer.GetType()) {
 			c.errors = append(c.errors, fmt.Errorf("%s: cannot initialize variable %s of type %s with expression of type %s",
 				decl.Loc, decl.Name, decl.Type, checkedInitializer.GetType()))
 		}
+	}
+
+	if typ == nil {
+		if checkedInitializer != nil && checkedInitializer.GetType() != nil {
+			// Type inference.
+			typ = checkedInitializer.GetType()
+		}
+	}
+
+	ok := c.vars.declare(decl.Name, typ)
+	if !ok {
+		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is already declared", decl.Loc, decl.Name))
 	}
 
 	_, uniqueName := c.vars.lookup(decl.Name)
@@ -206,6 +213,7 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *a
 	result := *decl
 	result.Initializer = checkedInitializer
 	result.Name = uniqueName
+	result.Type = typ
 	return &result
 }
 

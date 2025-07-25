@@ -1,25 +1,25 @@
 extern func main(): int {
-  var x: int = 5;
+  var x = 5;
 
-  var y: int = 42;
+  var y = 42;
 
   {
-    var x: int = 1;
+    var x = 1;
     printf("inside first block: x = %d, y = %d\n", x, y);
   }
 
   {
-    var x: int = 2;
+    var x = 2;
     printf("inside second block: x = %d, y = %d\n", x, y);
   }
 
   if true {
-    var x: int = 3;
+    var x = 3;
     printf("inside if: x = %d, y = %d\n", x, y);
   }
 
   while true {
-    var x: int = 4;
+    var x = 4;
     printf("inside while: x = %d, y = %d\n", x, y);
     break;
   }

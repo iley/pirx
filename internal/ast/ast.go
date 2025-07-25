@@ -190,7 +190,7 @@ type Statement interface {
 type VariableDeclaration struct {
 	Loc         Location
 	Name        string
-	Type        Type
+	Type        Type       // Optional type annotation (nil for type inference)
 	Initializer Expression // Optional initializer expression
 }
 
@@ -205,10 +205,17 @@ func (d *VariableDeclaration) GetType() Type {
 func (d *VariableDeclaration) isStatement() {}
 
 func (d *VariableDeclaration) String() string {
-	if d.Initializer != nil {
-		return fmt.Sprintf("(decl %s %s %s)", d.Name, d.Type.String(), d.Initializer.String())
+	typeStr := ""
+	if d.Type != nil {
+		typeStr = d.Type.String()
+	} else {
+		typeStr = "inferred"
 	}
-	return fmt.Sprintf("(decl %s %s)", d.Name, d.Type.String())
+	
+	if d.Initializer != nil {
+		return fmt.Sprintf("(decl %s %s %s)", d.Name, typeStr, d.Initializer.String())
+	}
+	return fmt.Sprintf("(decl %s %s)", d.Name, typeStr)
 }
 
 type ExpressionStatement struct {

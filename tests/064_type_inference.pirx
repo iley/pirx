@@ -1,0 +1,10 @@
+extern func main(): int {
+  var int_var = 1;
+  var bool_var = true;
+
+  if bool_var {
+    printf("%d\n", int_var);
+  }
+
+  return 0;
+}

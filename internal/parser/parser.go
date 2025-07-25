@@ -885,19 +885,24 @@ func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 	}
 	name := lex.Str
 
-	// colon
-	lex, err = p.consume()
+	// check for optional type annotation (colon)
+	var typeExpr ast.Type
+	lex, err = p.peek()
 	if err != nil {
 		return nil, err
 	}
-	if !lex.IsPunctuation(":") {
-		return nil, fmt.Errorf("%s: expected ':' after variable name, got %v", lex.Loc, lex)
-	}
+	if lex.IsPunctuation(":") {
+		// consume ':'
+		_, err = p.consume()
+		if err != nil {
+			return nil, err
+		}
 
-	// type
-	typeExpr, err := p.parseType()
-	if err != nil {
-		return nil, err
+		// parse type
+		typeExpr, err = p.parseType()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// check for optional initializer
@@ -918,6 +923,11 @@ func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// validate that we have either type or initializer (or both)
+	if typeExpr == nil && initializer == nil {
+		return nil, fmt.Errorf("%s: variable declaration must have either type annotation or initializer", varLoc)
 	}
 
 	return &ast.VariableDeclaration{

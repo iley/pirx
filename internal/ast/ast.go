@@ -188,9 +188,10 @@ type Statement interface {
 }
 
 type VariableDeclaration struct {
-	Loc  Location
-	Name string
-	Type Type
+	Loc         Location
+	Name        string
+	Type        Type
+	Initializer Expression // Optional initializer expression
 }
 
 func (d *VariableDeclaration) GetLocation() Location {
@@ -204,6 +205,9 @@ func (d *VariableDeclaration) GetType() Type {
 func (d *VariableDeclaration) isStatement() {}
 
 func (d *VariableDeclaration) String() string {
+	if d.Initializer != nil {
+		return fmt.Sprintf("(decl %s %s %s)", d.Name, d.Type.String(), d.Initializer.String())
+	}
 	return fmt.Sprintf("(decl %s %s)", d.Name, d.Type.String())
 }
 

@@ -900,10 +900,31 @@ func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 		return nil, err
 	}
 
+	// check for optional initializer
+	var initializer ast.Expression
+	lex, err = p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if lex.IsOperator("=") {
+		// consume '='
+		_, err = p.consume()
+		if err != nil {
+			return nil, err
+		}
+
+		// parse initializer expression
+		initializer, err = p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &ast.VariableDeclaration{
-		Loc:  varLoc,
-		Name: name,
-		Type: typeExpr,
+		Loc:         varLoc,
+		Name:        name,
+		Type:        typeExpr,
+		Initializer: initializer,
 	}, nil
 }
 

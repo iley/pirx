@@ -1,0 +1,21 @@
+struct Color {
+  r: int8;
+  g: int8;
+  b: int8;
+}
+
+func PrintColor(c: Color) {
+  printf("#%02X%02X%02X\n", c.r, c.g, c.b);
+}
+
+extern func main(): int {
+  var c: Color;
+
+  c.r = 18i8;
+  c.g = 52i8;
+  c.b = 86i8;
+
+  PrintColor(c);
+
+  return 0;
+}

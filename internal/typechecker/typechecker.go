@@ -18,6 +18,7 @@ type TypeChecker struct {
 	errors        []error
 	currentFunc   types.FuncProto
 	hasReturn     bool
+	nestedLoops   int
 }
 
 func NewTypeChecker(program *ast.Program) *TypeChecker {
@@ -66,6 +67,7 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 	c.currentFunc = c.declaredFuncs[fn.Name]
 	c.hasReturn = false
 	c.vars = newVarStack()
+	c.nestedLoops = 0
 
 	// Create the root scope for the function.
 	c.vars.startScope()
@@ -450,7 +452,11 @@ func (c *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) *ast.WhileSt
 			exprType,
 		))
 	}
+
+	c.nestedLoops += 1
 	checkedBody := c.checkBlock(&stmt.Body)
+	c.nestedLoops -= 1
+
 	return &ast.WhileStatement{
 		Loc:       stmt.Loc,
 		Condition: checkedCondition,
@@ -459,10 +465,16 @@ func (c *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) *ast.WhileSt
 }
 
 func (c *TypeChecker) checkBreakStatement(stmt *ast.BreakStatement) *ast.BreakStatement {
+	if c.nestedLoops == 0 {
+		c.errors = append(c.errors, fmt.Errorf("%s: break cannot be used outside a loop", stmt.Loc))
+	}
 	return &ast.BreakStatement{Loc: stmt.Loc}
 }
 
 func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) *ast.ContinueStatement {
+	if c.nestedLoops == 0 {
+		c.errors = append(c.errors, fmt.Errorf("%s: continue cannot be used outside a loop", stmt.Loc))
+	}
 	return &ast.ContinueStatement{Loc: stmt.Loc}
 }
 

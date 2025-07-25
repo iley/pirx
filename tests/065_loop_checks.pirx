@@ -1,0 +1,10 @@
+extern func main(): int {
+  break; // break without loop
+  continue; // continue without loop
+  while false {
+    break; // valid break
+  }
+  break; // invalid
+  continue; // invalid
+  return 0;
+}

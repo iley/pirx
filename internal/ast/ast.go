@@ -330,6 +330,25 @@ func (c *ContinueStatement) String() string {
 	return "(continue)"
 }
 
+type BlockStatement struct {
+	Loc   Location
+	Block Block
+}
+
+func (b *BlockStatement) GetLocation() Location {
+	return b.Loc
+}
+
+func (b *BlockStatement) GetType() Type {
+	return nil
+}
+
+func (b *BlockStatement) isStatement() {}
+
+func (b *BlockStatement) String() string {
+	return b.Block.String()
+}
+
 // Expression types.
 
 type Expression interface {

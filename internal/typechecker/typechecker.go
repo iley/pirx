@@ -123,6 +123,8 @@ func (c *TypeChecker) checkStatement(stmt ast.Statement) ast.Statement {
 		return c.checkBreakStatement(breakStmt)
 	} else if contStmt, ok := stmt.(*ast.ContinueStatement); ok {
 		return c.checkContinueStatement(contStmt)
+	} else if blockStmt, ok := stmt.(*ast.BlockStatement); ok {
+		return c.checkBlockStatement(blockStmt)
 	} else {
 		panic(fmt.Sprintf("unsupported statement type: %v", stmt))
 	}
@@ -423,6 +425,14 @@ func (c *TypeChecker) checkBreakStatement(stmt *ast.BreakStatement) *ast.BreakSt
 
 func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) *ast.ContinueStatement {
 	return &ast.ContinueStatement{Loc: stmt.Loc}
+}
+
+func (c *TypeChecker) checkBlockStatement(stmt *ast.BlockStatement) *ast.BlockStatement {
+	checkedBlock := c.checkBlock(&stmt.Block)
+	return &ast.BlockStatement{
+		Loc: stmt.Loc,
+		Block: *checkedBlock,
+	}
 }
 
 func (c *TypeChecker) checkFieldAccess(fa *ast.FieldAccess) *ast.FieldAccess {

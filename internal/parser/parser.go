@@ -395,6 +395,10 @@ func statementRequiresSemicolon(stmt ast.Statement) bool {
 	if _, ok := stmt.(*ast.WhileStatement); ok {
 		return false
 	}
+	// Block statements don't require semicolons since they end with a brace
+	if _, ok := stmt.(*ast.BlockStatement); ok {
+		return false
+	}
 	// All other statements require semicolons
 	return true
 }
@@ -447,6 +451,13 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 			return nil, err
 		}
 		return whileStmt, nil
+	}
+	if lex.IsPunctuation("{") {
+		blockStmt, err := p.parseBlockStatement()
+		if err != nil {
+			return nil, err
+		}
+		return blockStmt, nil
 	}
 	expression, err := p.parseExpression()
 	if err != nil {
@@ -1129,6 +1140,26 @@ func (p *Parser) parseWhileStatement() (*ast.WhileStatement, error) {
 		Loc:       whileLoc,
 		Condition: condition,
 		Body:      *body,
+	}, nil
+}
+
+func (p *Parser) parseBlockStatement() (*ast.BlockStatement, error) {
+	// consume '{'
+	blockLex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	blockLoc := locationFromLexeme(blockLex)
+
+	// parse the block contents
+	block, err := p.parseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.BlockStatement{
+		Loc:   blockLoc,
+		Block: *block,
 	}, nil
 }
 

@@ -152,12 +152,15 @@ func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 		}
 	} else if ifStmt, ok := node.(*ast.IfStatement); ok {
 		ops = generateIfOps(ic, *ifStmt)
-	} else if whileStmt, ok := node.(*ast.WhileStatement); ok {
-		ops = generateWhileOps(ic, *whileStmt)
+	} else if stmt, ok := node.(*ast.WhileStatement); ok {
+		ops = generateWhileOps(ic, *stmt)
 	} else if _, ok := node.(*ast.BreakStatement); ok {
 		ops = append(ops, Jump{Goto: ic.breakLabel})
 	} else if _, ok := node.(*ast.ContinueStatement); ok {
 		ops = append(ops, Jump{Goto: ic.continueLabel})
+	} else if stmt, ok := node.(*ast.BlockStatement); ok {
+		blockOps := generateBlockOps(ic, stmt.Block)
+		ops = append(ops, blockOps...)
 	} else {
 		panic(fmt.Sprintf("unknown statement type %v", node))
 	}

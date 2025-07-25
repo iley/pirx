@@ -11,9 +11,9 @@ func PrintColor(c: Color) {
 extern func main(): int {
   var c: Color;
 
-  c.r = 18i8;
-  c.g = 52i8;
-  c.b = 86i8;
+  c.r = 18i8; // 0x12
+  c.g = 52i8; // 0x34
+  c.b = 86i8; // 0x56
 
   PrintColor(c);
 

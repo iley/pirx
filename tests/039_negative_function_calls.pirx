@@ -7,8 +7,7 @@ func negate(x: int): int {
 }
 
 extern func main(): int {
-  var result: int;
-  result = add(-5, -3);
+  var result: int = add(-5, -3);
   printf("add(-5, -3) = %d\n", result);
   result = negate(-10);
   printf("negate(-10) = %d\n", result);

@@ -1,8 +1,6 @@
 extern func main(): int {
   var x: int;
-  var p: *int;
-
-  p = null;
+  var p: *int = null;
   printf("%p\n", p);
 
   if p == null {

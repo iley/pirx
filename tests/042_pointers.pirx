@@ -1,7 +1,6 @@
 extern func main(): int {
   var x: int;
-  var p: *int;
-  p = &x;
+  var p: *int = &x;
   *p = 42;
   printf("x = %d\n", x);
   return 0;

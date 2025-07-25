@@ -1,6 +1,5 @@
 extern func main(): int {
-  var x : int;
-  x = 1;
+  var x : int = 1;
   while x < 100 {
     if x % 15 == 0 {
       printf("fizzbuzz\n");

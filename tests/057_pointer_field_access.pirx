@@ -8,8 +8,7 @@ extern func main(): int {
   v.x = 1;
   v.y = 2;
 
-  var p: *Vector;
-  p = &v;
+  var p: *Vector = &v;
 
   printf("(%d, %d)\n", p.x, p.y);
 

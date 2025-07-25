@@ -21,16 +21,14 @@ func DisposeList(head: *Node) {
 }
 
 func Prepend(value: int, list: *Node): *Node {
-  var node: *Node;
-  node = new(Node);
+  var node: *Node = new(Node);
   node.value = value;
   node.next = list;
   return node;
 }
 
 extern func main(): int {
-  var head: *Node;
-  head = null;
+  var head: *Node = null;
 
   head = Prepend(1, head);
   head = Prepend(2, head);

@@ -1,7 +1,5 @@
 extern func main(): int {
-  var x: int8;
-
-  x = 42i8;
+  var x: int8 = 42i8;
   printf("%d\n", x);
 
   x = -42i8;

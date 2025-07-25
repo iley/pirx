@@ -1,6 +1,5 @@
 extern func main(): int {
-  var x: int;
-  x = 1 + 2 + 3 + 4 + 5;
+  var x: int = 1 + 2 + 3 + 4 + 5;
   printf("x = %d", x);
   return 0;
 }

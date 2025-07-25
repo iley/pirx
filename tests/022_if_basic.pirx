@@ -1,8 +1,6 @@
 extern func main(): int {
-  var x: int;
-  var y: int;
-  x = 1;
-  y = 10;
+  var x: int = 1;
+  var y: int = 10;
 
   if x < 10 {
     printf("x is less than 10\n");

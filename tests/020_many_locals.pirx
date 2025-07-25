@@ -99,9 +99,7 @@ extern func main(): int {
   var x97: int;
   var x98: int;
   var x99: int;
-  var x100: int;
-
-  x100 = 42;
+  var x100: int = 42;
   printf("%d\n", x100);
 
   return 0;

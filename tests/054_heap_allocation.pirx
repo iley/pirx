@@ -1,7 +1,5 @@
 extern func main(): int {
-  var p: *int;
-
-  p = new(int);
+  var p: *int = new(int);
   *p = 42;
 
   printf("%d\n", *p);

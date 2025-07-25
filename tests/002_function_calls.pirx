@@ -12,11 +12,8 @@ func second(x: int, y: int) : int {
 }
 
 extern func main(): int {
-    var x: int;
-    var y: int;
-
-    x = first(65, 66);
-    y = second(65, 66);
+    var x: int = first(65, 66);
+    var y: int = second(65, 66);
 
     putchar(x);
     putchar(y);

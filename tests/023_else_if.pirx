@@ -1,6 +1,5 @@
 extern func main(): int {
-  var x: int;
-  x = 15;
+  var x: int = 15;
   if x < 10 {
     printf("less than 10\n");
   } else if x < 20 {

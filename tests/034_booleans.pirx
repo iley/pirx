@@ -1,6 +1,5 @@
 extern func main(): int {
-  var flag: bool;
-  flag = 1 < 2;
+  var flag: bool = 1 < 2;
   if flag {
     printf("1 < 2 is true\n");
   }

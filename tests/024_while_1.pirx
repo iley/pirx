@@ -1,6 +1,5 @@
 extern func main(): int {
-  var x : int;
-  x = 0;
+  var x : int = 0;
   while x < 10 {
     printf("%d\n", x);
     x = x + 1;

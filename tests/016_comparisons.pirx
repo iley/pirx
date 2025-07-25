@@ -1,9 +1,6 @@
 extern func main(): int {
-  var a: int;
-  var b: int;
-  
-  a = 5;
-  b = 3;
+  var a: int = 5;
+  var b: int = 3;
   
   // Test equality operators
   printf("5 == 3: %d\n", a == b);

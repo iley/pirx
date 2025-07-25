@@ -1,9 +1,6 @@
 extern func main(): int {
-  var a: int;
-  var b: int;
-  
-  a = 5;
-  b = 3;
+  var a: int = 5;
+  var b: int = 3;
   
   // Test logical AND operator with integer values (0=false, 1=true)
   printf("1 && 1: %d\n", true && true);

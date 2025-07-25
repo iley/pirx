@@ -1,11 +1,7 @@
 extern func main(): int {
-  var a: int;
-  var b: int;
-  var p: *int;
-
-  a = 1;
-  b = 2;
-  p = &a;
+  var a: int = 1;
+  var b: int = 2;
+  var p: *int = &a;
 
   printf("%d\n", *p + b);
 

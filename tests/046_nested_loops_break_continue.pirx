@@ -1,11 +1,8 @@
 extern func main(): int {
-  var i: int;
+  var i: int = 0;
   var j: int;
   
   printf("Testing nested loops with break and continue:\n");
-  
-  // Test break in nested loop
-  i = 0;
   while i < 3 {
     printf("Outer loop i=%d\n", i);
     j = 0;

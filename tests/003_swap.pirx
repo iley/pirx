@@ -1,10 +1,7 @@
 extern func main(): int {
-  var x: int;
-  var y: int;
-  var z: int;
-  x = 65; // 'A'
-  y = 66; // 'B'
-  z = x;
+  var x: int = 65; // 'A'
+  var y: int = 66; // 'B'
+  var z: int = x;
   x = y;
   y = z;
   putchar(x);

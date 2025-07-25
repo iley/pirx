@@ -1,8 +1,22 @@
 extern func main(): int {
   var x: int;
+  x = 3;
+
+  var y: int;
+  y = 42;
+
   {
+    var x: int;
     x = 1;
+    printf("inside first block: x = %d, y = %d\n", x, y);
   }
-  printf("%d\n", x);
+
+  {
+    var x: int;
+    x = 2;
+    printf("inside second block: x = %d, y = %d\n", x, y);
+  }
+
+  printf("outside: x = %d, y = %d\n", x, y);
   return 0;
 }

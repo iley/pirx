@@ -124,9 +124,15 @@ func generateBlockOps(ic *IrContext, block ast.Block) []Op {
 func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
 	ops := []Op{}
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
+		initArg := Arg{Zero: true}
+		if varDecl.Initializer != nil {
+			var initOps []Op
+			initOps, initArg, _ = generateExpressionOps(ic, varDecl.Initializer)
+			ops = append(ops, initOps...)
+		}
 		size := ic.types.GetSizeNoError(varDecl.Type)
 		ic.vars[varDecl.Name] = size
-		ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: Arg{Zero: true}})
+		ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: initArg})
 	} else if exprStmt, ok := node.(*ast.ExpressionStatement); ok {
 		// We ignore the result of the expression.
 		exprOps, _, _ := generateExpressionOps(ic, exprStmt.Expression)

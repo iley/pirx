@@ -117,14 +117,7 @@ func (c *TypeChecker) checkBlock(block *ast.Block) *ast.Block {
 
 func (c *TypeChecker) checkStatement(stmt ast.Statement) ast.Statement {
 	if varDecl, ok := stmt.(*ast.VariableDeclaration); ok {
-		c.checkVariableDeclaration(varDecl)
-		typ, uniqueName := c.vars.lookup(varDecl.Name)
-		return &ast.VariableDeclaration{
-			Loc: varDecl.Loc,
-			// Rename the variable to not worry about scoping on the IR generation stage.
-			Name: uniqueName,
-			Type: typ,
-		}
+		return c.checkVariableDeclaration(varDecl)
 	} else if exprStmt, ok := stmt.(*ast.ExpressionStatement); ok {
 		return c.checkExpressionStatement(exprStmt)
 	} else if retStmt, ok := stmt.(*ast.ReturnStatement); ok {
@@ -190,11 +183,30 @@ func (c *TypeChecker) checkLiteral(lit *ast.Literal) *ast.Literal {
 	return &result
 }
 
-func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) {
+func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *ast.VariableDeclaration {
+	// TODO: Type inference!
+
 	ok := c.vars.declare(decl.Name, decl.Type)
 	if !ok {
 		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is already declared", decl.Loc, decl.Name))
 	}
+
+	var checkedInitializer ast.Expression
+	if decl.Initializer != nil {
+		checkedInitializer = c.checkExpression(decl.Initializer)
+
+		if !areCompatibleTypes(decl.Type, checkedInitializer.GetType()) {
+			c.errors = append(c.errors, fmt.Errorf("%s: cannot initialize variable %s of type %s with expression of type %s",
+				decl.Loc, decl.Name, decl.Type, checkedInitializer.GetType()))
+		}
+	}
+
+	_, uniqueName := c.vars.lookup(decl.Name)
+
+	result := *decl
+	result.Initializer = checkedInitializer
+	result.Name = uniqueName
+	return &result
 }
 
 func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCall {

@@ -1,3 +1,5 @@
 inside first block: x = 1, y = 42
 inside second block: x = 2, y = 42
-outside: x = 3, y = 42
+inside if: x = 3, y = 42
+inside while: x = 4, y = 42
+outside: x = 5, y = 42

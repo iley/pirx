@@ -7,6 +7,9 @@ import (
 	"github.com/iley/pirx/internal/types"
 )
 
+// TypeChecker checks and fills in types in a program.
+// It treats the input AST as effectively immutable and creates a full copy of the AST with the types filled in.
+// Additionally it flattens nested variable scopes by giving each variable a name unique within the function.
 type TypeChecker struct {
 	program       *ast.Program
 	vars          *varStack

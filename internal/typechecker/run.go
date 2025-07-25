@@ -1,4 +1,4 @@
-package checks
+package typechecker
 
 import "github.com/iley/pirx/internal/ast"
 

@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/iley/pirx/internal/checks"
 	"github.com/iley/pirx/internal/codegen"
 	"github.com/iley/pirx/internal/ir"
 	"github.com/iley/pirx/internal/lexer"
 	"github.com/iley/pirx/internal/parser"
+	"github.com/iley/pirx/internal/typechecker"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	typedAst, programErrors := checks.Run(ast)
+	typedAst, programErrors := typechecker.Run(ast)
 	if len(programErrors) > 0 {
 		for _, err := range programErrors {
 			fmt.Fprintf(os.Stderr, "%s\n", err)

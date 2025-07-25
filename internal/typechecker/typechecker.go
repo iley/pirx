@@ -9,7 +9,7 @@ import (
 
 type TypeChecker struct {
 	program       *ast.Program
-	vars  *varStack
+	vars          *varStack
 	declaredFuncs map[string]types.FuncProto
 	types         *types.TypeTable
 	errors        []error
@@ -117,7 +117,7 @@ func (c *TypeChecker) checkStatement(stmt ast.Statement) ast.Statement {
 		c.checkVariableDeclaration(varDecl)
 		typ, uniqueName := c.vars.lookup(varDecl.Name)
 		return &ast.VariableDeclaration{
-			Loc:  varDecl.Loc,
+			Loc: varDecl.Loc,
 			// Rename the variable to not worry about scoping on the IR generation stage.
 			Name: uniqueName,
 			Type: typ,
@@ -289,7 +289,7 @@ func (c *TypeChecker) checkVariableLValue(lval *ast.VariableLValue) *ast.Variabl
 	typ, uniqueName := c.vars.lookup(lval.Name)
 	if typ == nil {
 		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is not declared before assignment", lval.Loc, lval.Name))
-		typ = ast.VoidPtr // Use a default type to avoid nil
+		typ = ast.Undefined // Use a default type to avoid nil
 	}
 	result := *lval
 	result.Name = uniqueName
@@ -318,7 +318,7 @@ func (c *TypeChecker) checkVariableReference(ref *ast.VariableReference) *ast.Va
 	typ, uniqueName := c.vars.lookup(ref.Name)
 	if typ == nil {
 		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is not declared before reference", ref.Loc, ref.Name))
-		typ = ast.VoidPtr // Use a default type to avoid nil
+		typ = ast.Undefined // Use a default type to avoid nil
 	}
 
 	result := *ref
@@ -446,7 +446,7 @@ func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) *ast.C
 func (c *TypeChecker) checkBlockStatement(stmt *ast.BlockStatement) *ast.BlockStatement {
 	checkedBlock := c.checkBlock(&stmt.Block)
 	return &ast.BlockStatement{
-		Loc: stmt.Loc,
+		Loc:   stmt.Loc,
 		Block: *checkedBlock,
 	}
 }

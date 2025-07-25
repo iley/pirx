@@ -65,6 +65,9 @@ var (
 	VoidPtr = &BaseType{Name: "voidptr"}
 	// Not directly accessible to the user.
 	NullPtr = &BaseType{Name: "nullptr"}
+	// Represents a value that does not have a type either due to an error or because it's not yet known.
+	// Not directly accessible to the user.
+	Undefined = &BaseType{Name: "undefined"}
 )
 
 func IsIntegerType(typ Type) bool {

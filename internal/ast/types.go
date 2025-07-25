@@ -78,6 +78,8 @@ func NewBaseType(name string) *BaseType {
 	switch name {
 	case "int":
 		return Int
+	case "int8":
+		return Int8
 	case "int64":
 		return Int64
 	case "string":

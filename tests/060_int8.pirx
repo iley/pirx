@@ -7,5 +7,9 @@ extern func main(): int {
   x = -42i8;
   printf("%d\n", x);
 
+  x = 127i8;
+  x = x + 1i8;
+  printf("%d\n", x);
+
   return 0;
 }

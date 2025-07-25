@@ -219,13 +219,15 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) ast.Type {
 	}
 
 	valueType := c.checkExpression(assignment.Value)
-	isValidNullAssignment := ast.IsPointerType(targetType) && valueType.Equals(ast.NullPtr)
-	if !valueType.Equals(targetType) && !isValidNullAssignment {
-		c.errors = append(c.errors, fmt.Errorf("%s: cannot assign value of type %s to lvalue of type %s",
-			assignment.Loc,
-			valueType,
-			targetType,
-		))
+	if valueType != nil {
+		isValidNullAssignment := ast.IsPointerType(targetType) && valueType.Equals(ast.NullPtr)
+		if !valueType.Equals(targetType) && !isValidNullAssignment {
+			c.errors = append(c.errors, fmt.Errorf("%s: cannot assign value of type %s to lvalue of type %s",
+				assignment.Loc,
+				valueType,
+				targetType,
+			))
+		}
 	}
 
 	return targetType
@@ -394,12 +396,12 @@ func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 
 	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" {
 		// These are (currently) supproted for integers only.
-		return left, left == ast.Int || left == ast.Int64
+		return left, ast.IsIntegerType(left)
 	}
 
 	if op == "<" || op == ">" || op == "<=" || op == ">=" {
 		// These are (currently) supproted for integers only.
-		return ast.Bool, left == ast.Int || left == ast.Int64
+		return ast.Bool, ast.IsIntegerType(left)
 	}
 
 	if op == "&&" || op == "||" {

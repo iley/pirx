@@ -1,0 +1,24 @@
+// Test re-declaration errors for variables and function arguments
+
+func test_func(arg1: int, arg2: int, arg1: int) {
+    // Function argument re-declaration
+}
+
+func another_func(param: int) {
+    var x: int;
+    var y: int;
+    var x: int;  // Variable re-declaration in same scope
+    
+    {
+        var z: int;
+        var z: int;  // Variable re-declaration in block scope
+    }
+}
+
+extern func main(): int {
+    var a: int;
+    var b: int;
+    var a: int;  // Variable re-declaration
+    
+    return 0;
+}

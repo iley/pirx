@@ -56,7 +56,7 @@ func IsPointerType(typ Type) bool {
 // Common base types - singleton instances
 var (
 	Int    = &BaseType{Name: "int"}
-	Int8    = &BaseType{Name: "int8"}
+	Int8   = &BaseType{Name: "int8"}
 	Int64  = &BaseType{Name: "int64"}
 	String = &BaseType{Name: "string"}
 	Bool   = &BaseType{Name: "bool"}

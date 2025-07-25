@@ -43,13 +43,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	programErrors := checks.Run(ast)
+	typedAst, programErrors := checks.Run(ast)
 	if len(programErrors) > 0 {
 		for _, err := range programErrors {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 		}
 		os.Exit(1)
 	}
+	ast = typedAst
 
 	var output io.Writer
 

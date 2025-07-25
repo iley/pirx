@@ -67,6 +67,10 @@ var (
 	NullPtr = &BaseType{Name: "nullptr"}
 )
 
+func IsIntegerType(typ Type) bool {
+	return typ == Int || typ == Int8 || typ == Int64
+}
+
 // Helper functions for creating types
 
 // NewBaseType creates a base type, returning singleton instances for common types

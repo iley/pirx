@@ -367,7 +367,7 @@ func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, b
 	case "!":
 		return ast.Bool, val == ast.Bool
 	case "-":
-		return val, val == ast.Int || val == ast.Int64
+		return val, ast.IsIntegerType(val)
 	case "&":
 		// We can make a pointer to any type.
 		// TODO: Check that we're only taking address of lvalues.

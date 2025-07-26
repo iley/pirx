@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"slices"
 )
 
 // Type represents a Pirx type
@@ -72,6 +73,12 @@ var (
 
 func IsIntegerType(typ Type) bool {
 	return typ == Int || typ == Int8 || typ == Int64
+}
+
+var pseudoTypes = []Type{Void, VoidPtr, NullPtr, Undefined}
+
+func IsConcreteType(typ Type) bool {
+	return !slices.Contains(pseudoTypes, typ)
 }
 
 // Helper functions for creating types

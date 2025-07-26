@@ -1,0 +1,6 @@
+extern func main(): int {
+  var i: int = true;
+  var p = null;
+
+  return 0;
+}

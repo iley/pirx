@@ -1,0 +1,3 @@
+tests/066_initializer_errors.pirx:2:3: cannot initialize variable i of type int with expression of type bool
+tests/066_initializer_errors.pirx:3:3: invalid initializer for variable p, cannot infer type
+exit status 1

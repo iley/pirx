@@ -202,6 +202,9 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *a
 		if checkedInitializer != nil && checkedInitializer.GetType() != nil {
 			// Type inference.
 			typ = checkedInitializer.GetType()
+			if !ast.IsConcreteType(typ) {
+				c.errors = append(c.errors, fmt.Errorf("%s: invalid initializer for variable %s, cannot infer type", decl.Loc, decl.Name))
+			}
 		}
 	}
 

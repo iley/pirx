@@ -17,10 +17,12 @@ import (
 // TestCase represents a single test case
 type TestCase struct {
 	Name              string
-	PirxFile          string
+	PirxFile          string // For single file tests
+	PirxDir           string // For directory tests
 	ExpectedFile      string // .out file for success tests
 	ExpectedErrorFile string // .err file for error tests
 	IsErrorTest       bool   // true if this test expects compilation to fail
+	IsDirectoryTest   bool   // true if this is a directory test
 }
 
 // TestResult represents the result of running a test
@@ -436,7 +438,38 @@ func discoverTests(testsDir string) ([]TestCase, error) {
 			return err
 		}
 
-		if !d.IsDir() && strings.HasSuffix(path, ".pirx") {
+		if d.IsDir() && path != testsDir {
+			// Check if this is a directory test
+			baseName := filepath.Base(path)
+
+			// Check if directory name matches test pattern (starts with digits followed by underscore)
+			if len(baseName) >= 4 && baseName[0] >= '0' && baseName[0] <= '9' && baseName[1] >= '0' && baseName[1] <= '9' && baseName[2] >= '0' && baseName[2] <= '9' && baseName[3] == '_' {
+				expectedOutFile := filepath.Join(testsDir, baseName+".out")
+				expectedErrFile := filepath.Join(testsDir, baseName+".err")
+
+				// Check if expected output file exists (success test)
+				if _, err := os.Stat(expectedOutFile); err == nil {
+					tests = append(tests, TestCase{
+						Name:            baseName,
+						PirxDir:         path,
+						ExpectedFile:    expectedOutFile,
+						IsErrorTest:     false,
+						IsDirectoryTest: true,
+					})
+				}
+
+				// Check if expected error file exists (error test)
+				if _, err := os.Stat(expectedErrFile); err == nil {
+					tests = append(tests, TestCase{
+						Name:              baseName,
+						PirxDir:           path,
+						ExpectedErrorFile: expectedErrFile,
+						IsErrorTest:       true,
+						IsDirectoryTest:   true,
+					})
+				}
+			}
+		} else if !d.IsDir() && strings.HasSuffix(path, ".pirx") {
 			// Extract base name without extension
 			baseName := strings.TrimSuffix(filepath.Base(path), ".pirx")
 			expectedOutFile := filepath.Join(testsDir, baseName+".out")
@@ -445,11 +478,10 @@ func discoverTests(testsDir string) ([]TestCase, error) {
 			// Check if expected output file exists (success test)
 			if _, err := os.Stat(expectedOutFile); err == nil {
 				tests = append(tests, TestCase{
-					Name:              baseName,
-					PirxFile:          path,
-					ExpectedFile:      expectedOutFile,
-					ExpectedErrorFile: "",
-					IsErrorTest:       false,
+					Name:         baseName,
+					PirxFile:     path,
+					ExpectedFile: expectedOutFile,
+					IsErrorTest:  false,
 				})
 			}
 
@@ -458,7 +490,6 @@ func discoverTests(testsDir string) ([]TestCase, error) {
 				tests = append(tests, TestCase{
 					Name:              baseName,
 					PirxFile:          path,
-					ExpectedFile:      "",
 					ExpectedErrorFile: expectedErrFile,
 					IsErrorTest:       true,
 				})
@@ -518,6 +549,9 @@ func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, er
 		// Try to find in discovered tests first
 		for _, test := range tests {
 			if test.Name == identifier {
+				if test.IsDirectoryTest {
+					return test.PirxDir, nil
+				}
 				return test.PirxFile, nil
 			}
 		}
@@ -527,6 +561,9 @@ func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, er
 	// If identifier is just a number, find test that starts with that number
 	for _, test := range tests {
 		if strings.HasPrefix(test.Name, testIdentifier+"_") || test.Name == testIdentifier {
+			if test.IsDirectoryTest {
+				return test.PirxDir, nil
+			}
 			return test.PirxFile, nil
 		}
 	}
@@ -535,6 +572,8 @@ func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, er
 	candidates := []string{
 		filepath.Join(testsDir, testIdentifier+".pirx"),
 		filepath.Join(testsDir, testIdentifier+"_*.pirx"),
+		filepath.Join(testsDir, testIdentifier),
+		filepath.Join(testsDir, testIdentifier+"_*"),
 	}
 
 	for _, pattern := range candidates {
@@ -553,26 +592,47 @@ func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, er
 	return "", fmt.Errorf("could not find test file for '%s'", testIdentifier)
 }
 
-func buildPirxArgs(pirxFile string) []string {
+func buildPirxArgs(testCase TestCase) []string {
 	args := []string{"build", "-k"}
 	if optLevel != "" {
 		args = append(args, "-O"+optLevel)
 	}
-	args = append(args, pirxFile)
+
+	if testCase.IsDirectoryTest {
+		args = append(args, testCase.PirxDir)
+	} else {
+		args = append(args, testCase.PirxFile)
+	}
+
 	return args
 }
 
 func compileTest(testCase TestCase, testsDir string) (string, []string, error) {
 	baseName := filepath.Base(testCase.Name)
-	asmFile := filepath.Join(testsDir, baseName+".s")
-	objFile := filepath.Join(testsDir, baseName+".o")
-	binFile := filepath.Join(testsDir, baseName)
 
-	// Keep track of generated files for cleanup
-	generatedFiles := []string{asmFile, objFile, binFile}
+	var binFile string
+	var generatedFiles []string
+
+	if testCase.IsDirectoryTest {
+		// For directory tests, the binary will be created inside the directory
+		// with the same name as the directory
+		binFile = filepath.Join(testCase.PirxDir, baseName)
+		generatedFiles = []string{binFile}
+
+		// Also track potential intermediate files in the directory
+		asmFile := filepath.Join(testCase.PirxDir, baseName+".s")
+		objFile := filepath.Join(testCase.PirxDir, baseName+".o")
+		generatedFiles = append(generatedFiles, asmFile, objFile)
+	} else {
+		// For single file tests, use the testsDir
+		asmFile := filepath.Join(testsDir, baseName+".s")
+		objFile := filepath.Join(testsDir, baseName+".o")
+		binFile = filepath.Join(testsDir, baseName)
+		generatedFiles = []string{asmFile, objFile, binFile}
+	}
 
 	// Use pirx build with -k flag to keep intermediate files for inspection
-	args := buildPirxArgs(testCase.PirxFile)
+	args := buildPirxArgs(testCase)
 	pirxCmd := exec.Command("./pirx", args...)
 	if verbose {
 		fmt.Printf("Executing: ./pirx %s\n", strings.Join(args, " "))
@@ -593,14 +653,35 @@ func compileTest(testCase TestCase, testsDir string) (string, []string, error) {
 	return binFile, generatedFiles, nil
 }
 
-func compileProgram(pirxFile, testsDir, baseName string) (result string, success bool, generatedFiles []string) {
-	asmFile := filepath.Join(testsDir, baseName+".s")
-	objFile := filepath.Join(testsDir, baseName+".o")
-	binFile := filepath.Join(testsDir, baseName)
-	generatedFiles = []string{asmFile, objFile, binFile}
+func compileProgram(pirxPath, testsDir, baseName string) (result string, success bool, generatedFiles []string) {
+	// Check if pirxPath is a directory or file
+	stat, err := os.Stat(pirxPath)
+	if err != nil {
+		return fmt.Sprintf("failed to stat %s: %v", pirxPath, err), false, nil
+	}
+
+	var binFile string
+	if stat.IsDir() {
+		// Directory build - binary goes inside the directory
+		binFile = filepath.Join(pirxPath, baseName)
+		asmFile := filepath.Join(pirxPath, baseName+".s")
+		objFile := filepath.Join(pirxPath, baseName+".o")
+		generatedFiles = []string{asmFile, objFile, binFile}
+	} else {
+		// File build - binary goes in testsDir
+		asmFile := filepath.Join(testsDir, baseName+".s")
+		objFile := filepath.Join(testsDir, baseName+".o")
+		binFile = filepath.Join(testsDir, baseName)
+		generatedFiles = []string{asmFile, objFile, binFile}
+	}
 
 	// Use pirx build with -k flag to keep intermediate files for inspection
-	args := buildPirxArgs(pirxFile)
+	args := []string{"build", "-k"}
+	if optLevel != "" {
+		args = append(args, "-O"+optLevel)
+	}
+	args = append(args, pirxPath)
+
 	pirxCmd := exec.Command("./pirx", args...)
 	if verbose {
 		fmt.Printf("Executing: ./pirx %s\n", strings.Join(args, " "))

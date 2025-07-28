@@ -38,8 +38,8 @@ The main compiler entry point is `cmd/pirxc/main.go` which orchestrates these st
 
 ### Linting and Formatting
 
- - Run `golangci-lint run` for lint.
- - Run `golangci-lint fmt` to re-format all code.
+ - Run `make lint` for lint. It uses golangci-lint under the hood.
+ - Run `make fmt` to re-format all code.
 
 ### End-to-end tests
 

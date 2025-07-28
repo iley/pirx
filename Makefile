@@ -38,4 +38,10 @@ examples:
 stdlib:
 	$(MAKE) -C ./stdlib
 
+lint:
+	golangci-lint run
+
+fmt:
+	golangci-lint fmt
+
 .PHONY: clean default examples test stdlib

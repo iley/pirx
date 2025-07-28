@@ -147,8 +147,6 @@ func foldConstants(body []Op) []Op {
 			oc.invalidateKnownValue(op.GetTarget())
 		}
 
-		// TODO: Eval args in function call arguments.
-
 		result = append(result, op)
 	}
 
@@ -260,11 +258,9 @@ func evalUnaryOp(oc *optimizationContext, operation string, value Arg) (Arg, boo
 		return Arg{}, false
 	}
 	switch operation {
-	/* FIXME: We're not folding negation yet, because the codegen doesn't handle negative literals correctly.
 	case "-":
 		result := -argIntValue(constVal)
 		return Arg{LiteralInt: &result}, true
-	*/
 	case "!":
 		result := !argBoolValue(constVal)
 		intResult := int64(0)

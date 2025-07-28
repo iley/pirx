@@ -480,7 +480,7 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 			}
 		} else {
 			// Calculate the address in an intermediary register.
-			generateLiteralLoad(cc, "x9", fullOffset)
+			generateLiteralLoad(cc, "x9", 8, fullOffset)
 			fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
 			if regSize == 1 {
 				fmt.Fprintf(cc.output, "  ldrsb %s, [x9]\n", reg)
@@ -492,7 +492,7 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 		if offset != 0 {
 			panic("cannot load a literal int64 with offset")
 		}
-		generateLiteralLoad(cc, reg, *arg.LiteralInt)
+		generateLiteralLoad(cc, reg, regSize, *arg.LiteralInt)
 	} else if arg.LiteralString != nil {
 		if offset != 0 {
 			panic("cannot load a literal string with offset")
@@ -542,7 +542,7 @@ func generateRegisterStore(cc *CodegenContext, regIndex, regSize int, baseReg st
 			fmt.Fprintf(cc.output, "  str %s, [%s, #%d]\n", reg, baseReg, offset)
 		}
 	} else {
-		generateLiteralLoad(cc, "x9", int64(offset))
+		generateLiteralLoad(cc, "x9", 8, int64(offset))
 		fmt.Fprintf(cc.output, "  add x9, %s, x9\n", baseReg)
 		if regSize == 1 {
 			fmt.Fprintf(cc.output, "  strb %s, [x9]\n", reg)
@@ -612,16 +612,18 @@ func generateMemoryCopyByAddr(cc *CodegenContext, source ir.Arg, regIndex int, s
 	}
 }
 
-func generateLiteralLoad(cc *CodegenContext, reg string, val int64) {
+func generateLiteralLoad(cc *CodegenContext, reg string, regSize int, val int64) {
 	fmt.Fprintf(cc.output, "  mov %s, #%d\n", reg, val&0xffff)
 	if (val>>16)&0xffff != 0 {
 		fmt.Fprintf(cc.output, "  movk %s, #%d, lsl #16\n", reg, (val>>16)&0xffff)
 	}
-	if (val>>32)&0xffff != 0 {
-		fmt.Fprintf(cc.output, "  movk %s, #%d, lsl #32\n", reg, (val>>32)&0xffff)
-	}
-	if (val>>48)&0xffff != 0 {
-		fmt.Fprintf(cc.output, "  movk %s, #%d, lsl #48\n", reg, (val>>48)&0xffff)
+	if regSize == 8 {
+		if (val>>32)&0xffff != 0 {
+			fmt.Fprintf(cc.output, "  movk %s, #%d, lsl #32\n", reg, (val>>32)&0xffff)
+		}
+		if (val>>48)&0xffff != 0 {
+			fmt.Fprintf(cc.output, "  movk %s, #%d, lsl #48\n", reg, (val>>48)&0xffff)
+		}
 	}
 }
 

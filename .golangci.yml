@@ -1,0 +1,39 @@
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  tests: true
+  skip-dirs:
+    - vendor
+    - generated
+  issues-exit-code: 1
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - revive
+    - errcheck
+    - ineffassign
+    - misspell
+    # enable when useful:
+    # - gosec
+    # - nilaway
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+  revive:
+    severity: warning
+    rules:
+      - name: exported
+      - name: indent-error-flow
+      - name: time-equal
+  misspell:
+    locale: US
+
+formatters:        # requires golangci-lint v2+
+  enable:
+    - gofumpt
+    - goimports

@@ -115,6 +115,7 @@ type UnaryOp struct {
 func (o UnaryOp) String() string {
 	return fmt.Sprintf("UnaryOp%d(%s = %s %s)", o.Size, o.Result, o.Operation, o.Value)
 }
+
 func (o UnaryOp) GetTarget() string {
 	return o.Result
 }

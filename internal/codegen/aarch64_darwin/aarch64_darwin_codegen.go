@@ -509,6 +509,7 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 		panic(fmt.Errorf("invalid arg in code generation: %v", arg))
 	}
 }
+
 func generateAddressLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) {
 	// TODO: Support for non-local variables.
 	if arg.Variable == "" {

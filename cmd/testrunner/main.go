@@ -217,7 +217,7 @@ func acceptTest(tests []TestCase, testsDir string, testIdentifier string) {
 	if !success {
 		// This is a compilation error test
 		outFile := filepath.Join(testsDir, baseName+".err")
-		err := os.WriteFile(outFile, []byte(result), 0644)
+		err := os.WriteFile(outFile, []byte(result), 0o644)
 		if err != nil {
 			fmt.Printf("Failed to write error file: %v\n", err)
 			os.Exit(1)
@@ -236,7 +236,7 @@ func acceptTest(tests []TestCase, testsDir string, testIdentifier string) {
 	}
 
 	outFile := filepath.Join(testsDir, baseName+".out")
-	err = os.WriteFile(outFile, []byte(output), 0644)
+	err = os.WriteFile(outFile, []byte(output), 0o644)
 	if err != nil {
 		fmt.Printf("Failed to write output file: %v\n", err)
 		cleanupFiles(generatedFiles)

@@ -12,10 +12,10 @@ func Optimize(program IrProgram) IrProgram {
 		ops = removeDeadCode(ops)
 
 		optFn := IrFunction{
-			Name: fn.Name,
-			Args: fn.Args,
+			Name:     fn.Name,
+			Args:     fn.Args,
 			ArgSizes: fn.ArgSizes,
-			Ops: ops,
+			Ops:      ops,
 		}
 		optProgram.Functions[i] = optFn
 	}
@@ -30,7 +30,7 @@ func foldConstants(body []Op) []Op {
 
 	for _, op := range body {
 		if unary, ok := op.(*UnaryOp); ok {
-			if unary.Operation == "&" && unary.Value.Variable != ""  {
+			if unary.Operation == "&" && unary.Value.Variable != "" {
 				leakedVars[unary.Value.Variable] = true
 			}
 		}
@@ -74,8 +74,8 @@ func foldConstants(body []Op) []Op {
 					// Replace the op with an assignment.
 					op = Assign{
 						Target: binop.Result,
-						Value: value,
-						Size: binop.Size,
+						Value:  value,
+						Size:   binop.Size,
 					}
 				} else {
 					delete(knownValues, binop.Result)
@@ -85,8 +85,8 @@ func foldConstants(body []Op) []Op {
 					knownValues[unop.Result] = value
 					op = Assign{
 						Target: unop.Result,
-						Value: value,
-						Size: unop.Size,
+						Value:  value,
+						Size:   unop.Size,
 					}
 				} else {
 					delete(knownValues, unop.Result)
@@ -128,8 +128,8 @@ func evalBinaryOp(knownValues map[string]Arg, operation string, left, right Arg)
 
 	// We assume types are correct at this point.
 	switch operation {
-		// FIXME: Handle different int sizes!!!
-		// Currently we assume there's now overflow.
+	// FIXME: Handle different int sizes!!!
+	// Currently we assume there's now overflow.
 	case "+":
 		result := argIntValue(leftConst) + argIntValue(rightConst)
 		return Arg{LiteralInt: &result}, true

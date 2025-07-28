@@ -4,9 +4,6 @@ run:
   timeout: 5m
   modules-download-mode: readonly
   tests: true
-  skip-dirs:
-    - vendor
-    - generated
   issues-exit-code: 1
 
 linters:
@@ -17,9 +14,6 @@ linters:
     - errcheck
     - ineffassign
     - misspell
-    # enable when useful:
-    # - gosec
-    # - nilaway
   settings:
     revive:
       rules:

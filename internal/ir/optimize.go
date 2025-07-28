@@ -23,80 +23,131 @@ func Optimize(program IrProgram) IrProgram {
 	return optProgram
 }
 
-func foldConstants(body []Op) []Op {
+type optimizationContext struct {
+	// Values known at compile time.
+	knownValues map[string]Arg
 	// Map of variables that can potentially be modified via pointers.
 	// We skip those as we cannot reliably determine whether they are modified at any point.
-	leakedVars := make(map[string]bool)
+	leakedVars map[string]bool
+}
+
+func newOptimizationContext() *optimizationContext {
+	return &optimizationContext{
+		knownValues: make(map[string]Arg),
+		leakedVars: make(map[string]bool),
+	}
+}
+
+func (oc *optimizationContext) reset() {
+	oc.knownValues = make(map[string]Arg)
+}
+
+func (oc *optimizationContext) addKnownValue(varname string, value Arg) {
+	if oc.leakedVars[varname] {
+		return
+	}
+	oc.knownValues[varname] = value
+}
+
+func (oc *optimizationContext) getKnownValue(varname string) (Arg, bool) {
+	arg, ok := oc.knownValues[varname]
+	return arg, ok
+}
+
+func (oc *optimizationContext) invalidateKnownValue(varname string) {
+	delete(oc.knownValues, varname)
+}
+
+func foldConstants(body []Op) []Op {
+	oc := newOptimizationContext()
 
 	for _, op := range body {
-		if unary, ok := op.(*UnaryOp); ok {
+		if unary, ok := op.(UnaryOp); ok {
 			if unary.Operation == "&" && unary.Value.Variable != "" {
-				leakedVars[unary.Value.Variable] = true
+				oc.leakedVars[unary.Value.Variable] = true
 			}
 		}
-	}
-
-	// Values known at compile time.
-	knownValues := make(map[string]Arg)
-	reset := func() {
-		knownValues = make(map[string]Arg)
 	}
 
 	result := []Op{}
 	for _, op := range body {
 		if _, ok := op.(Anchor); ok {
 			// Reset on encountering anchor (i.e. a label) because the program can potentially jump here.
-			reset()
+			oc.reset()
 		}
 		if _, ok := op.(Jump); ok {
 			// Reset on unconditional jumps.
-			reset()
+			oc.reset()
 		}
 		if _, ok := op.(JumpUnless); ok {
 			// Reset on conditional jumps.
-			reset()
+			oc.reset()
 		}
 
 		// Ignore the operations that write into variables for which pointers exist.
 		// This does not conflict with the Anchor/Jump/JumpUnless checks below because those return "" for target.
-		if !leakedVars[op.GetTarget()] {
-			if assign, ok := op.(Assign); ok {
-				// Assignment: if rvalue is known, track that.
-				if value, ok := evalArg(knownValues, assign.Value); ok {
-					knownValues[assign.Target] = value
-				} else {
-					// If we assign anything other that a constant to the variable, we no longer consider it known at compile time.
-					delete(knownValues, assign.Target)
-				}
-			} else if binop, ok := op.(BinaryOp); ok {
-				if value, ok := evalBinaryOp(knownValues, binop.Operation, binop.Left, binop.Right); ok {
-					knownValues[binop.Result] = value
-					// Replace the op with an assignment.
-					op = Assign{
-						Target: binop.Result,
-						Value:  value,
-						Size:   binop.Size,
-					}
-				} else {
-					delete(knownValues, binop.Result)
-				}
-			} else if unop, ok := op.(UnaryOp); ok {
-				if value, ok := evalUnaryOp(knownValues, unop.Operation, unop.Value); ok {
-					knownValues[unop.Result] = value
-					op = Assign{
-						Target: unop.Result,
-						Value:  value,
-						Size:   unop.Size,
-					}
-				} else {
-					delete(knownValues, unop.Result)
+		if assign, ok := op.(Assign); ok {
+			// Assignment: if rvalue is known, track that.
+			if value, ok := evalArg(oc, assign.Value); ok {
+				oc.addKnownValue(assign.Target, value)
+			} else {
+				// If we assign anything other that a constant to the variable, we no longer consider it known at compile time.
+				oc.invalidateKnownValue(assign.Target)
+			}
+		} else if binop, ok := op.(BinaryOp); ok {
+			if value, ok := evalBinaryOp(oc, binop.Operation, binop.Left, binop.Right); ok {
+				oc.addKnownValue(binop.Result, value)
+				// Replace the op with an assignment.
+				op = Assign{
+					Target: binop.Result,
+					Value:  value,
+					Size:   binop.Size,
 				}
 			} else {
-				delete(knownValues, op.GetTarget())
+				oc.invalidateKnownValue(binop.Result)
 			}
-
-			// TODO: Eval args in function call arguments.
+		} else if unop, ok := op.(UnaryOp); ok {
+			if value, ok := evalUnaryOp(oc, unop.Operation, unop.Value); ok {
+				oc.addKnownValue(unop.Result, value)
+				op = Assign{
+					Target: unop.Result,
+					Value:  value,
+					Size:   unop.Size,
+				}
+			} else {
+				oc.invalidateKnownValue(unop.Result)
+			}
+		} else if call, ok := op.(Call); ok {
+			args := make([]Arg, len(call.Args))
+			for i, arg := range call.Args {
+				constArg, ok := evalArg(oc, arg)
+				if ok {
+					args[i] = constArg
+				} else {
+					args[i] = arg
+				}
+			}
+			call.Args = args
+			op = call
+			oc.invalidateKnownValue(call.Result)
+		} else if call, ok := op.(ExternalCall); ok {
+			args := make([]Arg, len(call.Args))
+			for i, arg := range call.Args {
+				constArg, ok := evalArg(oc, arg)
+				if ok {
+					args[i] = constArg
+				} else {
+					args[i] = arg
+				}
+			}
+			call.Args = args
+			op = call
+			oc.invalidateKnownValue(call.Result)
+		} else {
+			oc.invalidateKnownValue(op.GetTarget())
 		}
+
+		// TODO: Eval args in function call arguments.
 
 		result = append(result, op)
 	}
@@ -104,9 +155,9 @@ func foldConstants(body []Op) []Op {
 	return result
 }
 
-func evalArg(knownValues map[string]Arg, arg Arg) (Arg, bool) {
+func evalArg(oc *optimizationContext, arg Arg) (Arg, bool) {
 	if arg.Variable != "" {
-		if value, ok := knownValues[arg.Variable]; ok {
+		if value, ok := oc.getKnownValue(arg.Variable); ok {
 			return value, true
 		}
 		return Arg{}, false
@@ -115,13 +166,13 @@ func evalArg(knownValues map[string]Arg, arg Arg) (Arg, bool) {
 	return arg, true
 }
 
-func evalBinaryOp(knownValues map[string]Arg, operation string, left, right Arg) (Arg, bool) {
-	leftConst, leftOk := evalArg(knownValues, left)
+func evalBinaryOp(oc *optimizationContext, operation string, left, right Arg) (Arg, bool) {
+	leftConst, leftOk := evalArg(oc, left)
 	if !leftOk {
 		return Arg{}, false
 	}
 
-	rightConst, rightOk := evalArg(knownValues, right)
+	rightConst, rightOk := evalArg(oc, right)
 	if !rightOk {
 		return Arg{}, false
 	}
@@ -160,8 +211,8 @@ func evalBinaryOp(knownValues map[string]Arg, operation string, left, right Arg)
 	return Arg{}, false
 }
 
-func evalUnaryOp(knownValues map[string]Arg, operation string, value Arg) (Arg, bool) {
-	constVal, ok := evalArg(knownValues, value)
+func evalUnaryOp(oc *optimizationContext, operation string, value Arg) (Arg, bool) {
+	constVal, ok := evalArg(oc, value)
 	if !ok {
 		return Arg{}, false
 	}

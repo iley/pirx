@@ -31,12 +31,13 @@ var rootCmd = &cobra.Command{
 }
 
 var buildCmd = &cobra.Command{
-	Use:   "build <file.pirx>... | <directory>",
+	Use:   "build <file.pirx|file.c>... | <directory>",
 	Short: "Build a Pirx program",
-	Long:  "Compile one or more Pirx source files or a directory containing .pirx files to an executable binary.",
+	Long:  "Compile one or more Pirx source files and optionally C files, or a directory containing .pirx and .c files to an executable binary.",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var pirxFiles []string
+		var cFiles []string
 		var isDirectoryBuild bool
 		var buildDir string
 
@@ -60,17 +61,27 @@ var buildCmd = &cobra.Command{
 					buildDir = arg
 				}
 
-				files, err := findPirxFiles(arg)
+				pFiles, cFileList, err := findSourceFiles(arg)
 				if err != nil {
-					return fmt.Errorf("failed to find .pirx files in directory %s: %w", arg, err)
+					return fmt.Errorf("failed to find source files in directory %s: %w", arg, err)
 				}
-				if len(files) == 0 {
-					return fmt.Errorf("no .pirx files found in directory %s", arg)
+				if len(pFiles) == 0 && len(cFileList) == 0 {
+					return fmt.Errorf("no .pirx or .c files found in directory %s", arg)
 				}
-				pirxFiles = files
+				if len(pFiles) == 0 {
+					return fmt.Errorf("no .pirx files found in directory %s (C files found but at least one .pirx file is required)", arg)
+				}
+				pirxFiles = pFiles
+				cFiles = cFileList
 			} else {
-				// Single file
-				pirxFiles = []string{arg}
+				// Single file - check if it's .pirx or .c
+				if strings.HasSuffix(arg, ".pirx") {
+					pirxFiles = []string{arg}
+				} else if strings.HasSuffix(arg, ".c") {
+					return fmt.Errorf("cannot build with only C files - at least one .pirx file is required")
+				} else {
+					return fmt.Errorf("unsupported file extension: %s (supported: .pirx, .c)", arg)
+				}
 			}
 		} else {
 			// Multiple files - ensure all are files, not directories
@@ -80,12 +91,24 @@ var buildCmd = &cobra.Command{
 				} else if stat.IsDir() {
 					return fmt.Errorf("cannot mix directories and files in build arguments")
 				}
+
+				// Separate .pirx and .c files
+				if strings.HasSuffix(arg, ".pirx") {
+					pirxFiles = append(pirxFiles, arg)
+				} else if strings.HasSuffix(arg, ".c") {
+					cFiles = append(cFiles, arg)
+				} else {
+					return fmt.Errorf("unsupported file extension: %s (supported: .pirx, .c)", arg)
+				}
 			}
-			pirxFiles = args
+
+			if len(pirxFiles) == 0 {
+				return fmt.Errorf("at least one .pirx file is required")
+			}
 		}
 
 		// When multiple files are specified (and not directory build), -o must be used
-		if len(pirxFiles) > 1 && !isDirectoryBuild && outputFile == "" {
+		if (len(pirxFiles) > 1 || len(cFiles) > 0) && !isDirectoryBuild && outputFile == "" {
 			return fmt.Errorf("output file (-o) must be specified when compiling multiple files")
 		}
 
@@ -99,7 +122,7 @@ var buildCmd = &cobra.Command{
 		keepIntermediateFiles, _ := cmd.Flags().GetBool("keep")
 
 		// Build the program
-		if err := buildProgram(config, pirxFiles, keepIntermediateFiles, optLevel, outputFile, isDirectoryBuild, buildDir); err != nil {
+		if err := buildProgram(config, pirxFiles, cFiles, keepIntermediateFiles, optLevel, outputFile, isDirectoryBuild, buildDir); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}
@@ -120,25 +143,32 @@ func main() {
 	}
 }
 
-// findPirxFiles scans a directory for .pirx files
-func findPirxFiles(dir string) ([]string, error) {
+// findSourceFiles scans a directory for .pirx and .c files
+func findSourceFiles(dir string) ([]string, []string, error) {
 	var pirxFiles []string
+	var cFiles []string
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".pirx") {
-			pirxFiles = append(pirxFiles, filepath.Join(dir, entry.Name()))
+		if !entry.IsDir() {
+			name := entry.Name()
+			fullPath := filepath.Join(dir, name)
+			if strings.HasSuffix(name, ".pirx") {
+				pirxFiles = append(pirxFiles, fullPath)
+			} else if strings.HasSuffix(name, ".c") {
+				cFiles = append(cFiles, fullPath)
+			}
 		}
 	}
 
-	return pirxFiles, nil
+	return pirxFiles, cFiles, nil
 }
 
-// buildProgram compiles one or more pirx files to an executable
-func buildProgram(config *CompilationConfig, pirxFiles []string, keepIntermediate bool, optLevel string, outputFile string, isDirectoryBuild bool, buildDir string) error {
+// buildProgram compiles one or more pirx files and optionally C files to an executable
+func buildProgram(config *CompilationConfig, pirxFiles []string, cFiles []string, keepIntermediate bool, optLevel string, outputFile string, isDirectoryBuild bool, buildDir string) error {
 	// Get PIRX root directory
 	pirxRoot, err := getPirxRoot()
 	if err != nil {
@@ -189,8 +219,28 @@ func buildProgram(config *CompilationConfig, pirxFiles []string, keepIntermediat
 		return err
 	}
 
-	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile, stdlibPath}, config.LinkerFlags...)
+	// Step 3: Compile C files to .o files (if any)
+	var cObjectFiles []string
+	for _, cFile := range cFiles {
+		cBaseName := strings.TrimSuffix(filepath.Base(cFile), ".c")
+		cDir := filepath.Dir(cFile)
+		cObjFile := filepath.Join(cDir, cBaseName+".o")
+		cObjectFiles = append(cObjectFiles, cObjFile)
+
+		// Compile C file to object file
+		ccArgs := []string{"-c", "-o", cObjFile, cFile}
+		ccCmd := exec.Command("cc", ccArgs...)
+		if output, err := ccCmd.CombinedOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "C compilation failed for %s: %v\nOutput: %s\n", cFile, err, string(output))
+			return err
+		}
+	}
+
+	// Step 4: Link all .o files to executable
+	ldArgs := []string{"-o", binFile, objFile}
+	ldArgs = append(ldArgs, cObjectFiles...)
+	ldArgs = append(ldArgs, stdlibPath)
+	ldArgs = append(ldArgs, config.LinkerFlags...)
 	ldCmd := exec.Command(config.Linker, ldArgs...)
 	if output, err := ldCmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "linking failed: %v\nOutput: %s\n", err, string(output))
@@ -201,6 +251,9 @@ func buildProgram(config *CompilationConfig, pirxFiles []string, keepIntermediat
 	if !keepIntermediate {
 		os.Remove(asmFile)
 		os.Remove(objFile)
+		for _, cObjFile := range cObjectFiles {
+			os.Remove(cObjFile)
+		}
 	}
 
 	fmt.Printf("Built %s\n", binFile)

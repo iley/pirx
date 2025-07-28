@@ -82,11 +82,10 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 	var checkedBody *ast.Block
 	if fn.Body != nil {
 		checkedBody = c.checkBlock(fn.Body)
-	}
 
-	// TODO: Check that each possible execution path ends with a return.
-	if c.currentFunc.ReturnType != nil && !c.hasReturn {
-		c.errors = append(c.errors, fmt.Errorf("%s: function %s with return type %s must contain a return operator", fn.Loc, c.currentFunc.Name, c.currentFunc.ReturnType))
+		if c.currentFunc.ReturnType != nil && !c.hasReturn {
+			c.errors = append(c.errors, fmt.Errorf("%s: function %s with return type %s must contain a return operator", fn.Loc, c.currentFunc.Name, c.currentFunc.ReturnType))
+		}
 	}
 
 	args := make([]ast.Arg, len(fn.Args))

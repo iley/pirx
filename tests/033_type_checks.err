@@ -1,4 +1,5 @@
-tests/033_type_checks.pirx:11:4: cannot assign value of type string to lvalue of type int
+pirxc compilation failed: exit status 1
+Output: tests/033_type_checks.pirx:11:4: cannot assign value of type string to lvalue of type int
 tests/033_type_checks.pirx:12:5: binary operation + cannot be applied to values of types int and string
 tests/033_type_checks.pirx:15:5: cannot assign value of type int to lvalue of type string
 tests/033_type_checks.pirx:16:5: cannot assign value of type int to lvalue of type string
@@ -9,4 +10,4 @@ tests/033_type_checks.pirx:24:8: cannot assign value of type int to lvalue of ty
 tests/033_type_checks.pirx:25:8: cannot assign value of type string to lvalue of type bool
 tests/033_type_checks.pirx:27:3: expected an expression of type bool in if condition, got type int
 tests/033_type_checks.pirx:31:3: expected an expression of type bool in while condition, got type string
-exit status 1
+

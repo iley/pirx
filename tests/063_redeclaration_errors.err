@@ -1,5 +1,6 @@
-tests/063_redeclaration_errors.pirx:3:1: duplicate function argument: arg1
+pirxc compilation failed: exit status 1
+Output: tests/063_redeclaration_errors.pirx:3:1: duplicate function argument: arg1
 tests/063_redeclaration_errors.pirx:10:5: variable x is already declared
 tests/063_redeclaration_errors.pirx:14:9: variable z is already declared
 tests/063_redeclaration_errors.pirx:21:5: variable a is already declared
-exit status 1
+

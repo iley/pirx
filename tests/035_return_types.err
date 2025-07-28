@@ -1,5 +1,6 @@
-tests/035_return_types.pirx:2:3: function foo has return type int but a value of type bool was provided
+pirxc compilation failed: exit status 1
+Output: tests/035_return_types.pirx:2:3: function foo has return type int but a value of type bool was provided
 tests/035_return_types.pirx:6:3: function bar should return a value of type int but no value was provided
 tests/035_return_types.pirx:10:3: function baz does not have a return type but a value was provided
 tests/035_return_types.pirx:13:1: function qux with return type int must contain a return operator
-exit status 1
+

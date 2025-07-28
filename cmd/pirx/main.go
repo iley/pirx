@@ -28,7 +28,7 @@ func getCompilationConfig() (*CompilationConfig, error) {
 				Assembler:        "as",
 				AssemblerFlags:   []string{"-arch", "arm64", "-g"},
 				Linker:           "ld",
-				LinkerFlags:      []string{"-lSystem", "-syslibroot", getSDKPath(), "-arch", "arm64"},
+				LinkerFlags:      []string{"-lSystem", "-syslibroot", getMacOsSdkPath(), "-arch", "arm64"},
 				ExecutableSuffix: "",
 			}, nil
 		case "amd64":
@@ -36,7 +36,7 @@ func getCompilationConfig() (*CompilationConfig, error) {
 				Assembler:        "as",
 				AssemblerFlags:   []string{"-arch", "x86_64"},
 				Linker:           "ld",
-				LinkerFlags:      []string{"-lSystem", "-syslibroot", getSDKPath(), "-arch", "x86_64"},
+				LinkerFlags:      []string{"-lSystem", "-syslibroot", getMacOsSdkPath(), "-arch", "x86_64"},
 				ExecutableSuffix: "",
 			}, nil
 		}
@@ -53,8 +53,7 @@ func getCompilationConfig() (*CompilationConfig, error) {
 	return nil, fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
-// getSDKPath returns the macOS SDK path
-func getSDKPath() string {
+func getMacOsSdkPath() string {
 	cmd := exec.Command("xcrun", "-sdk", "macosx", "--show-sdk-path")
 	output, err := cmd.Output()
 	if err != nil {

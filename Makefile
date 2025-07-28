@@ -6,10 +6,10 @@ pirx: always
 pirxc: stdlib always
 	go build -o pirxc ./cmd/pirxc
 
-testrunner: always
+testrunner: pirx
 	go build -o testrunner ./cmd/testrunner
 
-test: pirxc testrunner
+test: testrunner
 	go test ./...
 	./testrunner -j 8 testall
 

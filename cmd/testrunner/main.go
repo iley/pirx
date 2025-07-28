@@ -7,66 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"syscall"
 )
-
-// CompilationConfig holds platform-specific compilation settings
-type CompilationConfig struct {
-	Assembler        string
-	AssemblerFlags   []string
-	Linker           string
-	LinkerFlags      []string
-	ExecutableSuffix string
-}
-
-// getCompilationConfig returns compilation configuration for the current platform
-func getCompilationConfig() (*CompilationConfig, error) {
-	switch runtime.GOOS {
-	case "darwin":
-		switch runtime.GOARCH {
-		case "arm64":
-			return &CompilationConfig{
-				Assembler:        "as",
-				AssemblerFlags:   []string{"-arch", "arm64", "-g"},
-				Linker:           "ld",
-				LinkerFlags:      []string{"-lSystem", "-syslibroot", getSDKPath(), "-arch", "arm64"},
-				ExecutableSuffix: "",
-			}, nil
-		case "amd64":
-			return &CompilationConfig{
-				Assembler:        "as",
-				AssemblerFlags:   []string{"-arch", "x86_64"},
-				Linker:           "ld",
-				LinkerFlags:      []string{"-lSystem", "-syslibroot", getSDKPath(), "-arch", "x86_64"},
-				ExecutableSuffix: "",
-			}, nil
-		}
-	case "linux":
-		return &CompilationConfig{
-			Assembler:        "as",
-			AssemblerFlags:   []string{},
-			Linker:           "ld",
-			LinkerFlags:      []string{},
-			ExecutableSuffix: "",
-		}, nil
-	}
-
-	return nil, fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
-}
-
-// getSDKPath returns the macOS SDK path
-func getSDKPath() string {
-	cmd := exec.Command("xcrun", "-sdk", "macosx", "--show-sdk-path")
-	output, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(output))
-}
 
 // TestCase represents a single test case
 type TestCase struct {
@@ -121,44 +66,30 @@ func discoverTests(testsDir string) ([]TestCase, error) {
 	return tests, err
 }
 
-// compileTest compiles a pirx file to executable
+// compileTest compiles a pirx file to executable using pirx build
 // For error tests, it returns the compilation error message in the first return value
-func compileTest(config *CompilationConfig, testCase TestCase, testsDir string) (string, []string, error) {
+func compileTest(testCase TestCase, testsDir string) (string, []string, error) {
 	baseName := filepath.Base(testCase.Name)
 	asmFile := filepath.Join(testsDir, baseName+".s")
 	objFile := filepath.Join(testsDir, baseName+".o")
-	binFile := filepath.Join(testsDir, baseName+config.ExecutableSuffix)
+	binFile := filepath.Join(testsDir, baseName)
 
 	// Keep track of generated files for cleanup
 	generatedFiles := []string{asmFile, objFile, binFile}
 
-	// Step 1: Compile .pirx to .s using pirx compiler
-	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirxc", "-o", asmFile, testCase.PirxFile)
+	// Use pirx build to compile the program
+	pirxCmd := exec.Command("./pirx", "build", testCase.PirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		if testCase.IsErrorTest {
 			// For error tests, return the compilation error output
 			return string(output), generatedFiles, nil
 		}
-		return "", generatedFiles, fmt.Errorf("pirx compilation failed: %w\nOutput: %s", err, string(output))
+		return "", generatedFiles, fmt.Errorf("pirx build failed: %w\nOutput: %s", err, string(output))
 	}
 
 	// If this is an error test but compilation succeeded, that's a failure
 	if testCase.IsErrorTest {
 		return "", generatedFiles, fmt.Errorf("expected compilation to fail, but it succeeded")
-	}
-
-	// Step 2: Assemble .s to .o
-	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
-	asCmd := exec.Command(config.Assembler, asArgs...)
-	if output, err := asCmd.CombinedOutput(); err != nil {
-		return "", generatedFiles, fmt.Errorf("assembly failed: %w\nOutput: %s", err, string(output))
-	}
-
-	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile, "stdlib/libpirx.a"}, config.LinkerFlags...)
-	ldCmd := exec.Command(config.Linker, ldArgs...)
-	if output, err := ldCmd.CombinedOutput(); err != nil {
-		return "", generatedFiles, fmt.Errorf("linking failed: %w\nOutput: %s", err, string(output))
 	}
 
 	return binFile, generatedFiles, nil
@@ -215,12 +146,12 @@ type TestResult struct {
 }
 
 // runSingleTest runs a single test case and returns pass/fail status
-func runSingleTest(config *CompilationConfig, testCase TestCase, testsDir string) (bool, string) {
+func runSingleTest(testCase TestCase, testsDir string) (bool, string) {
 	fmt.Printf("Running test %s... ", testCase.Name)
 
 	if testCase.IsErrorTest {
 		// Handle error tests
-		actualError, generatedFiles, err := compileTest(config, testCase, testsDir)
+		actualError, generatedFiles, err := compileTest(testCase, testsDir)
 		if err != nil {
 			return false, fmt.Sprintf("error during compilation test: %v", err)
 		}
@@ -242,7 +173,7 @@ func runSingleTest(config *CompilationConfig, testCase TestCase, testsDir string
 		return false, fmt.Sprintf("error mismatch:\nExpected: %q\nActual:   %q", expectedError, actualError)
 	} else {
 		// Handle success tests
-		binaryPath, generatedFiles, err := compileTest(config, testCase, testsDir)
+		binaryPath, generatedFiles, err := compileTest(testCase, testsDir)
 		if err != nil {
 			return false, fmt.Sprintf("compilation error: %v", err)
 		}
@@ -339,46 +270,24 @@ func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, er
 	return "", fmt.Errorf("could not find test file for '%s'", testIdentifier)
 }
 
-// getCompilationPaths returns the file paths used during compilation
-func getCompilationPaths(testsDir, baseName string, config *CompilationConfig) (asmFile, objFile, binFile string, generatedFiles []string) {
-	asmFile = filepath.Join(testsDir, baseName+".s")
-	objFile = filepath.Join(testsDir, baseName+".o")
-	binFile = filepath.Join(testsDir, baseName+config.ExecutableSuffix)
-	generatedFiles = []string{asmFile, objFile, binFile}
-	return
-}
-
-// compileProgram compiles a pirx file and returns either the binary path (on success)
+// compileProgram compiles a pirx file using pirx build and returns either the binary path (on success)
 // or error message (on failure), along with success flag and generated files for cleanup
-func compileProgram(config *CompilationConfig, pirxFile, testsDir, baseName string) (result string, success bool, generatedFiles []string) {
-	asmFile, objFile, binFile, generatedFiles := getCompilationPaths(testsDir, baseName, config)
+func compileProgram(pirxFile, testsDir, baseName string) (result string, success bool, generatedFiles []string) {
+	asmFile := filepath.Join(testsDir, baseName+".s")
+	objFile := filepath.Join(testsDir, baseName+".o")
+	binFile := filepath.Join(testsDir, baseName)
+	generatedFiles = []string{asmFile, objFile, binFile}
 
-	// Step 1: Compile .pirx to .s using pirx compiler
-	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirxc", "-o", asmFile, pirxFile)
+	// Use pirx build to compile the program
+	pirxCmd := exec.Command("./pirx", "build", pirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		return string(output), false, generatedFiles
-	}
-
-	// Step 2: Assemble .s to .o
-	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
-	asCmd := exec.Command(config.Assembler, asArgs...)
-	if output, err := asCmd.CombinedOutput(); err != nil {
-		errorMsg := fmt.Sprintf("assembly failed: %v\nOutput: %s", err, string(output))
-		return errorMsg, false, generatedFiles
-	}
-
-	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile, "stdlib/libpirx.a"}, config.LinkerFlags...)
-	ldCmd := exec.Command(config.Linker, ldArgs...)
-	if output, err := ldCmd.CombinedOutput(); err != nil {
-		errorMsg := fmt.Sprintf("linking failed: %v\nOutput: %s", err, string(output))
-		return errorMsg, false, generatedFiles
 	}
 
 	return binFile, true, generatedFiles
 }
 
-func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string, parallelism int) {
+func runAllTests(tests []TestCase, testsDir string, parallelism int) {
 	if len(tests) == 1 {
 		fmt.Printf("Running 1 test\n")
 	} else {
@@ -387,19 +296,19 @@ func runAllTests(config *CompilationConfig, tests []TestCase, testsDir string, p
 
 	if parallelism <= 1 {
 		// Sequential execution
-		runAllTestsSequential(config, tests, testsDir)
+		runAllTestsSequential(tests, testsDir)
 	} else {
 		// Parallel execution
-		runAllTestsParallel(config, tests, testsDir, parallelism)
+		runAllTestsParallel(tests, testsDir, parallelism)
 	}
 }
 
-func runAllTestsSequential(config *CompilationConfig, tests []TestCase, testsDir string) {
+func runAllTestsSequential(tests []TestCase, testsDir string) {
 	passed := 0
 	failed := 0
 
 	for _, test := range tests {
-		success, errorMsg := runSingleTest(config, test, testsDir)
+		success, errorMsg := runSingleTest(test, testsDir)
 		if success {
 			fmt.Println("PASS")
 			passed++
@@ -420,7 +329,7 @@ func runAllTestsSequential(config *CompilationConfig, tests []TestCase, testsDir
 	}
 }
 
-func runAllTestsParallel(config *CompilationConfig, tests []TestCase, testsDir string, parallelism int) {
+func runAllTestsParallel(tests []TestCase, testsDir string, parallelism int) {
 	results := make([]TestResult, len(tests))
 	testChan := make(chan int, len(tests))
 	var wg sync.WaitGroup
@@ -432,7 +341,7 @@ func runAllTestsParallel(config *CompilationConfig, tests []TestCase, testsDir s
 			defer wg.Done()
 			for testIndex := range testChan {
 				test := tests[testIndex]
-				success, errorMsg := runSingleTestQuiet(config, test, testsDir)
+				success, errorMsg := runSingleTestQuiet(test, testsDir)
 				results[testIndex] = TestResult{
 					TestCase: test,
 					Passed:   success,
@@ -476,10 +385,10 @@ func runAllTestsParallel(config *CompilationConfig, tests []TestCase, testsDir s
 }
 
 // runSingleTestQuiet runs a single test case without printing progress
-func runSingleTestQuiet(config *CompilationConfig, testCase TestCase, testsDir string) (bool, string) {
+func runSingleTestQuiet(testCase TestCase, testsDir string) (bool, string) {
 	if testCase.IsErrorTest {
 		// Handle error tests
-		actualError, generatedFiles, err := compileTest(config, testCase, testsDir)
+		actualError, generatedFiles, err := compileTest(testCase, testsDir)
 		if err != nil {
 			return false, fmt.Sprintf("error during compilation test: %v", err)
 		}
@@ -501,7 +410,7 @@ func runSingleTestQuiet(config *CompilationConfig, testCase TestCase, testsDir s
 		return false, fmt.Sprintf("error mismatch:\nExpected: %q\nActual:   %q", expectedError, actualError)
 	} else {
 		// Handle success tests
-		binaryPath, generatedFiles, err := compileTest(config, testCase, testsDir)
+		binaryPath, generatedFiles, err := compileTest(testCase, testsDir)
 		if err != nil {
 			return false, fmt.Sprintf("compilation error: %v", err)
 		}
@@ -530,7 +439,7 @@ func runSingleTestQuiet(config *CompilationConfig, testCase TestCase, testsDir s
 	}
 }
 
-func runSpecificTest(config *CompilationConfig, tests []TestCase, testsDir string, testIdentifier string) {
+func runSpecificTest(tests []TestCase, testsDir string, testIdentifier string) {
 	testCase, err := findTestCase(tests, testIdentifier)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -539,7 +448,7 @@ func runSpecificTest(config *CompilationConfig, tests []TestCase, testsDir strin
 
 	fmt.Printf("Running specific test: %s\n", testCase.Name)
 
-	success, errorMsg := runSingleTest(config, *testCase, testsDir)
+	success, errorMsg := runSingleTest(*testCase, testsDir)
 	if success {
 		fmt.Println("PASS")
 		fmt.Printf("Test Results: 1 passed. All good!\n")
@@ -550,7 +459,7 @@ func runSpecificTest(config *CompilationConfig, tests []TestCase, testsDir strin
 	}
 }
 
-func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, testIdentifier string) {
+func runProgram(tests []TestCase, testsDir string, testIdentifier string) {
 	pirxFile, err := findPirxFile(tests, testsDir, testIdentifier)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -560,7 +469,7 @@ func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, te
 	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
 	fmt.Printf("Compiling and running: %s\n", baseName)
 
-	result, success, generatedFiles := compileProgram(config, pirxFile, testsDir, baseName)
+	result, success, generatedFiles := compileProgram(pirxFile, testsDir, baseName)
 
 	if !success {
 		fmt.Printf("Compilation failed:\n%s", result)
@@ -579,7 +488,7 @@ func runProgram(config *CompilationConfig, tests []TestCase, testsDir string, te
 	cleanupFiles(generatedFiles)
 }
 
-func acceptTest(config *CompilationConfig, tests []TestCase, testsDir string, testIdentifier string) {
+func acceptTest(tests []TestCase, testsDir string, testIdentifier string) {
 	pirxFile, err := findPirxFile(tests, testsDir, testIdentifier)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -589,7 +498,7 @@ func acceptTest(config *CompilationConfig, tests []TestCase, testsDir string, te
 	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
 	fmt.Printf("Accepting output for: %s\n", baseName)
 
-	result, success, generatedFiles := compileProgram(config, pirxFile, testsDir, baseName)
+	result, success, generatedFiles := compileProgram(pirxFile, testsDir, baseName)
 
 	if !success {
 		// Compilation failed - save to .err file
@@ -641,13 +550,6 @@ func main() {
 
 	command := args[0]
 
-	// Get compilation configuration for current platform
-	config, err := getCompilationConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
 	// Discover tests
 	testsDir := "tests"
 	tests, err := discoverTests(testsDir)
@@ -668,7 +570,7 @@ func main() {
 
 	switch command {
 	case "testall":
-		runAllTests(config, tests, testsDir, parallelism)
+		runAllTests(tests, testsDir, parallelism)
 	case "test":
 		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Error: 'test' command requires a test identifier\n")
@@ -676,7 +578,7 @@ func main() {
 			os.Exit(1)
 		}
 		testIdentifier := args[1]
-		runSpecificTest(config, tests, testsDir, testIdentifier)
+		runSpecificTest(tests, testsDir, testIdentifier)
 	case "run":
 		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Error: 'run' command requires a test identifier\n")
@@ -684,7 +586,7 @@ func main() {
 			os.Exit(1)
 		}
 		testIdentifier := args[1]
-		runProgram(config, tests, testsDir, testIdentifier)
+		runProgram(tests, testsDir, testIdentifier)
 	case "accept":
 		if len(args) < 2 {
 			fmt.Fprintf(os.Stderr, "Error: 'accept' command requires a test identifier\n")
@@ -692,7 +594,7 @@ func main() {
 			os.Exit(1)
 		}
 		testIdentifier := args[1]
-		acceptTest(config, tests, testsDir, testIdentifier)
+		acceptTest(tests, testsDir, testIdentifier)
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown command '%s'\n", command)
 		printUsage()

@@ -272,7 +272,7 @@ func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
 	} else if literal.BoolValue != nil {
 		// Translate booleans into 32-bit integers.
 		var intValue int64
-		if *literal.BoolValue == true {
+		if *literal.BoolValue {
 			intValue = 1
 		} else {
 			intValue = 0

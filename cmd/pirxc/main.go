@@ -33,7 +33,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error opening input file: %v\n", err)
 		os.Exit(1)
 	}
-	defer inputFile.Close()
+	defer func() {
+		if err := inputFile.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close input file: %v\n", err)
+		}
+	}()
 
 	lex := lexer.New(inputFile, inputFileName)
 	p := parser.New(lex)
@@ -66,7 +70,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error creating output file: %v\n", err)
 			os.Exit(1)
 		}
-		defer outputFile.Close()
+		defer func() {
+			if err := outputFile.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close output file: %v\n", err)
+			}
+		}()
 		output = outputFile
 	}
 
@@ -95,5 +103,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	codegen.Generate(output, target, programIr)
+	err = codegen.Generate(output, target, programIr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error generating machine code: %v\n", err)
+		os.Exit(1)
+	}
 }

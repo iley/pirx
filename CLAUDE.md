@@ -11,8 +11,9 @@ __Always follow those unless I explicitly tell you otherwise!__
 * Don't ever remove existing unit tests. Ever!
 * Work in small iterations, run tests frequently.
 * If you need examples of the Pirx language, look in the `tests/` directory. Ignore the `examples/` directory.
-* Once you're done with your task, run go fmt like so: `go fmt ./...` to format all files.
 * Try to order all functions you add from top-to-bottom in the dependency order, i.e. the function that is called first comes first in the file.
+* Always run lint and formatter when you're done with you changes. Fix any lint errors.
+* Don't add unecessary comments that just describe what a straightforward line of code is doing.
 
 ## Compiler Architecture
 
@@ -34,6 +35,11 @@ The main compiler entry point is `cmd/pirxc/main.go` which orchestrates these st
 - `make test` - Run Go unit tests and all integration tests. __This is your main tool, run it frequently__.
 - `make clean` - Clean build artifacts
 - `make stdlib` - Build standard library (libpirx.a)
+
+### Linting and Formatting
+
+ - Run `golangci-lint run` for lint.
+ - Run `golangci-lint fmt` to re-format all code.
 
 ### End-to-end tests
 

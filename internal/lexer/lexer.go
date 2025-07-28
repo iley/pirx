@@ -640,7 +640,7 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 
 // lexHexNumber reads a hexadecimal number literal
 func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, error) {
-	var num string = prefix
+	num := prefix
 
 	for {
 		r, _, err := l.readRune()
@@ -669,7 +669,6 @@ func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, er
 				return Lexeme{}, err
 			}
 			if nextR == '8' {
-				// It's an i8 suffix
 				num += "i8"
 				break
 			} else {
@@ -680,8 +679,7 @@ func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, er
 			}
 		}
 
-		// Check for valid hex digit
-		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+		if !isValidHexDigit(r) {
 			l.unreadRune()
 			break
 		}
@@ -694,4 +692,8 @@ func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, er
 		Str:  num,
 		Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
 	}, nil
+}
+
+func isValidHexDigit(r rune) bool {
+	return (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
 }

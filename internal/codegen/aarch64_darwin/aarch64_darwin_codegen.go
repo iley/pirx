@@ -43,7 +43,7 @@ func Generate(output io.Writer, irp ir.IrProgram) error {
 	for i, f := range irp.Functions {
 		err := generateFunction(cc, f)
 		if err != nil {
-			return fmt.Errorf("Error when generating code for function %s: %w", f.Name, err)
+			return fmt.Errorf("error when generating code for function %s: %w", f.Name, err)
 		}
 		if i != len(irp.Functions)-1 {
 			// Separate functions with a newline.
@@ -216,7 +216,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 			}
 		}
 	} else {
-		panic(fmt.Errorf("Invalid rvalue in assignment: %v", assign.Value))
+		panic(fmt.Errorf("invalid rvalue in assignment: %v", assign.Value))
 	}
 	return nil
 }
@@ -232,7 +232,7 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error 
 	} else if assign.Value.Zero {
 		panic("TODO: zero assignment by address not supported yet")
 	} else {
-		panic(fmt.Errorf("Invalid rvalue in assignment: %v", assign.Value))
+		panic(fmt.Errorf("invalid rvalue in assignment: %v", assign.Value))
 	}
 	return nil
 }
@@ -271,7 +271,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) error {
 	if len(call.Args) > MAX_FUNC_ARGS {
-		return fmt.Errorf("Too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
+		return fmt.Errorf("too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
 	}
 
 	for i, arg := range call.Args[0:call.NamedArgs] {

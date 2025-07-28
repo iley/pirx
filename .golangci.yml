@@ -20,20 +20,20 @@ linters:
     # enable when useful:
     # - gosec
     # - nilaway
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    errcheck:
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - os.Remove
+        - (*github.com/iley/pirx/internal/parser.Parser).consume
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-  revive:
-    severity: warning
-    rules:
-      - name: exported
-      - name: indent-error-flow
-      - name: time-equal
-  misspell:
-    locale: US
-
-formatters:        # requires golangci-lint v2+
+formatters:
   enable:
     - gofumpt
     - goimports

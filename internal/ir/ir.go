@@ -9,7 +9,7 @@ import (
 )
 
 /*
-Intermediate representation for Pirx. This sits inbetween AST and machine code.
+Intermediate representation for Pirx. This sits between AST and machine code.
 The IR is a basic three-address code. Each operation has size associated with it.
 That is the size of the result of the operation in bytes.
 

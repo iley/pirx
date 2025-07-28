@@ -27,5 +27,5 @@ func Generate(output io.Writer, target Target, irp ir.IrProgram) error {
 	case TargetAARCH64Darwin:
 		return aarch64_darwin.Generate(output, irp)
 	}
-	return fmt.Errorf("Unknown target: %v", target)
+	return fmt.Errorf("unknown target: %v", target)
 }

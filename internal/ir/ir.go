@@ -347,9 +347,3 @@ func (a Arg) String() string {
 	}
 	panic(fmt.Sprintf("invalid arg value: %#v", a))
 }
-
-// Optimize runs IR optimizations on the given IR program.
-func Optimize(irp IrProgram) IrProgram {
-	// TODO: Implement optimizations here.
-	return irp
-}

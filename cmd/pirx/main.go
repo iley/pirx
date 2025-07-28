@@ -18,11 +18,10 @@ var (
 
 // CompilationConfig holds platform-specific compilation settings
 type CompilationConfig struct {
-	Assembler        string
-	AssemblerFlags   []string
-	Linker           string
-	LinkerFlags      []string
-	ExecutableSuffix string
+	Assembler      string
+	AssemblerFlags []string
+	Linker         string
+	LinkerFlags    []string
 }
 
 var rootCmd = &cobra.Command{
@@ -32,22 +31,50 @@ var rootCmd = &cobra.Command{
 }
 
 var buildCmd = &cobra.Command{
-	Use:   "build <file.pirx>...",
+	Use:   "build <file.pirx>... | <directory>",
 	Short: "Build a Pirx program",
-	Long:  "Compile one or more Pirx source files to an executable binary.",
+	Long:  "Compile one or more Pirx source files or a directory containing .pirx files to an executable binary.",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pirxFiles := args
+		var pirxFiles []string
+		var isDirectoryBuild bool
+		var buildDir string
 
-		// Check if all files exist
-		for _, pirxFile := range pirxFiles {
-			if _, err := os.Stat(pirxFile); os.IsNotExist(err) {
-				return fmt.Errorf("file %s does not exist", pirxFile)
+		// Process arguments - could be files or a single directory
+		if len(args) == 1 {
+			arg := args[0]
+			if stat, err := os.Stat(arg); err != nil {
+				return fmt.Errorf("path %s does not exist", arg)
+			} else if stat.IsDir() {
+				// Directory build
+				isDirectoryBuild = true
+				buildDir = arg
+				files, err := findPirxFiles(arg)
+				if err != nil {
+					return fmt.Errorf("failed to find .pirx files in directory %s: %w", arg, err)
+				}
+				if len(files) == 0 {
+					return fmt.Errorf("no .pirx files found in directory %s", arg)
+				}
+				pirxFiles = files
+			} else {
+				// Single file
+				pirxFiles = []string{arg}
 			}
+		} else {
+			// Multiple files - ensure all are files, not directories
+			for _, arg := range args {
+				if stat, err := os.Stat(arg); err != nil {
+					return fmt.Errorf("file %s does not exist", arg)
+				} else if stat.IsDir() {
+					return fmt.Errorf("cannot mix directories and files in build arguments")
+				}
+			}
+			pirxFiles = args
 		}
 
-		// When multiple files are specified, -o must be used
-		if len(pirxFiles) > 1 && outputFile == "" {
+		// When multiple files are specified (and not directory build), -o must be used
+		if len(pirxFiles) > 1 && !isDirectoryBuild && outputFile == "" {
 			return fmt.Errorf("output file (-o) must be specified when compiling multiple files")
 		}
 
@@ -61,7 +88,7 @@ var buildCmd = &cobra.Command{
 		keepIntermediateFiles, _ := cmd.Flags().GetBool("keep")
 
 		// Build the program
-		if err := buildProgram(config, pirxFiles, keepIntermediateFiles, optLevel, outputFile); err != nil {
+		if err := buildProgram(config, pirxFiles, keepIntermediateFiles, optLevel, outputFile, isDirectoryBuild, buildDir); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}
@@ -82,8 +109,25 @@ func main() {
 	}
 }
 
+// findPirxFiles scans a directory for .pirx files
+func findPirxFiles(dir string) ([]string, error) {
+	var pirxFiles []string
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".pirx") {
+			pirxFiles = append(pirxFiles, filepath.Join(dir, entry.Name()))
+		}
+	}
+
+	return pirxFiles, nil
+}
+
 // buildProgram compiles one or more pirx files to an executable
-func buildProgram(config *CompilationConfig, pirxFiles []string, keepIntermediate bool, optLevel string, outputFile string) error {
+func buildProgram(config *CompilationConfig, pirxFiles []string, keepIntermediate bool, optLevel string, outputFile string, isDirectoryBuild bool, buildDir string) error {
 	// Get PIRX root directory
 	pirxRoot, err := getPirxRoot()
 	if err != nil {
@@ -95,11 +139,15 @@ func buildProgram(config *CompilationConfig, pirxFiles []string, keepIntermediat
 	if outputFile != "" {
 		binFile = outputFile
 		baseName = strings.TrimSuffix(filepath.Base(outputFile), filepath.Ext(outputFile))
+	} else if isDirectoryBuild {
+		// Directory build case - use directory name
+		baseName = filepath.Base(buildDir)
+		binFile = filepath.Join(buildDir, baseName)
 	} else {
 		// Single file case - use first file's name
 		sourceDir := filepath.Dir(pirxFiles[0])
 		baseName = strings.TrimSuffix(filepath.Base(pirxFiles[0]), ".pirx")
-		binFile = filepath.Join(sourceDir, baseName+config.ExecutableSuffix)
+		binFile = filepath.Join(sourceDir, baseName)
 	}
 
 	// Generate intermediate file paths using output file base
@@ -155,28 +203,25 @@ func getCompilationConfig() (*CompilationConfig, error) {
 		switch runtime.GOARCH {
 		case "arm64":
 			return &CompilationConfig{
-				Assembler:        "as",
-				AssemblerFlags:   []string{"-arch", "arm64", "-g"},
-				Linker:           "ld",
-				LinkerFlags:      []string{"-lSystem", "-syslibroot", getMacOsSdkPath(), "-arch", "arm64"},
-				ExecutableSuffix: "",
+				Assembler:      "as",
+				AssemblerFlags: []string{"-arch", "arm64", "-g"},
+				Linker:         "ld",
+				LinkerFlags:    []string{"-lSystem", "-syslibroot", getMacOsSdkPath(), "-arch", "arm64"},
 			}, nil
 		case "amd64":
 			return &CompilationConfig{
-				Assembler:        "as",
-				AssemblerFlags:   []string{"-arch", "x86_64"},
-				Linker:           "ld",
-				LinkerFlags:      []string{"-lSystem", "-syslibroot", getMacOsSdkPath(), "-arch", "x86_64"},
-				ExecutableSuffix: "",
+				Assembler:      "as",
+				AssemblerFlags: []string{"-arch", "x86_64"},
+				Linker:         "ld",
+				LinkerFlags:    []string{"-lSystem", "-syslibroot", getMacOsSdkPath(), "-arch", "x86_64"},
 			}, nil
 		}
 	case "linux":
 		return &CompilationConfig{
-			Assembler:        "as",
-			AssemblerFlags:   []string{},
-			Linker:           "ld",
-			LinkerFlags:      []string{},
-			ExecutableSuffix: "",
+			Assembler:      "as",
+			AssemblerFlags: []string{},
+			Linker:         "ld",
+			LinkerFlags:    []string{},
 		}, nil
 	}
 

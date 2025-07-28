@@ -12,9 +12,20 @@ pirxc: $(GO_SOURCES) $(GO_MODULE_FILES) stdlib
 testrunner: pirx
 	go build -mod=vendor -o testrunner ./cmd/testrunner
 
-test: testrunner
+test: gotests testall
+
+citest: gotests testall testall_o0
+
+gotests:
 	go test ./...
+
+testall: testrunner
+	@echo " *** Running all end-to-end tests"
 	./testrunner -j 8 testall
+
+testall_o0: testrunner
+	@echo " *** Running all end-to-end tests with no optimization"
+	./testrunner -j 8 testall -O0
 
 clean:
 	$(MAKE) -C ./stdlib clean

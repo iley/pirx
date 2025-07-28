@@ -18,4 +18,4 @@ jobs:
         go-version: '1.24'
     
     - name: Run tests
-      run: make test
+      run: make citest

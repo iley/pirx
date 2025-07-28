@@ -9,7 +9,7 @@ func Optimize(program IrProgram) IrProgram {
 
 	for i, fn := range program.Functions {
 		ops := foldConstants(fn.Ops)
-		ops = removeDeadCode(ops)
+		ops = removeIneffectiveAssignments(ops)
 
 		optFn := IrFunction{
 			Name:     fn.Name,
@@ -272,7 +272,23 @@ func evalUnaryOp(oc *optimizationContext, operation string, value Arg) (Arg, boo
 	return Arg{}, false
 }
 
-func removeDeadCode(body []Op) []Op {
+func removeIneffectiveAssignments(body []Op) []Op {
+	result := body
+
+	// Keep removing ineffective assignments until none are left.
+	for {
+		passResult := removeIneffectiveAssignmentsPass(result)
+		if len(result) == len(passResult) {
+			break
+		}
+		result = passResult
+	}
+
+	return result
+}
+
+// Single pass of removing ineffective assignments.
+func removeIneffectiveAssignmentsPass(body []Op) []Op {
 	refCount := make(map[string]int)
 
 	for _, op := range body {

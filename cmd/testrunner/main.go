@@ -30,7 +30,11 @@ type TestResult struct {
 	Message  string
 }
 
-var parallelism int
+var (
+	parallelism int
+	optLevel    string
+	verbose     bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "testrunner",
@@ -105,6 +109,8 @@ var acceptCmd = &cobra.Command{
 
 func main() {
 	rootCmd.PersistentFlags().IntVarP(&parallelism, "jobs", "j", 1, "Number of parallel jobs")
+	rootCmd.PersistentFlags().StringVarP(&optLevel, "O", "O", "", "optimization level to pass to pirx build")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "print commands being executed")
 
 	rootCmd.AddCommand(testallCmd)
 	rootCmd.AddCommand(testCmd)
@@ -547,6 +553,15 @@ func findPirxFile(tests []TestCase, testsDir, testIdentifier string) (string, er
 	return "", fmt.Errorf("could not find test file for '%s'", testIdentifier)
 }
 
+func buildPirxArgs(pirxFile string) []string {
+	args := []string{"build", "-k"}
+	if optLevel != "" {
+		args = append(args, "-O"+optLevel)
+	}
+	args = append(args, pirxFile)
+	return args
+}
+
 func compileTest(testCase TestCase, testsDir string) (string, []string, error) {
 	baseName := filepath.Base(testCase.Name)
 	asmFile := filepath.Join(testsDir, baseName+".s")
@@ -557,7 +572,11 @@ func compileTest(testCase TestCase, testsDir string) (string, []string, error) {
 	generatedFiles := []string{asmFile, objFile, binFile}
 
 	// Use pirx build with -k flag to keep intermediate files for inspection
-	pirxCmd := exec.Command("./pirx", "build", "-k", testCase.PirxFile)
+	args := buildPirxArgs(testCase.PirxFile)
+	pirxCmd := exec.Command("./pirx", args...)
+	if verbose {
+		fmt.Printf("Executing: ./pirx %s\n", strings.Join(args, " "))
+	}
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		if testCase.IsErrorTest {
 			// For error tests, return the compilation error output
@@ -581,7 +600,11 @@ func compileProgram(pirxFile, testsDir, baseName string) (result string, success
 	generatedFiles = []string{asmFile, objFile, binFile}
 
 	// Use pirx build with -k flag to keep intermediate files for inspection
-	pirxCmd := exec.Command("./pirx", "build", "-k", pirxFile)
+	args := buildPirxArgs(pirxFile)
+	pirxCmd := exec.Command("./pirx", args...)
+	if verbose {
+		fmt.Printf("Executing: ./pirx %s\n", strings.Join(args, " "))
+	}
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		return string(output), false, generatedFiles
 	}

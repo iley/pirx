@@ -34,7 +34,7 @@ type optimizationContext struct {
 func newOptimizationContext() *optimizationContext {
 	return &optimizationContext{
 		knownValues: make(map[string]Arg),
-		leakedVars: make(map[string]bool),
+		leakedVars:  make(map[string]bool),
 	}
 }
 
@@ -95,7 +95,7 @@ func foldConstants(body []Op) []Op {
 				oc.invalidateKnownValue(assign.Target)
 			}
 		} else if binop, ok := op.(BinaryOp); ok {
-			if value, ok := evalBinaryOp(oc, binop.Operation, binop.Left, binop.Right); ok {
+			if value, ok := evalBinaryOp(oc, binop.Operation, binop.Left, binop.Right, binop.OperandSize); ok {
 				oc.addKnownValue(binop.Result, value)
 				// Replace the op with an assignment.
 				op = Assign{
@@ -166,7 +166,61 @@ func evalArg(oc *optimizationContext, arg Arg) (Arg, bool) {
 	return arg, true
 }
 
-func evalBinaryOp(oc *optimizationContext, operation string, left, right Arg) (Arg, bool) {
+func performSizedIntegerArithmetic(operation string, leftVal, rightVal int64, size int) int64 {
+	switch size {
+	case 8: // int64
+		switch operation {
+		case "+":
+			return leftVal + rightVal
+		case "-":
+			return leftVal - rightVal
+		case "*":
+			return leftVal * rightVal
+		case "/":
+			return leftVal / rightVal
+		default:
+			panic(fmt.Errorf("unsupported operation: %s", operation))
+		}
+	case 4: // int32
+		left32 := int32(leftVal)
+		right32 := int32(rightVal)
+		var result32 int32
+		switch operation {
+		case "+":
+			result32 = left32 + right32
+		case "-":
+			result32 = left32 - right32
+		case "*":
+			result32 = left32 * right32
+		case "/":
+			result32 = left32 / right32
+		default:
+			panic(fmt.Errorf("unsupported operation: %s", operation))
+		}
+		return int64(result32)
+	case 1: // int8
+		left8 := int8(leftVal)
+		right8 := int8(rightVal)
+		var result8 int8
+		switch operation {
+		case "+":
+			result8 = left8 + right8
+		case "-":
+			result8 = left8 - right8
+		case "*":
+			result8 = left8 * right8
+		case "/":
+			result8 = left8 / right8
+		default:
+			panic(fmt.Errorf("unsupported operation: %s", operation))
+		}
+		return int64(result8)
+	default:
+		panic(fmt.Errorf("unsupported integer size: %d", size))
+	}
+}
+
+func evalBinaryOp(oc *optimizationContext, operation string, left, right Arg, operandSize int) (Arg, bool) {
 	leftConst, leftOk := evalArg(oc, left)
 	if !leftOk {
 		return Arg{}, false
@@ -179,19 +233,8 @@ func evalBinaryOp(oc *optimizationContext, operation string, left, right Arg) (A
 
 	// We assume types are correct at this point.
 	switch operation {
-	// FIXME: Handle different int sizes!!!
-	// Currently we assume there's now overflow.
-	case "+":
-		result := argIntValue(leftConst) + argIntValue(rightConst)
-		return Arg{LiteralInt: &result}, true
-	case "-":
-		result := argIntValue(leftConst) - argIntValue(rightConst)
-		return Arg{LiteralInt: &result}, true
-	case "*":
-		result := argIntValue(leftConst) * argIntValue(rightConst)
-		return Arg{LiteralInt: &result}, true
-	case "/":
-		result := argIntValue(leftConst) / argIntValue(rightConst)
+	case "+", "-", "*", "/":
+		result := performSizedIntegerArithmetic(operation, argIntValue(leftConst), argIntValue(rightConst), operandSize)
 		return Arg{LiteralInt: &result}, true
 	case "&&":
 		result := argBoolValue(leftConst) && argBoolValue(rightConst)

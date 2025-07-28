@@ -1,9 +1,12 @@
+GO_SOURCES := $(shell find . -type f -name '*.go' ! -name '*_test.go' -not -path './vendor/*')
+GO_MODULE_FILES := go.mod go.sum
+
 default: pirx pirxc testrunner
 
-pirx: always
+pirx: $(GO_SOURCES) $(GO_MODULE_FILES)
 	go build -o pirx ./cmd/pirx
 
-pirxc: stdlib always
+pirxc: $(GO_SOURCES) $(GO_MODULE_FILES) stdlib
 	go build -o pirxc ./cmd/pirxc
 
 testrunner: pirx
@@ -12,8 +15,6 @@ testrunner: pirx
 test: testrunner
 	go test ./...
 	./testrunner -j 8 testall
-
-always:
 
 clean:
 	$(MAKE) -C ./stdlib clean
@@ -26,4 +27,4 @@ examples:
 stdlib:
 	$(MAKE) -C ./stdlib
 
-.PHONY: always clean default examples test stdlib
+.PHONY: clean default examples test stdlib

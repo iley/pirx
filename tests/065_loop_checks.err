@@ -3,4 +3,4 @@ Output: tests/065_loop_checks.pirx:2:3: break cannot be used outside a loop
 tests/065_loop_checks.pirx:3:3: continue cannot be used outside a loop
 tests/065_loop_checks.pirx:10:3: break cannot be used outside a loop
 tests/065_loop_checks.pirx:11:3: continue cannot be used outside a loop
-
+Error: exit status 1

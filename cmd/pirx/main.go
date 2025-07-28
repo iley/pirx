@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 // CompilationConfig holds platform-specific compilation settings
@@ -16,6 +18,97 @@ type CompilationConfig struct {
 	Linker           string
 	LinkerFlags      []string
 	ExecutableSuffix string
+}
+
+var rootCmd = &cobra.Command{
+	Use:   "pirx",
+	Short: "Pirx programming language build system",
+	Long:  "A build system for the Pirx programming language.",
+}
+
+var buildCmd = &cobra.Command{
+	Use:   "build <file.pirx>",
+	Short: "Build a Pirx program",
+	Long:  "Compile a Pirx source file to an executable binary.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		pirxFile := args[0]
+
+		// Check if file exists
+		if _, err := os.Stat(pirxFile); os.IsNotExist(err) {
+			return fmt.Errorf("file %s does not exist", pirxFile)
+		}
+
+		// Get compilation config
+		config, err := getCompilationConfig()
+		if err != nil {
+			return fmt.Errorf("failed to get compilation config: %w", err)
+		}
+
+		// Build the program
+		if err := buildProgram(config, pirxFile); err != nil {
+			cmd.SilenceUsage = true
+			return err
+		}
+		return nil
+	},
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func init() {
+	rootCmd.AddCommand(buildCmd)
+}
+
+// buildProgram compiles a pirx file to an executable
+func buildProgram(config *CompilationConfig, pirxFile string) error {
+	// Get PIRX root directory
+	pirxRoot, err := getPirxRoot()
+	if err != nil {
+		return fmt.Errorf("failed to determine PIRXROOT: %w", err)
+	}
+
+	// Get directory and base name
+	sourceDir := filepath.Dir(pirxFile)
+	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
+
+	// Generate file paths in the same directory as source
+	asmFile := filepath.Join(sourceDir, baseName+".s")
+	objFile := filepath.Join(sourceDir, baseName+".o")
+	binFile := filepath.Join(sourceDir, baseName+config.ExecutableSuffix)
+
+	stdlibPath := filepath.Join(pirxRoot, "stdlib", "libpirx.a")
+	pirxcPath := filepath.Join(pirxRoot, "pirxc")
+
+	// Step 1: Compile .pirx to .s using pirxc compiler
+	pirxCmd := exec.Command(pirxcPath, "-o", asmFile, pirxFile)
+	if output, err := pirxCmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "pirxc compilation failed: %v\nOutput: %s", err, string(output))
+		return err
+	}
+
+	// Step 2: Assemble .s to .o
+	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
+	asCmd := exec.Command(config.Assembler, asArgs...)
+	if output, err := asCmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "assembly failed: %v\nOutput: %s\n", err, string(output))
+		return err
+	}
+
+	// Step 3: Link .o to executable
+	ldArgs := append([]string{"-o", binFile, objFile, stdlibPath}, config.LinkerFlags...)
+	ldCmd := exec.Command(config.Linker, ldArgs...)
+	if output, err := ldCmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "linking failed: %v\nOutput: %s\n", err, string(output))
+		return err
+	}
+
+	fmt.Printf("Built %s\n", binFile)
+	return nil
 }
 
 // getCompilationConfig returns compilation configuration for the current platform
@@ -53,15 +146,6 @@ func getCompilationConfig() (*CompilationConfig, error) {
 	return nil, fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
-func getMacOsSdkPath() string {
-	cmd := exec.Command("xcrun", "-sdk", "macosx", "--show-sdk-path")
-	output, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(output))
-}
-
 // getPirxRoot returns the PIRX root directory, either from PIRXROOT env var
 // or by determining it from the location of the pirx binary
 func getPirxRoot() (string, error) {
@@ -76,94 +160,11 @@ func getPirxRoot() (string, error) {
 	return filepath.Dir(execPath), nil
 }
 
-// buildProgram compiles a pirx file to an executable
-func buildProgram(config *CompilationConfig, pirxFile string) error {
-	// Get PIRX root directory
-	pirxRoot, err := getPirxRoot()
+func getMacOsSdkPath() string {
+	cmd := exec.Command("xcrun", "-sdk", "macosx", "--show-sdk-path")
+	output, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to determine PIRXROOT: %w", err)
+		return ""
 	}
-
-	// Get directory and base name
-	sourceDir := filepath.Dir(pirxFile)
-	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
-
-	// Generate file paths in the same directory as source
-	asmFile := filepath.Join(sourceDir, baseName+".s")
-	objFile := filepath.Join(sourceDir, baseName+".o")
-	binFile := filepath.Join(sourceDir, baseName+config.ExecutableSuffix)
-
-	stdlibPath := filepath.Join(pirxRoot, "stdlib", "libpirx.a")
-	pirxcPath := filepath.Join(pirxRoot, "pirxc")
-
-	// Step 1: Compile .pirx to .s using pirxc compiler
-	pirxCmd := exec.Command(pirxcPath, "-o", asmFile, pirxFile)
-	if output, err := pirxCmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "pirxc compilation failed: %v\nOutput: %s\n", err, string(output))
-		return err
-	}
-
-	// Step 2: Assemble .s to .o
-	asArgs := append(config.AssemblerFlags, "-o", objFile, asmFile)
-	asCmd := exec.Command(config.Assembler, asArgs...)
-	if output, err := asCmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "assembly failed: %v\nOutput: %s\n", err, string(output))
-		return err
-	}
-
-	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile, stdlibPath}, config.LinkerFlags...)
-	ldCmd := exec.Command(config.Linker, ldArgs...)
-	if output, err := ldCmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "linking failed: %v\nOutput: %s\n", err, string(output))
-		return err
-	}
-
-	fmt.Printf("Built %s\n", binFile)
-	return nil
-}
-
-func printUsage() {
-	fmt.Fprintf(os.Stderr, "Usage: pirx <command> [arguments]\n\n")
-	fmt.Fprintf(os.Stderr, "Commands:\n")
-	fmt.Fprintf(os.Stderr, "  build <file.pirx>    Build a Pirx program\n")
-}
-
-func main() {
-	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
-	}
-
-	command := os.Args[1]
-
-	switch command {
-	case "build":
-		if len(os.Args) != 3 {
-			fmt.Fprintf(os.Stderr, "Usage: pirx build <file.pirx>\n")
-			os.Exit(1)
-		}
-
-		pirxFile := os.Args[2]
-
-		if _, err := os.Stat(pirxFile); os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Error: file %s does not exist\n", pirxFile)
-			os.Exit(1)
-		}
-
-		config, err := getCompilationConfig()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		if err := buildProgram(config, pirxFile); err != nil {
-			os.Exit(1)
-		}
-
-	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
-		printUsage()
-		os.Exit(1)
-	}
+	return strings.TrimSpace(string(output))
 }

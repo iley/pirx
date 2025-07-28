@@ -10,4 +10,4 @@ tests/033_type_checks.pirx:24:8: cannot assign value of type int to lvalue of ty
 tests/033_type_checks.pirx:25:8: cannot assign value of type string to lvalue of type bool
 tests/033_type_checks.pirx:27:3: expected an expression of type bool in if condition, got type int
 tests/033_type_checks.pirx:31:3: expected an expression of type bool in while condition, got type string
-
+Error: exit status 1

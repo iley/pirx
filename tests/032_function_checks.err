@@ -6,4 +6,4 @@ tests/032_function_checks.pirx:10:3: function one_argument has 1 arguments but 3
 tests/032_function_checks.pirx:12:3: function two_arguments has 2 arguments but 0 were provided
 tests/032_function_checks.pirx:13:3: function two_arguments has 2 arguments but 1 were provided
 tests/032_function_checks.pirx:15:3: function two_arguments has 2 arguments but 3 were provided
-
+Error: exit status 1

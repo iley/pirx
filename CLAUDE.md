@@ -12,6 +12,7 @@ __Always follow those unless I explicitly tell you otherwise!__
 * Work in small iterations, run tests frequently.
 * If you need examples of the Pirx language, look in the `tests/` directory. Ignore the `examples/` directory.
 * Once you're done with your task, run go fmt like so: `go fmt ./...` to format all files.
+* Try to order all functions you add from top-to-bottom in the dependency order, i.e. the function that is called first comes first in the file.
 
 ## Compiler Architecture
 

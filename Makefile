@@ -3,14 +3,14 @@ GO_MODULE_FILES := go.mod go.sum
 
 default: pirx pirxc testrunner
 
-pirx: $(GO_SOURCES) $(GO_MODULE_FILES)
-	go build -o pirx ./cmd/pirx
+pirx: $(GO_SOURCES) $(GO_MODULE_FILES) pirxc
+	go build -mod=vendor -o pirx ./cmd/pirx
 
 pirxc: $(GO_SOURCES) $(GO_MODULE_FILES) stdlib
-	go build -o pirxc ./cmd/pirxc
+	go build -mod=vendor -o pirxc ./cmd/pirxc
 
 testrunner: pirx
-	go build -o testrunner ./cmd/testrunner
+	go build -mod=vendor -o testrunner ./cmd/testrunner
 
 test: testrunner
 	go test ./...

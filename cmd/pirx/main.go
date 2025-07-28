@@ -48,7 +48,18 @@ var buildCmd = &cobra.Command{
 			} else if stat.IsDir() {
 				// Directory build
 				isDirectoryBuild = true
-				buildDir = arg
+
+				// Convert "." to absolute path for consistent behavior
+				if arg == "." {
+					var err error
+					buildDir, err = os.Getwd()
+					if err != nil {
+						return fmt.Errorf("failed to get current directory: %w", err)
+					}
+				} else {
+					buildDir = arg
+				}
+
 				files, err := findPirxFiles(arg)
 				if err != nil {
 					return fmt.Errorf("failed to find .pirx files in directory %s: %w", arg, err)

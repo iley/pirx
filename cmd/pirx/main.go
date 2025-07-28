@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var optLevel string
+
 // CompilationConfig holds platform-specific compilation settings
 type CompilationConfig struct {
 	Assembler        string
@@ -49,7 +51,7 @@ var buildCmd = &cobra.Command{
 		keepIntermediateFiles, _ := cmd.Flags().GetBool("keep")
 
 		// Build the program
-		if err := buildProgram(config, pirxFile, keepIntermediateFiles); err != nil {
+		if err := buildProgram(config, pirxFile, keepIntermediateFiles, optLevel); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}
@@ -59,6 +61,7 @@ var buildCmd = &cobra.Command{
 
 func init() {
 	buildCmd.Flags().BoolP("keep", "k", false, "Keep intermediate files (.s, .o)")
+	buildCmd.Flags().StringVarP(&optLevel, "O", "O", "", "optimization level (0 to disable)")
 	rootCmd.AddCommand(buildCmd)
 }
 
@@ -69,7 +72,7 @@ func main() {
 }
 
 // buildProgram compiles a pirx file to an executable
-func buildProgram(config *CompilationConfig, pirxFile string, keepIntermediate bool) error {
+func buildProgram(config *CompilationConfig, pirxFile string, keepIntermediate bool, optLevel string) error {
 	// Get PIRX root directory
 	pirxRoot, err := getPirxRoot()
 	if err != nil {
@@ -89,7 +92,12 @@ func buildProgram(config *CompilationConfig, pirxFile string, keepIntermediate b
 	pirxcPath := filepath.Join(pirxRoot, "pirxc")
 
 	// Step 1: Compile .pirx to .s using pirxc compiler
-	pirxCmd := exec.Command(pirxcPath, "-o", asmFile, pirxFile)
+	args := []string{"-o", asmFile}
+	if optLevel == "0" {
+		args = append(args, "-O0")
+	}
+	args = append(args, pirxFile)
+	pirxCmd := exec.Command(pirxcPath, args...)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "pirxc compilation failed: %v\nOutput: %s", err, string(output))
 		return err

@@ -63,8 +63,28 @@ func getSDKPath() string {
 	return strings.TrimSpace(string(output))
 }
 
+// getPirxRoot returns the PIRX root directory, either from PIRXROOT env var
+// or by determining it from the location of the pirx binary
+func getPirxRoot() (string, error) {
+	if root := os.Getenv("PIRXROOT"); root != "" {
+		return root, nil
+	}
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+	return filepath.Dir(execPath), nil
+}
+
 // buildProgram compiles a pirx file to an executable
 func buildProgram(config *CompilationConfig, pirxFile string) error {
+	// Get PIRX root directory
+	pirxRoot, err := getPirxRoot()
+	if err != nil {
+		return fmt.Errorf("failed to determine PIRXROOT: %w", err)
+	}
+
 	// Get directory and base name
 	sourceDir := filepath.Dir(pirxFile)
 	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
@@ -74,8 +94,11 @@ func buildProgram(config *CompilationConfig, pirxFile string) error {
 	objFile := filepath.Join(sourceDir, baseName+".o")
 	binFile := filepath.Join(sourceDir, baseName+config.ExecutableSuffix)
 
+	stdlibPath := filepath.Join(pirxRoot, "stdlib", "libpirx.a")
+	pirxcPath := filepath.Join(pirxRoot, "pirxc")
+
 	// Step 1: Compile .pirx to .s using pirxc compiler
-	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirxc", "-o", asmFile, pirxFile)
+	pirxCmd := exec.Command(pirxcPath, "-o", asmFile, pirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "pirxc compilation failed: %v\nOutput: %s\n", err, string(output))
 		return err
@@ -90,7 +113,7 @@ func buildProgram(config *CompilationConfig, pirxFile string) error {
 	}
 
 	// Step 3: Link .o to executable
-	ldArgs := append([]string{"-o", binFile, objFile, "stdlib/libpirx.a"}, config.LinkerFlags...)
+	ldArgs := append([]string{"-o", binFile, objFile, stdlibPath}, config.LinkerFlags...)
 	ldCmd := exec.Command(config.Linker, ldArgs...)
 	if output, err := ldCmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "linking failed: %v\nOutput: %s\n", err, string(output))
@@ -124,20 +147,17 @@ func main() {
 
 		pirxFile := os.Args[2]
 
-		// Check if file exists
 		if _, err := os.Stat(pirxFile); os.IsNotExist(err) {
 			fmt.Fprintf(os.Stderr, "Error: file %s does not exist\n", pirxFile)
 			os.Exit(1)
 		}
 
-		// Get compilation config
 		config, err := getCompilationConfig()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		// Build the program
 		if err := buildProgram(config, pirxFile); err != nil {
 			os.Exit(1)
 		}

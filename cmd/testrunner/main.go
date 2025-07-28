@@ -556,8 +556,8 @@ func compileTest(testCase TestCase, testsDir string) (string, []string, error) {
 	// Keep track of generated files for cleanup
 	generatedFiles := []string{asmFile, objFile, binFile}
 
-	// Use pirx build to compile the program
-	pirxCmd := exec.Command("./pirx", "build", testCase.PirxFile)
+	// Use pirx build with -k flag to keep intermediate files for inspection
+	pirxCmd := exec.Command("./pirx", "build", "-k", testCase.PirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		if testCase.IsErrorTest {
 			// For error tests, return the compilation error output
@@ -580,8 +580,8 @@ func compileProgram(pirxFile, testsDir, baseName string) (result string, success
 	binFile := filepath.Join(testsDir, baseName)
 	generatedFiles = []string{asmFile, objFile, binFile}
 
-	// Use pirx build to compile the program
-	pirxCmd := exec.Command("./pirx", "build", pirxFile)
+	// Use pirx build with -k flag to keep intermediate files for inspection
+	pirxCmd := exec.Command("./pirx", "build", "-k", pirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		return string(output), false, generatedFiles
 	}

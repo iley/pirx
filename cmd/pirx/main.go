@@ -45,13 +45,21 @@ var buildCmd = &cobra.Command{
 			return fmt.Errorf("failed to get compilation config: %w", err)
 		}
 
+		// Get the keep flag value
+		keepIntermediateFiles, _ := cmd.Flags().GetBool("keep")
+
 		// Build the program
-		if err := buildProgram(config, pirxFile); err != nil {
+		if err := buildProgram(config, pirxFile, keepIntermediateFiles); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}
 		return nil
 	},
+}
+
+func init() {
+	buildCmd.Flags().BoolP("keep", "k", false, "Keep intermediate files (.s, .o)")
+	rootCmd.AddCommand(buildCmd)
 }
 
 func main() {
@@ -60,12 +68,8 @@ func main() {
 	}
 }
 
-func init() {
-	rootCmd.AddCommand(buildCmd)
-}
-
 // buildProgram compiles a pirx file to an executable
-func buildProgram(config *CompilationConfig, pirxFile string) error {
+func buildProgram(config *CompilationConfig, pirxFile string, keepIntermediate bool) error {
 	// Get PIRX root directory
 	pirxRoot, err := getPirxRoot()
 	if err != nil {
@@ -105,6 +109,12 @@ func buildProgram(config *CompilationConfig, pirxFile string) error {
 	if output, err := ldCmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "linking failed: %v\nOutput: %s\n", err, string(output))
 		return err
+	}
+
+	// Clean up intermediate files unless -k flag is set
+	if !keepIntermediate {
+		os.Remove(asmFile)
+		os.Remove(objFile)
 	}
 
 	fmt.Printf("Built %s\n", binFile)

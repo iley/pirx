@@ -17,10 +17,11 @@ type Parser struct {
 	lexer   *lexer.Lexer
 	lexemes []lexer.Lexeme
 	pos     int
+	program *ast.Program
 }
 
-func New(lex *lexer.Lexer) *Parser {
-	return &Parser{lexer: lex}
+func New() *Parser {
+	return &Parser{}
 }
 
 func (p *Parser) consume() (lexer.Lexeme, error) {
@@ -47,10 +48,14 @@ func (p *Parser) peek() (lexer.Lexeme, error) {
 	return p.lexemes[p.pos], nil
 }
 
-func (p *Parser) ParseProgram() (*ast.Program, error) {
+func (p *Parser) Parse(l *lexer.Lexer) error {
+	p.lexer = l
+	p.lexemes = []lexer.Lexeme{}
+	p.pos = 0
+
 	lex, err := p.peek()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	programLoc := locationFromLexeme(lex)
 
@@ -60,7 +65,7 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 	for {
 		lex, err := p.peek()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if lex.Type == lexer.LEX_EOF {
 			break
@@ -69,21 +74,31 @@ func (p *Parser) ParseProgram() (*ast.Program, error) {
 		if lex.IsKeyword("struct") {
 			structDecl, err := p.parseStructDeclaration()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			typeDeclarations = append(typeDeclarations, structDecl)
 		} else if lex.IsKeyword("extern") || lex.IsKeyword("func") {
 			fn, err := p.parseFunction()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			functions = append(functions, fn)
 		} else {
-			return nil, fmt.Errorf("%s: expected 'struct', 'func' or 'extern', got %v", lex.Loc, lex)
+			return fmt.Errorf("%s: expected 'struct', 'func' or 'extern', got %v", lex.Loc, lex)
 		}
 	}
 
-	return &ast.Program{Loc: programLoc, Functions: functions, TypeDeclarations: typeDeclarations}, nil
+	if p.program == nil {
+		p.program = &ast.Program{Loc: programLoc, Functions: functions, TypeDeclarations: typeDeclarations}
+	} else {
+		p.program.Functions = append(p.program.Functions, functions...)
+		p.program.TypeDeclarations = append(p.program.TypeDeclarations, typeDeclarations...)
+	}
+	return nil
+}
+
+func (p *Parser) GetProgram() *ast.Program {
+	return p.program
 }
 
 func (p *Parser) parseFunction() (ast.Function, error) {

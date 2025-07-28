@@ -32,16 +32,23 @@ var rootCmd = &cobra.Command{
 }
 
 var buildCmd = &cobra.Command{
-	Use:   "build <file.pirx>",
+	Use:   "build <file.pirx>...",
 	Short: "Build a Pirx program",
-	Long:  "Compile a Pirx source file to an executable binary.",
-	Args:  cobra.ExactArgs(1),
+	Long:  "Compile one or more Pirx source files to an executable binary.",
+	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pirxFile := args[0]
+		pirxFiles := args
 
-		// Check if file exists
-		if _, err := os.Stat(pirxFile); os.IsNotExist(err) {
-			return fmt.Errorf("file %s does not exist", pirxFile)
+		// Check if all files exist
+		for _, pirxFile := range pirxFiles {
+			if _, err := os.Stat(pirxFile); os.IsNotExist(err) {
+				return fmt.Errorf("file %s does not exist", pirxFile)
+			}
+		}
+
+		// When multiple files are specified, -o must be used
+		if len(pirxFiles) > 1 && outputFile == "" {
+			return fmt.Errorf("output file (-o) must be specified when compiling multiple files")
 		}
 
 		// Get compilation config
@@ -54,7 +61,7 @@ var buildCmd = &cobra.Command{
 		keepIntermediateFiles, _ := cmd.Flags().GetBool("keep")
 
 		// Build the program
-		if err := buildProgram(config, pirxFile, keepIntermediateFiles, optLevel, outputFile); err != nil {
+		if err := buildProgram(config, pirxFiles, keepIntermediateFiles, optLevel, outputFile); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}
@@ -75,39 +82,40 @@ func main() {
 	}
 }
 
-// buildProgram compiles a pirx file to an executable
-func buildProgram(config *CompilationConfig, pirxFile string, keepIntermediate bool, optLevel string, outputFile string) error {
+// buildProgram compiles one or more pirx files to an executable
+func buildProgram(config *CompilationConfig, pirxFiles []string, keepIntermediate bool, optLevel string, outputFile string) error {
 	// Get PIRX root directory
 	pirxRoot, err := getPirxRoot()
 	if err != nil {
 		return fmt.Errorf("failed to determine PIRXROOT: %w", err)
 	}
 
-	// Get directory and base name
-	sourceDir := filepath.Dir(pirxFile)
-	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
-
-	// Generate file paths in the same directory as source
-	asmFile := filepath.Join(sourceDir, baseName+".s")
-	objFile := filepath.Join(sourceDir, baseName+".o")
-
-	// Use outputFile if specified, otherwise use default name
-	var binFile string
+	// Determine output file and base name for intermediate files
+	var binFile, baseName string
 	if outputFile != "" {
 		binFile = outputFile
+		baseName = strings.TrimSuffix(filepath.Base(outputFile), filepath.Ext(outputFile))
 	} else {
+		// Single file case - use first file's name
+		sourceDir := filepath.Dir(pirxFiles[0])
+		baseName = strings.TrimSuffix(filepath.Base(pirxFiles[0]), ".pirx")
 		binFile = filepath.Join(sourceDir, baseName+config.ExecutableSuffix)
 	}
+
+	// Generate intermediate file paths using output file base
+	outputDir := filepath.Dir(binFile)
+	asmFile := filepath.Join(outputDir, baseName+".s")
+	objFile := filepath.Join(outputDir, baseName+".o")
 
 	stdlibPath := filepath.Join(pirxRoot, "stdlib", "libpirx.a")
 	pirxcPath := filepath.Join(pirxRoot, "pirxc")
 
-	// Step 1: Compile .pirx to .s using pirxc compiler
+	// Step 1: Compile .pirx files to .s using pirxc compiler
 	args := []string{"-o", asmFile}
 	if optLevel != "" {
 		args = append(args, "-O"+optLevel)
 	}
-	args = append(args, pirxFile)
+	args = append(args, pirxFiles...)
 	pirxCmd := exec.Command(pirxcPath, args...)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "pirxc compilation failed: %v\nOutput: %s", err, string(output))

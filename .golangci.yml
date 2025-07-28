@@ -25,6 +25,7 @@ linters:
         - fmt.Fprintf
         - fmt.Fprintln
         - os.Remove
+        - (*os.File).Close
         - (*github.com/iley/pirx/internal/parser.Parser).consume
 
 formatters:

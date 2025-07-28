@@ -49,7 +49,7 @@ func TestParseVariableDeclarationWithOptionalType(t *testing.T) {
 			},
 			hasError: false,
 		},
-		
+
 		// Test cases with type inference (no type annotation)
 		{
 			name:  "inferred type with integer literal",
@@ -66,9 +66,9 @@ func TestParseVariableDeclarationWithOptionalType(t *testing.T) {
 			name:  "inferred type with string literal",
 			input: `var message = "hello";`,
 			expected: &ast.VariableDeclaration{
-				Loc:         ast.Location{Filename: "test.pirx", Line: 1, Col: 1},
-				Name:        "message",
-				Type:        nil, // type should be inferred
+				Loc:  ast.Location{Filename: "test.pirx", Line: 1, Col: 1},
+				Name: "message",
+				Type: nil, // type should be inferred
 				Initializer: &ast.Literal{
 					Loc:         ast.Location{Filename: "test.pirx", Line: 1, Col: 15},
 					StringValue: func() *string { val := "hello"; return &val }(),
@@ -102,9 +102,9 @@ func TestParseVariableDeclarationWithOptionalType(t *testing.T) {
 			name:  "inferred type with arithmetic expression",
 			input: "var result = 10 + 20;",
 			expected: &ast.VariableDeclaration{
-				Loc:         ast.Location{Filename: "test.pirx", Line: 1, Col: 1},
-				Name:        "result",
-				Type:        nil, // type should be inferred
+				Loc:  ast.Location{Filename: "test.pirx", Line: 1, Col: 1},
+				Name: "result",
+				Type: nil, // type should be inferred
 				Initializer: &ast.BinaryOperation{
 					Loc:      ast.Location{Filename: "test.pirx", Line: 1, Col: 19},
 					Left:     ast.NewIntLiteral(10),
@@ -118,9 +118,9 @@ func TestParseVariableDeclarationWithOptionalType(t *testing.T) {
 			name:  "inferred type with negative number",
 			input: "var x = -42;",
 			expected: &ast.VariableDeclaration{
-				Loc:         ast.Location{Filename: "test.pirx", Line: 1, Col: 1},
-				Name:        "x",
-				Type:        nil, // type should be inferred
+				Loc:  ast.Location{Filename: "test.pirx", Line: 1, Col: 1},
+				Name: "x",
+				Type: nil, // type should be inferred
 				Initializer: &ast.UnaryOperation{
 					Loc:      ast.Location{Filename: "test.pirx", Line: 1, Col: 9},
 					Operator: "-",
@@ -133,9 +133,9 @@ func TestParseVariableDeclarationWithOptionalType(t *testing.T) {
 			name:  "inferred type with parenthesized expression",
 			input: "var x = (10 + 5);",
 			expected: &ast.VariableDeclaration{
-				Loc:         ast.Location{Filename: "test.pirx", Line: 1, Col: 1},
-				Name:        "x",
-				Type:        nil, // type should be inferred
+				Loc:  ast.Location{Filename: "test.pirx", Line: 1, Col: 1},
+				Name: "x",
+				Type: nil, // type should be inferred
 				Initializer: &ast.BinaryOperation{
 					Loc:      ast.Location{Filename: "test.pirx", Line: 1, Col: 13},
 					Left:     ast.NewIntLiteral(10),
@@ -167,7 +167,7 @@ func TestParseVariableDeclarationWithOptionalType(t *testing.T) {
 			},
 			hasError: false,
 		},
-		
+
 		// Error cases
 		{
 			name:     "no type and no initializer should error",
@@ -406,9 +406,9 @@ func TestParseVariableDeclarationEdgeCases(t *testing.T) {
 
 			// For complex expressions, just check basic structure
 			got := result.String()
-			if tt.name == "explicit type with complex expression" || 
-			   tt.name == "inferred type with comparison expression" ||
-			   tt.name == "inferred type with logical expression" {
+			if tt.name == "explicit type with complex expression" ||
+				tt.name == "inferred type with comparison expression" ||
+				tt.name == "inferred type with logical expression" {
 				// Just check that it contains the expected parts
 				if !strings.Contains(got, "decl") || !strings.Contains(got, result.Name) {
 					t.Errorf("String representation: got %q, expected to contain declaration format", got)

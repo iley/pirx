@@ -211,7 +211,7 @@ func (d *VariableDeclaration) String() string {
 	} else {
 		typeStr = "inferred"
 	}
-	
+
 	if d.Initializer != nil {
 		return fmt.Sprintf("(decl %s %s %s)", d.Name, typeStr, d.Initializer.String())
 	}

@@ -133,7 +133,7 @@ func compileTest(config *CompilationConfig, testCase TestCase, testsDir string) 
 	generatedFiles := []string{asmFile, objFile, binFile}
 
 	// Step 1: Compile .pirx to .s using pirx compiler
-	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, testCase.PirxFile)
+	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirxc", "-o", asmFile, testCase.PirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		if testCase.IsErrorTest {
 			// For error tests, return the compilation error output
@@ -354,7 +354,7 @@ func compileProgram(config *CompilationConfig, pirxFile, testsDir, baseName stri
 	asmFile, objFile, binFile, generatedFiles := getCompilationPaths(testsDir, baseName, config)
 
 	// Step 1: Compile .pirx to .s using pirx compiler
-	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirx", "-o", asmFile, pirxFile)
+	pirxCmd := exec.Command("go", "run", "github.com/iley/pirx/cmd/pirxc", "-o", asmFile, pirxFile)
 	if output, err := pirxCmd.CombinedOutput(); err != nil {
 		return string(output), false, generatedFiles
 	}

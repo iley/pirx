@@ -23,7 +23,7 @@ The Pirx compiler follows a traditional multi-stage compilation pipeline:
 4. **IR Generator** (`internal/ir/`) - Converts AST to three-address intermediate representation
 5. **Code Generator** (`internal/codegen/`) - Generates target-specific assembly code
 
-The main compiler entry point is `cmd/pirx/main.go` which orchestrates these stages. You can output intermediate representations using `-t ast` or `-t ir` flags.
+The main compiler entry point is `cmd/pirxc/main.go` which orchestrates these stages. You can output intermediate representations using `-t ast` or `-t ir` flags.
 
 ## Building and Testing
 
@@ -55,9 +55,9 @@ You can run individual end-to-end tests like so:
 
 You can also run individual stages for the compiler directly:
 
-* `go run ./cmd/pirx -t ast -o - /tmp/example.pirx` generate AST and print it to stdout in S-expression notation.
-* `go run ./cmd/pirx -t ir -o - /tmp/example.pirx` generate IR
-* `go run ./cmd/pirx -t ir -o - /tmp/example.pirx` generate assembly for the default platform
+* `go run ./cmd/pirxc -t ast -o - /tmp/example.pirx` generate AST and print it to stdout in S-expression notation.
+* `go run ./cmd/pirxc -t ir -o - /tmp/example.pirx` generate IR
+* `go run ./cmd/pirxc -t ir -o - /tmp/example.pirx` generate assembly for the default platform
 
 ## Language Features
 

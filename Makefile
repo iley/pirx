@@ -1,12 +1,12 @@
-default: pirx testrunner
+default: pirxc testrunner
 
-pirx: stdlib always
-	go build -o pirx ./cmd/pirx
+pirxc: stdlib always
+	go build -o pirxc ./cmd/pirxc
 
 testrunner: always
 	go build -o testrunner ./cmd/testrunner
 
-test: pirx testrunner
+test: pirxc testrunner
 	go test ./...
 	./testrunner -j 8 testall
 
@@ -15,7 +15,7 @@ always:
 clean:
 	$(MAKE) -C ./stdlib clean
 	$(MAKE) -C ./examples clean
-	rm -f ./pirx
+	rm -f ./pirxc
 
 examples:
 	$(MAKE) -C ./examples

@@ -11,7 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var optLevel string
+var (
+	optLevel   string
+	outputFile string
+)
 
 // CompilationConfig holds platform-specific compilation settings
 type CompilationConfig struct {
@@ -51,7 +54,7 @@ var buildCmd = &cobra.Command{
 		keepIntermediateFiles, _ := cmd.Flags().GetBool("keep")
 
 		// Build the program
-		if err := buildProgram(config, pirxFile, keepIntermediateFiles, optLevel); err != nil {
+		if err := buildProgram(config, pirxFile, keepIntermediateFiles, optLevel, outputFile); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}
@@ -62,6 +65,7 @@ var buildCmd = &cobra.Command{
 func init() {
 	buildCmd.Flags().BoolP("keep", "k", false, "Keep intermediate files (.s, .o)")
 	buildCmd.Flags().StringVarP(&optLevel, "O", "O", "", "optimization level (0 to disable)")
+	buildCmd.Flags().StringVarP(&outputFile, "o", "o", "", "output file name")
 	rootCmd.AddCommand(buildCmd)
 }
 
@@ -72,7 +76,7 @@ func main() {
 }
 
 // buildProgram compiles a pirx file to an executable
-func buildProgram(config *CompilationConfig, pirxFile string, keepIntermediate bool, optLevel string) error {
+func buildProgram(config *CompilationConfig, pirxFile string, keepIntermediate bool, optLevel string, outputFile string) error {
 	// Get PIRX root directory
 	pirxRoot, err := getPirxRoot()
 	if err != nil {
@@ -86,15 +90,22 @@ func buildProgram(config *CompilationConfig, pirxFile string, keepIntermediate b
 	// Generate file paths in the same directory as source
 	asmFile := filepath.Join(sourceDir, baseName+".s")
 	objFile := filepath.Join(sourceDir, baseName+".o")
-	binFile := filepath.Join(sourceDir, baseName+config.ExecutableSuffix)
+
+	// Use outputFile if specified, otherwise use default name
+	var binFile string
+	if outputFile != "" {
+		binFile = outputFile
+	} else {
+		binFile = filepath.Join(sourceDir, baseName+config.ExecutableSuffix)
+	}
 
 	stdlibPath := filepath.Join(pirxRoot, "stdlib", "libpirx.a")
 	pirxcPath := filepath.Join(pirxRoot, "pirxc")
 
 	// Step 1: Compile .pirx to .s using pirxc compiler
 	args := []string{"-o", asmFile}
-	if optLevel == "0" {
-		args = append(args, "-O0")
+	if optLevel != "" {
+		args = append(args, "-O"+optLevel)
 	}
 	args = append(args, pirxFile)
 	pirxCmd := exec.Command(pirxcPath, args...)

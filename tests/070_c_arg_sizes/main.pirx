@@ -1,0 +1,35 @@
+struct struct_12 {
+  a: int;
+  b: int;
+  c: int;
+}
+
+extern func print_struct_12(s: struct_12);
+
+struct struct_16 {
+  a: int64;
+  b: int64;
+}
+
+extern func print_struct_16(s: struct_16);
+
+extern func print_struct_16_extra_args(x: int, s: struct_16, y: int);
+
+extern func main(): int {
+  var s12: struct_12;
+  s12.a = 16909060;  // 0x01020304
+  s12.b = 84281096;  // 0x05060708
+  s12.c = 151653132; // 0x090a0b0c
+  print_struct_12(s12);
+
+  var s16: struct_16;
+  s16.a = 72623859790382856l;  // 0x0102030405060708
+  s16.b = 651345242494996240l; // 0x090a0b0c0d0e0f10
+  print_struct_16(s16);
+
+  s16.a = 651345242494996240l; // 0x090a0b0c0d0e0f10
+  s16.b = 72623859790382856l;  // 0x0102030405060708
+  print_struct_16_extra_args(42, s16, 24);
+
+  return 0;
+}

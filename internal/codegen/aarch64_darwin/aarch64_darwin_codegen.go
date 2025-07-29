@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	MAX_FUNC_ARGS = 8
-	MAX_SP_OFFSET = 504 // maximum offset from SP supproted in load/store instructions.
+	FUNC_CALL_REGISTERS = 8
+	MAX_SP_OFFSET       = 504 // maximum offset from SP supproted in load/store instructions.
 )
 
 type CodegenContext struct {
@@ -273,16 +273,42 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 }
 
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) error {
-	if call.NamedArgs > MAX_FUNC_ARGS {
-		return fmt.Errorf("too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
-	}
+	remainingArgs := call.Args
+	remainingArgSizes := call.ArgSizes
 
-	for i, arg := range call.Args[0:call.NamedArgs] {
-		argSize := call.ArgSizes[i]
-		generateRegisterLoad(cc, i, argSize, arg)
-	}
+	nextRegister := 0 // X0
+	for range call.NamedArgs {
+		arg := remainingArgs[0]
+		argSize := remainingArgSizes[0]
 
-	remainingArgs := call.Args[call.NamedArgs:]
+		// We can split a larger argument into two registers.
+		needRegisters := 1
+		if argSize > 8 {
+			needRegisters = 2
+		}
+
+		// Check if we ran out of registers.
+		if nextRegister+needRegisters >= FUNC_CALL_REGISTERS {
+			break
+		}
+
+		switch argSize {
+		case 4, 8:
+			generateRegisterLoad(cc, nextRegister, argSize, arg)
+		case 12:
+			generateRegisterLoadWithOffset(cc, nextRegister, 8, arg, 0)
+			generateRegisterLoadWithOffset(cc, nextRegister+1, 4, arg, 8)
+		case 16:
+			generateRegisterLoadWithOffset(cc, nextRegister, 8, arg, 0)
+			generateRegisterLoadWithOffset(cc, nextRegister+1, 8, arg, 8)
+		default:
+			panic(fmt.Errorf("unsupported external function argument size %d", argSize))
+		}
+
+		remainingArgs = remainingArgs[1:]
+		remainingArgSizes = remainingArgSizes[1:]
+		nextRegister += needRegisters
+	}
 
 	var spShift int
 

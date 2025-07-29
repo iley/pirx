@@ -555,7 +555,7 @@ func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, b
 	case "&":
 		// We can make a pointer to any type.
 		// TODO: Check that we're only taking address of lvalues.
-		return ast.NewPointerType(val), true
+		return &ast.PointerType{ElementType: val}, true
 	case "*":
 		if ptr, ok := val.(*ast.PointerType); ok {
 			return ptr.ElementType, true

@@ -21,7 +21,7 @@ Here are the currently supported operations:
  * Call(Target, Function, Args) - call a function. Includes support for variadic functions.
  * Return(Value) - return from a function.
  * ExternalCall(Target, Function, Args) - call a function using C ABI.
- * ExternalReturn(Value) - return from a fucntion using the C ABI. Mostly neede for main().
+ * ExternalReturn(Value) - return from a function using the C ABI. Mostly neede for main().
  * Jump(Label) - unconditional jump to a label defined via Anchor operation.
  * JumpUnless(Condition, Lable) - jump unless condition is true.
  * Anchor(Lable) - define a label for Jump/JumpUnless.

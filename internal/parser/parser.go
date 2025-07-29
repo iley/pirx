@@ -228,6 +228,28 @@ func (p *Parser) parseType() (ast.Type, error) {
 		return nil, err
 	}
 
+	// Check for slice type (starts with '[')
+	if lex.IsPunctuation("[") {
+		p.consume() // consume '['
+
+		// Expect ']'
+		lex, err = p.consume()
+		if err != nil {
+			return nil, err
+		}
+		if !lex.IsPunctuation("]") {
+			return nil, fmt.Errorf("%s: expected ']' in slice type, got %v", lex.Loc, lex)
+		}
+
+		// Parse the element type
+		elementType, err := p.parseType()
+		if err != nil {
+			return nil, err
+		}
+
+		return &ast.SliceType{ElementType: elementType}, nil
+	}
+
 	// Check for pointer type (starts with '*')
 	if lex.IsOperator("*") {
 		p.consume() // consume '*'
@@ -238,7 +260,7 @@ func (p *Parser) parseType() (ast.Type, error) {
 			return nil, err
 		}
 
-		return ast.NewPointerType(underlyingType), nil
+		return &ast.PointerType{ElementType: underlyingType}, nil
 	}
 
 	// Parse base type (identifier)

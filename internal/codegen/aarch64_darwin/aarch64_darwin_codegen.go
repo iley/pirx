@@ -272,6 +272,9 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 	fmt.Fprintf(cc.output, "  ldr x19, [sp, #-%d]\n", savedX19Offset)
 }
 
+// Generate a call to an external function using C ABI.
+// ** WARNING! **
+// We don't support the full C ABI here, just the bare minimum that we needed up to this point.
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) error {
 	remainingArgs := call.Args
 	remainingArgSizes := call.ArgSizes

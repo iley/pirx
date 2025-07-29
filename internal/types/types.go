@@ -8,8 +8,10 @@ import (
 )
 
 const (
-	WORD_SIZE = 8
-	BOOL_SIZE = 4
+	WORD_SIZE  = 8
+	BOOL_SIZE  = 4
+	INT_SIZE   = 4
+	SLICE_SIZE = 16
 )
 
 type TypeDescriptor interface {
@@ -143,6 +145,9 @@ func (tt *TypeTable) GetSize(typ ast.Type) (int, error) {
 	if _, ok := typ.(*ast.PointerType); ok {
 		// TODO: Validate the type we're pointing to.
 		return 8, nil
+	} else if _, ok := typ.(*ast.SliceType); ok {
+		// TODO: Validate the element type.
+		return 16, nil
 	} else if baseType, ok := typ.(*ast.BaseType); ok {
 		td, ok := tt.types[baseType.Name]
 		if !ok {

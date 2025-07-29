@@ -248,6 +248,10 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 			if !ast.IsPointerType(actualArgType) {
 				c.errors = append(c.errors, fmt.Errorf("%s: argument of %s must be a pointer, got %s", call.Loc, call.FunctionName, actualArgType))
 			}
+		} else if expectedArgType == ast.Disposable {
+			if !ast.IsPointerType(actualArgType) && !ast.IsSliceType(actualArgType) {
+				c.errors = append(c.errors, fmt.Errorf("%s: argument of dispose must be either a pointer or a slice, got %s", call.Loc, actualArgType))
+			}
 		} else if !actualArgType.Equals(expectedArgType) {
 			c.errors = append(c.errors, fmt.Errorf("%s: argument #%d of function %s has wrong type: expected %s but got %s",
 				call.Loc, i+1, call.FunctionName, expectedArgType, actualArgType))
@@ -541,9 +545,19 @@ func (c *TypeChecker) getFieldType(loc ast.Location, objectExpr ast.Expression, 
 
 func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpression {
 	// TODO: Check that TypeExpr is a valid type.
-	result := *n
-	result.Type = &ast.PointerType{ElementType: n.TypeExpr}
-	return &result
+	if _, ok := n.TypeExpr.(*ast.SliceType); ok {
+		if n.Count == nil {
+			c.errors = append(c.errors, fmt.Errorf("%s: when allocating a slice via new(), an element count must be specified", n.Loc))
+			return nil
+		}
+		result := *n
+		result.Type = n.TypeExpr
+		return &result
+	} else {
+		result := *n
+		result.Type = &ast.PointerType{ElementType: n.TypeExpr}
+		return &result
+	}
 }
 
 func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, bool) {

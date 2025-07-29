@@ -298,6 +298,26 @@ func (p *Parser) parseNewExpression() (ast.Expression, error) {
 		return nil, err
 	}
 
+	// check for optional count parameter
+	var countExpr ast.Expression
+	lex, err = p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if lex.IsPunctuation(",") {
+		// consume ','
+		_, err = p.consume()
+		if err != nil {
+			return nil, err
+		}
+
+		// parse count expression
+		countExpr, err = p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// consume ')'
 	lex, err = p.consume()
 	if err != nil {
@@ -310,6 +330,7 @@ func (p *Parser) parseNewExpression() (ast.Expression, error) {
 	return &ast.NewExpression{
 		Loc:      newLoc,
 		TypeExpr: typeExpr,
+		Count:    countExpr,
 	}, nil
 }
 

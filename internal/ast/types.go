@@ -20,6 +20,9 @@ var (
 	// Represents a value that does not have a type either due to an error or because it's not yet known.
 	// Not directly accessible to the user.
 	Undefined = &BaseType{Name: "undefined"}
+	// Represents a value that can be passed to dispose() i.e. either a pointer or a slice.
+	// Not directly accessible to the user.
+	Disposable = &BaseType{Name: "disposable"}
 )
 
 // Type represents a Pirx type
@@ -112,7 +115,12 @@ func IsIntegerType(typ Type) bool {
 	return typ == Int || typ == Int8 || typ == Int64
 }
 
-var pseudoTypes = []Type{Void, VoidPtr, NullPtr, Undefined}
+func IsSliceType(typ Type) bool {
+	_, ok := typ.(*SliceType)
+	return ok
+}
+
+var pseudoTypes = []Type{Void, VoidPtr, NullPtr, Undefined, Disposable}
 
 func IsConcreteType(typ Type) bool {
 	return !slices.Contains(pseudoTypes, typ)

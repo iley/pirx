@@ -20,7 +20,7 @@ func getBuiltins() []FuncProto {
 		{
 			Name:         "dispose",
 			ExternalName: "Pirx_Dispose",
-			Args:         []Arg{{"p", ast.VoidPtr}},
+			Args:         []Arg{{"p", ast.Disposable}},
 			External:     true,
 		},
 	}

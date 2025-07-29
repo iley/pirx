@@ -241,21 +241,39 @@ func generateUnaryOperationOps(ic *IrContext, op *ast.UnaryOperation) ([]Op, Arg
 }
 
 func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, int) {
-	allocSize, err := ic.types.GetSize(ne.TypeExpr)
-	if err != nil {
-		panic(err)
+	if sliceType, ok := ne.Type.(*ast.SliceType); ok {
+		ops, sizeArg, sizeSize := generateExpressionOps(ic, ne.Count)
+		if sizeSize != types.INT_SIZE {
+			// TODO: Proper error handling!
+			panic(fmt.Errorf("%s: expected the size expression to be a 32-bit integer", ne.Loc))
+		}
+		elementSize := ic.types.GetSizeNoError(sliceType.ElementType)
+		res := ic.allocTemp(types.SLICE_SIZE)
+		allocCall := ExternalCall{
+			Result:   res,
+			Function: "Pirx_Slice_Alloc",
+			// TODO: Support independent capacity argument.
+			Args:     []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, sizeArg, sizeArg},
+			ArgSizes: []int{types.INT_SIZE, types.INT_SIZE, types.INT_SIZE},
+			Size:     types.SLICE_SIZE,
+		}
+		ops = append(ops, allocCall)
+		return ops, Arg{Variable: res}, types.SLICE_SIZE
+	} else {
+		// Regular type allocation -> return a pointer.
+		allocSize := ic.types.GetSizeNoError(ne.TypeExpr)
+		res := ic.allocTemp(types.WORD_SIZE)
+		// TODO: Maybe make a helper function for generating such function calls?
+		allocCall := ExternalCall{
+			Result:    res,
+			Function:  "Pirx_Alloc",
+			Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(allocSize))}},
+			ArgSizes:  []int{types.WORD_SIZE},
+			NamedArgs: 1,
+			Size:      types.WORD_SIZE,
+		}
+		return []Op{allocCall}, Arg{Variable: res}, types.WORD_SIZE
 	}
-	res := ic.allocTemp(types.WORD_SIZE)
-	// TODO: Maybe make a helper function for generating such function calls?
-	allocCall := ExternalCall{
-		Result:    res,
-		Function:  "Pirx_Alloc",
-		Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(allocSize))}},
-		ArgSizes:  []int{types.WORD_SIZE},
-		NamedArgs: 1,
-		Size:      types.WORD_SIZE,
-	}
-	return []Op{allocCall}, Arg{Variable: res}, types.WORD_SIZE
 }
 
 func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
@@ -464,7 +482,15 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	temp := ic.allocTemp(size)
 	if funcProto.External {
 		name := funcProto.Name
-		if funcProto.ExternalName != "" {
+		if name == "dispose" {
+			if ast.IsPointerType(call.Args[0].GetType()) {
+				name = "Pirx_Dispose"
+			} else if ast.IsSliceType(call.Args[0].GetType()) {
+				name = "Pirx_Slice_Dispose"
+			} else {
+				panic(fmt.Errorf("invalid argument type for dispose(): %s", call.Args[0].GetType()))
+			}
+		} else if funcProto.ExternalName != "" {
 			name = funcProto.ExternalName
 		}
 		ops = append(ops, ExternalCall{

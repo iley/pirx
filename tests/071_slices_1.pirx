@@ -1,0 +1,9 @@
+extern func main(): int {
+  var s: []int;
+
+  s = new([]int, 10);
+
+  dispose(s);
+
+  return 0;
+}

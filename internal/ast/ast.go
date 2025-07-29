@@ -684,6 +684,7 @@ func (i *IndexExpression) String() string {
 type NewExpression struct {
 	Loc      Location
 	TypeExpr Type
+	Count    Expression // Optional count for slice allocation
 	Type     Type
 }
 
@@ -698,5 +699,8 @@ func (n *NewExpression) GetType() Type {
 func (n *NewExpression) isExpression() {}
 
 func (n *NewExpression) String() string {
+	if n.Count != nil {
+		return fmt.Sprintf("(new %s %s)", n.TypeExpr.String(), n.Count.String())
+	}
 	return fmt.Sprintf("(new %s)", n.TypeExpr.String())
 }

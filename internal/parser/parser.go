@@ -663,7 +663,7 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("%s: unknown expression: %v", lex.Loc, lex)
 	}
 
-	// Handle field access postfix operations
+	// Handle field access and indexing postfix operations
 	for {
 		lex, err := p.peek()
 		if err != nil {
@@ -690,6 +690,34 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 				Loc:       dotLoc,
 				Object:    expr,
 				FieldName: fieldLex.Str,
+			}
+		} else if lex.IsPunctuation("[") {
+			// consume '['
+			bracketLex, err := p.consume()
+			if err != nil {
+				return nil, err
+			}
+			bracketLoc := locationFromLexeme(bracketLex)
+
+			// parse index expression
+			indexExpr, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
+
+			// expect ']'
+			closeLex, err := p.consume()
+			if err != nil {
+				return nil, err
+			}
+			if !closeLex.IsPunctuation("]") {
+				return nil, fmt.Errorf("%s: expected ']' after index expression, got %v", closeLex.Loc, closeLex)
+			}
+
+			expr = &ast.IndexExpression{
+				Loc:   bracketLoc,
+				Array: expr,
+				Index: indexExpr,
 			}
 		} else {
 			break
@@ -1086,6 +1114,27 @@ func (p *Parser) convertExpressionToLValue(expr ast.Expression) (ast.LValue, err
 			Loc:       e.GetLocation(),
 			Object:    objectExpr,
 			FieldName: e.FieldName,
+		}, nil
+	case *ast.IndexExpression:
+		// If the array itself is an IndexExpression, convert it to IndexLValue too
+		var arrayExpr ast.Expression
+		if nestedIndex, ok := e.Array.(*ast.IndexExpression); ok {
+			nestedLValue, err := p.convertExpressionToLValue(nestedIndex)
+			if err != nil {
+				return nil, err
+			}
+			var ok2 bool
+			arrayExpr, ok2 = nestedLValue.(ast.Expression)
+			if !ok2 {
+				return nil, fmt.Errorf("%s: converted array is not an expression", e.GetLocation())
+			}
+		} else {
+			arrayExpr = e.Array
+		}
+		return &ast.IndexLValue{
+			Loc:   e.GetLocation(),
+			Array: arrayExpr,
+			Index: e.Index,
 		}, nil
 	default:
 		return nil, fmt.Errorf("%s: invalid assignment target: %s", expr.GetLocation(), expr.String())

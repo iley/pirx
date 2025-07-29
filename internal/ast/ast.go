@@ -440,6 +440,29 @@ func (f *FieldLValue) String() string {
 	return fmt.Sprintf("(.l %s %s)", f.Object.String(), f.FieldName)
 }
 
+type IndexLValue struct {
+	Loc   Location
+	Array Expression
+	Index Expression
+	Type  Type
+}
+
+func (i *IndexLValue) GetLocation() Location {
+	return i.Loc
+}
+
+func (i *IndexLValue) GetType() Type {
+	return i.Type
+}
+
+func (i *IndexLValue) isLValue() {}
+
+func (i *IndexLValue) isExpression() {}
+
+func (i *IndexLValue) String() string {
+	return fmt.Sprintf("([]l %s %s)", i.Array.String(), i.Index.String())
+}
+
 type Literal struct {
 	Loc         Location
 	StringValue *string
@@ -635,6 +658,27 @@ func (f *FieldAccess) isExpression() {}
 
 func (f *FieldAccess) String() string {
 	return fmt.Sprintf("(. %s %s)", f.Object.String(), f.FieldName)
+}
+
+type IndexExpression struct {
+	Loc   Location
+	Array Expression
+	Index Expression
+	Type  Type
+}
+
+func (i *IndexExpression) GetLocation() Location {
+	return i.Loc
+}
+
+func (i *IndexExpression) GetType() Type {
+	return i.Type
+}
+
+func (i *IndexExpression) isExpression() {}
+
+func (i *IndexExpression) String() string {
+	return fmt.Sprintf("([] %s %s)", i.Array.String(), i.Index.String())
 }
 
 type NewExpression struct {

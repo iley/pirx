@@ -1,0 +1,43 @@
+struct struct_9 {
+  f1: int8;
+  f2: int8;
+  f3: int8;
+  f4: int8;
+  f5: int8;
+  f6: int8;
+  f7: int8;
+  f8: int8;
+  f9: int8;
+}
+
+extern func returns_9_bytes(): struct_9;
+
+struct struct_15 {
+  first_8_bytes: int64;
+  f9: int8;
+  f10: int8;
+  f11: int8;
+  f12: int8;
+  f13: int8;
+  f14: int8;
+  f15: int8;
+}
+
+extern func returns_15_bytes(): struct_15;
+
+extern func main(): int {
+  var s9: struct_9;
+  s9 = returns_9_bytes();
+
+  printf("%d %d %d %d %d %d %d %d %d\n",
+    s9.f1, s9.f2, s9.f3, s9.f4, s9.f5, s9.f6, s9.f7, s9.f8, s9.f9);
+
+  var s15: struct_15;
+  s15 = returns_15_bytes();
+
+  printf("0x%016llx\n", s15.first_8_bytes);
+  printf("%d %d %d %d %d %d %d\n",
+    s15.f9, s15.f10, s15.f11, s15.f12, s15.f13, s15.f14, s15.f15);
+
+  return 0;
+}

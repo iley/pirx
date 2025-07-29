@@ -153,7 +153,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		fmt.Fprintf(cc.output, "// Op %d: %s\n", i, op.String())
 		err := generateOp(cc, op)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 
@@ -210,9 +210,12 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 			if assign.Size-offset >= 8 {
 				generateStoreToLocalWithOffset(cc, 0, 8, assign.Target, offset)
 				offset += 8
-			} else {
+			} else if assign.Size-offset >= 4 {
 				generateStoreToLocalWithOffset(cc, 0, 4, assign.Target, offset)
 				offset += 4
+			} else {
+				generateStoreToLocalWithOffset(cc, 0, 1, assign.Target, offset)
+				offset += 1
 			}
 		}
 	} else {
@@ -270,7 +273,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 }
 
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) error {
-	if len(call.Args) > MAX_FUNC_ARGS {
+	if call.NamedArgs > MAX_FUNC_ARGS {
 		return fmt.Errorf("too many arguments in a function call. Got %d, only %d are supported", len(call.Args), MAX_FUNC_ARGS)
 	}
 
@@ -446,16 +449,40 @@ func generateExternalReturn(cc *CodegenContext, ret ir.ExternalReturn) {
 }
 
 func generateFunctionResultStore(cc *CodegenContext, size int, target string) {
-	switch size {
-	case 4, 8:
-		generateStoreToLocal(cc, 0, size, target)
-	case 12, 16:
-		generateStoreToLocalWithOffset(cc, 0, 8, target, 0)
-		generateStoreToLocalWithOffset(cc, 1, size-8, target, 8)
-	default:
-		// We shouldn't get any sizes over 16 bytes here because those use indirect return.
-		// Sizes that are not multiple of 4 are not supported by the backend at all.
-		panic(fmt.Errorf("unsupported result size in function call: %d", size))
+	if size > 16 {
+		// TODO: Returns over 16 bytes are done via a caller-allocated buffer referenced by x8.
+		// Once that is supported on the call side, we can just remove the check here.
+		panic("returning values larger than 16 bytes from externa functions is not currently supported")
+	}
+
+	offset := 0
+	for offset < size {
+		// The return value can be split between X0 and X1.
+		var retReg int
+		if offset < 8 {
+			retReg = 0 // X0
+		} else {
+			retReg = 1 // X1
+		}
+
+		if size-offset >= 8 {
+			generateStoreToLocalWithOffset(cc, retReg, 8, target, offset)
+			offset += 8
+		} else if size-offset >= 4 {
+			generateStoreToLocalWithOffset(cc, retReg, 4, target, offset)
+			offset += 4
+			// Skip the shfit if we're either at the end or at register boundary.
+			if size > offset && offset != 8 {
+				fmt.Fprintf(cc.output, "  lsr x%d, x%d, #32\n", retReg, retReg)
+			}
+		} else {
+			// Copy one byte at a time as we don't support half-word access currently.
+			generateStoreToLocalWithOffset(cc, retReg, 1, target, offset)
+			offset += 1
+			if size > offset {
+				fmt.Fprintf(cc.output, "  lsr x%d, x%d, #8\n", retReg, retReg)
+			}
+		}
 	}
 }
 

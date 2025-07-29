@@ -247,15 +247,15 @@ func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, 
 	}
 	res := ic.allocTemp(types.WORD_SIZE)
 	// TODO: Maybe make a helper function for generating such function calls?
-	mallocCall := ExternalCall{
+	allocCall := ExternalCall{
 		Result:    res,
-		Function:  "malloc",
+		Function:  "Pirx_Alloc",
 		Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(allocSize))}},
 		ArgSizes:  []int{types.WORD_SIZE},
 		NamedArgs: 1,
 		Size:      types.WORD_SIZE,
 	}
-	return []Op{mallocCall}, Arg{Variable: res}, types.WORD_SIZE
+	return []Op{allocCall}, Arg{Variable: res}, types.WORD_SIZE
 }
 
 func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {

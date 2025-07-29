@@ -2,6 +2,6 @@
 #define _PIRX_STDLIB_BUILTIN_H
 
 // Wrapper around free().
-extern void dispose(void *);
+extern void Pirx_Dispose(void *);
 
 #endif // _PIRX_STDLIB_BUILTIN_H

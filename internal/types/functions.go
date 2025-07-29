@@ -5,10 +5,11 @@ import (
 )
 
 type FuncProto struct {
-	Name       string
-	Args       []Arg
-	ReturnType ast.Type
-	Variadic   bool
+	Name         string
+	ExternalName string
+	Args         []Arg
+	ReturnType   ast.Type
+	Variadic     bool
 	// For external functions we need to follow C ABI.
 	External bool
 }

@@ -1,8 +1,5 @@
 #include "builtin.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 
-void dispose(void *ptr) {
-  free(ptr);
-}
+void Pirx_Dispose(void *ptr) { free(ptr); }

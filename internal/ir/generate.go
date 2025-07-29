@@ -463,9 +463,13 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 
 	temp := ic.allocTemp(size)
 	if funcProto.External {
+		name := funcProto.Name
+		if funcProto.ExternalName != "" {
+			name = funcProto.ExternalName
+		}
 		ops = append(ops, ExternalCall{
 			Result:    temp,
-			Function:  call.FunctionName,
+			Function:  name,
 			Args:      args,
 			ArgSizes:  sizes,
 			NamedArgs: len(funcProto.Args),

@@ -75,7 +75,7 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 	for _, arg := range fn.Args {
 		ok := c.vars.declare(arg.Name, arg.Type)
 		if !ok {
-			c.errors = append(c.errors, fmt.Errorf("%s: duplicate function argument: %s", fn.Loc, arg.Name))
+			c.errorf("%s: duplicate function argument: %s", fn.Loc, arg.Name)
 		}
 	}
 
@@ -84,7 +84,7 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 		checkedBody = c.checkBlock(fn.Body)
 
 		if c.currentFunc.ReturnType != nil && !c.hasReturn {
-			c.errors = append(c.errors, fmt.Errorf("%s: function %s with return type %s must contain a return operator", fn.Loc, c.currentFunc.Name, c.currentFunc.ReturnType))
+			c.errorf("%s: function %s with return type %s must contain a return operator", fn.Loc, c.currentFunc.Name, c.currentFunc.ReturnType)
 		}
 	}
 
@@ -192,8 +192,8 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *a
 		checkedInitializer = c.checkExpression(decl.Initializer)
 
 		if typ != nil && !areCompatibleTypes(decl.Type, checkedInitializer.GetType()) {
-			c.errors = append(c.errors, fmt.Errorf("%s: cannot initialize variable %s of type %s with expression of type %s",
-				decl.Loc, decl.Name, decl.Type, checkedInitializer.GetType()))
+			c.errorf("%s: cannot initialize variable %s of type %s with expression of type %s",
+				decl.Loc, decl.Name, decl.Type, checkedInitializer.GetType())
 		}
 	}
 
@@ -202,14 +202,14 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *a
 			// Type inference.
 			typ = checkedInitializer.GetType()
 			if !ast.IsConcreteType(typ) {
-				c.errors = append(c.errors, fmt.Errorf("%s: invalid initializer for variable %s, cannot infer type", decl.Loc, decl.Name))
+				c.errorf("%s: invalid initializer for variable %s, cannot infer type", decl.Loc, decl.Name)
 			}
 		}
 	}
 
 	ok := c.vars.declare(decl.Name, typ)
 	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is already declared", decl.Loc, decl.Name))
+		c.errorf("%s: variable %s is already declared", decl.Loc, decl.Name)
 	}
 
 	_, uniqueName := c.vars.lookup(decl.Name)
@@ -224,13 +224,13 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *a
 func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCall {
 	proto, declared := c.declaredFuncs[call.FunctionName]
 	if !declared {
-		c.errors = append(c.errors, fmt.Errorf("%s: function %s is not declared", call.Loc, call.FunctionName))
+		c.errorf("%s: function %s is not declared", call.Loc, call.FunctionName)
 		// Use a default proto to avoid nil reference issues
 		proto.ReturnType = ast.Int
 	}
 
 	if declared && !proto.Variadic && (len(proto.Args) != len(call.Args)) {
-		c.errors = append(c.errors, fmt.Errorf("%s: function %s has %d arguments but %d were provided", call.Loc, call.FunctionName, len(proto.Args), len(call.Args)))
+		c.errorf("%s: function %s has %d arguments but %d were provided", call.Loc, call.FunctionName, len(proto.Args), len(call.Args))
 	}
 
 	checkedArgs := make([]ast.Expression, len(call.Args))
@@ -246,15 +246,15 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 		expectedArgType := proto.Args[i].Typ
 		if expectedArgType == ast.VoidPtr {
 			if !ast.IsPointerType(actualArgType) {
-				c.errors = append(c.errors, fmt.Errorf("%s: argument of %s must be a pointer, got %s", call.Loc, call.FunctionName, actualArgType))
+				c.errorf("%s: argument of %s must be a pointer, got %s", call.Loc, call.FunctionName, actualArgType)
 			}
 		} else if expectedArgType == ast.Disposable {
 			if !ast.IsPointerType(actualArgType) && !ast.IsSliceType(actualArgType) {
-				c.errors = append(c.errors, fmt.Errorf("%s: argument of dispose must be either a pointer or a slice, got %s", call.Loc, actualArgType))
+				c.errorf("%s: argument of dispose must be either a pointer or a slice, got %s", call.Loc, actualArgType)
 			}
 		} else if !actualArgType.Equals(expectedArgType) {
-			c.errors = append(c.errors, fmt.Errorf("%s: argument #%d of function %s has wrong type: expected %s but got %s",
-				call.Loc, i+1, call.FunctionName, expectedArgType, actualArgType))
+			c.errorf("%s: argument #%d of function %s has wrong type: expected %s but got %s",
+				call.Loc, i+1, call.FunctionName, expectedArgType, actualArgType)
 		}
 	}
 
@@ -283,11 +283,11 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 	if valueType != nil && targetType != nil {
 		isValidNullAssignment := ast.IsPointerType(targetType) && valueType.Equals(ast.NullPtr)
 		if !valueType.Equals(targetType) && !isValidNullAssignment {
-			c.errors = append(c.errors, fmt.Errorf("%s: cannot assign value of type %s to lvalue of type %s",
+			c.errorf("%s: cannot assign value of type %s to lvalue of type %s",
 				assignment.Loc,
 				valueType,
 				targetType,
-			))
+			)
 		}
 	}
 
@@ -319,7 +319,7 @@ func (c *TypeChecker) checkLValue(lval ast.LValue) ast.LValue {
 func (c *TypeChecker) checkVariableLValue(lval *ast.VariableLValue) *ast.VariableLValue {
 	typ, uniqueName := c.vars.lookup(lval.Name)
 	if typ == nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is not declared before assignment", lval.Loc, lval.Name))
+		c.errorf("%s: variable %s is not declared before assignment", lval.Loc, lval.Name)
 		typ = ast.Undefined // Use a default type to avoid nil
 	}
 	result := *lval
@@ -334,7 +334,7 @@ func (c *TypeChecker) checkDereferenceLValue(lval *ast.DereferenceLValue) *ast.D
 	ptrType, ok := refType.(*ast.PointerType)
 	var resultType ast.Type
 	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%s: dereference of a non-pointer type %s", lval.Loc, refType))
+		c.errorf("%s: dereference of a non-pointer type %s", lval.Loc, refType)
 		resultType = ast.Int // Use a default type to avoid nil
 	} else {
 		resultType = ptrType.ElementType
@@ -348,7 +348,7 @@ func (c *TypeChecker) checkDereferenceLValue(lval *ast.DereferenceLValue) *ast.D
 func (c *TypeChecker) checkVariableReference(ref *ast.VariableReference) *ast.VariableReference {
 	typ, uniqueName := c.vars.lookup(ref.Name)
 	if typ == nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: variable %s is not declared before reference", ref.Loc, ref.Name))
+		c.errorf("%s: variable %s is not declared before reference", ref.Loc, ref.Name)
 		typ = ast.Undefined // Use a default type to avoid nil
 	}
 
@@ -362,9 +362,9 @@ func (c *TypeChecker) checkReturnStatement(stmt *ast.ReturnStatement) *ast.Retur
 	c.hasReturn = true
 
 	if stmt.Value == nil && c.currentFunc.ReturnType != nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: function %s should return a value of type %s but no value was provided",
+		c.errorf("%s: function %s should return a value of type %s but no value was provided",
 			stmt.Loc, c.currentFunc.Name, c.currentFunc.ReturnType,
-		))
+		)
 	}
 
 	var checkedValue ast.Expression
@@ -372,13 +372,13 @@ func (c *TypeChecker) checkReturnStatement(stmt *ast.ReturnStatement) *ast.Retur
 		checkedValue = c.checkExpression(stmt.Value)
 		typ := checkedValue.GetType()
 		if c.currentFunc.ReturnType == nil {
-			c.errors = append(c.errors, fmt.Errorf("%s: function %s does not have a return type but a value was provided",
+			c.errorf("%s: function %s does not have a return type but a value was provided",
 				stmt.Loc, c.currentFunc.Name,
-			))
+			)
 		} else if !typ.Equals(c.currentFunc.ReturnType) {
-			c.errors = append(c.errors, fmt.Errorf("%s: function %s has return type %s but a value of type %s was provided",
+			c.errorf("%s: function %s has return type %s but a value of type %s was provided",
 				stmt.Loc, c.currentFunc.Name, c.currentFunc.ReturnType, typ,
-			))
+			)
 		}
 	}
 
@@ -394,12 +394,12 @@ func (c *TypeChecker) checkBinaryOperation(binOp *ast.BinaryOperation) *ast.Bina
 	rightType := rightExpr.GetType()
 	resultType, ok := binaryOperationResult(binOp.Operator, leftType, rightType)
 	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%s: binary operation %s cannot be applied to values of types %s and %s",
+		c.errorf("%s: binary operation %s cannot be applied to values of types %s and %s",
 			binOp.Loc,
 			binOp.Operator,
 			leftType,
 			rightType,
-		))
+		)
 		resultType = ast.Int // Use a default type to avoid nil
 	}
 	result := *binOp
@@ -414,11 +414,11 @@ func (c *TypeChecker) checkUnaryOperation(unaryOp *ast.UnaryOperation) *ast.Unar
 	operandType := operandExpr.GetType()
 	resultType, ok := c.unaryOperationResult(unaryOp.Operator, operandType)
 	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%s: unary operation %s cannot be applied to a value of type %s",
+		c.errorf("%s: unary operation %s cannot be applied to a value of type %s",
 			unaryOp.Loc,
 			unaryOp.Operator,
 			operandType,
-		))
+		)
 		resultType = ast.Int // Use a default type to avoid nil
 	}
 	result := *unaryOp
@@ -431,10 +431,10 @@ func (c *TypeChecker) checkIfStatement(stmt *ast.IfStatement) *ast.IfStatement {
 	checkedCondition := c.checkExpression(stmt.Condition)
 	exprType := checkedCondition.GetType()
 	if exprType != ast.Bool {
-		c.errors = append(c.errors, fmt.Errorf("%s: expected an expression of type bool in if condition, got type %s",
+		c.errorf("%s: expected an expression of type bool in if condition, got type %s",
 			stmt.Loc,
 			exprType,
-		))
+		)
 	}
 	checkedThenBlock := c.checkBlock(&stmt.ThenBlock)
 	var checkedElseBlock *ast.Block
@@ -453,10 +453,10 @@ func (c *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) *ast.WhileSt
 	checkedCondition := c.checkExpression(stmt.Condition)
 	exprType := checkedCondition.GetType()
 	if exprType != ast.Bool {
-		c.errors = append(c.errors, fmt.Errorf("%s: expected an expression of type bool in while condition, got type %s",
+		c.errorf("%s: expected an expression of type bool in while condition, got type %s",
 			stmt.Loc,
 			exprType,
-		))
+		)
 	}
 
 	c.nestedLoops += 1
@@ -472,14 +472,14 @@ func (c *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) *ast.WhileSt
 
 func (c *TypeChecker) checkBreakStatement(stmt *ast.BreakStatement) *ast.BreakStatement {
 	if c.nestedLoops == 0 {
-		c.errors = append(c.errors, fmt.Errorf("%s: break cannot be used outside a loop", stmt.Loc))
+		c.errorf("%s: break cannot be used outside a loop", stmt.Loc)
 	}
 	return &ast.BreakStatement{Loc: stmt.Loc}
 }
 
 func (c *TypeChecker) checkContinueStatement(stmt *ast.ContinueStatement) *ast.ContinueStatement {
 	if c.nestedLoops == 0 {
-		c.errors = append(c.errors, fmt.Errorf("%s: continue cannot be used outside a loop", stmt.Loc))
+		c.errorf("%s: continue cannot be used outside a loop", stmt.Loc)
 	}
 	return &ast.ContinueStatement{Loc: stmt.Loc}
 }
@@ -520,23 +520,23 @@ func (c *TypeChecker) getFieldType(loc ast.Location, objectExpr ast.Expression, 
 
 	structType, ok := objectType.(*ast.BaseType)
 	if !ok {
-		c.errors = append(c.errors, fmt.Errorf("%s: type %s used in field access is not a base type", loc, objectType))
+		c.errorf("%s: type %s used in field access is not a base type", loc, objectType)
 		return ast.Int // Use a default type to avoid nil
 	}
 
 	structDesc, err := c.types.GetStruct(structType)
 	if err != nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: %v", loc, err))
+		c.errorf("%s: %v", loc, err)
 		return ast.Int // Use a default type to avoid nil
 	}
 
 	if structDesc == nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: cannot access field %s of a non-struct", loc, fieldName))
+		c.errorf("%s: cannot access field %s of a non-struct", loc, fieldName)
 		return ast.Int // Use a default type to avoid nil
 	}
 	fieldType := structDesc.GetFieldType(fieldName)
 	if fieldType == nil {
-		c.errors = append(c.errors, fmt.Errorf("%s: struct %s does not have field %s", loc, structDesc.Name, fieldName))
+		c.errorf("%s: struct %s does not have field %s", loc, structDesc.Name, fieldName)
 		return ast.Int // Use a default type to avoid nil
 	}
 
@@ -547,7 +547,7 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 	// TODO: Check that TypeExpr is a valid type.
 	if _, ok := n.TypeExpr.(*ast.SliceType); ok {
 		if n.Count == nil {
-			c.errors = append(c.errors, fmt.Errorf("%s: when allocating a slice via new(), an element count must be specified", n.Loc))
+			c.errorf("%s: when allocating a slice via new(), an element count must be specified", n.Loc)
 			return nil
 		}
 		result := *n
@@ -578,6 +578,10 @@ func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, b
 		}
 	}
 	panic(fmt.Sprintf("unknown unary operation %s", op))
+}
+
+func (c *TypeChecker) errorf(format string, args ...any) {
+	c.errors = append(c.errors, fmt.Errorf(format, args...))
 }
 
 func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {

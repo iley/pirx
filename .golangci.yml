@@ -27,10 +27,6 @@ linters:
         - os.Remove
         - (*os.File).Close
         - (*github.com/iley/pirx/internal/parser.Parser).consume
-    govet:
-      printf:
-        funcs:
-          - (*github.com/iley/pirx/internal/typechecker.TypeChecker).errorf
 
 formatters:
   enable:

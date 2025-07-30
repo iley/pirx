@@ -51,7 +51,8 @@ func main() {
 	}
 	ast := p.GetProgram()
 
-	typedAst, programErrors := typechecker.Run(ast)
+	tc := typechecker.NewTypeChecker(ast)
+	typedAst, programErrors := tc.Check()
 	if len(programErrors) > 0 {
 		for _, err := range programErrors {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
@@ -88,9 +89,13 @@ func main() {
 		return
 	}
 
-	programIr, err := ir.Generate(ast)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+	irg := ir.NewGenerator()
+	programIr, codegenErrors := irg.Generate(ast)
+	if len(codegenErrors) > 0 {
+		for _, err := range codegenErrors {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+		}
+		os.Exit(1)
 	}
 
 	if !*noOptimize {

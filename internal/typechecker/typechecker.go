@@ -29,11 +29,7 @@ func NewTypeChecker(program *ast.Program) *TypeChecker {
 	}
 }
 
-func (c *TypeChecker) Errors() []error {
-	return c.errors
-}
-
-func (c *TypeChecker) Check() *ast.Program {
+func (c *TypeChecker) Check() (*ast.Program, []error) {
 	// TODO: Check that function declarations use valid types.
 
 	// Gather function prototypes so we can check arguments and types later.
@@ -60,7 +56,7 @@ func (c *TypeChecker) Check() *ast.Program {
 		Loc:              c.program.Loc,
 		Functions:        checkedFunctions,
 		TypeDeclarations: typeDecls,
-	}
+	}, c.errors
 }
 
 func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {

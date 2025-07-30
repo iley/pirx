@@ -8,7 +8,8 @@ import (
 	"github.com/iley/pirx/internal/util"
 )
 
-type IrContext struct {
+type Generator struct {
+	errors         []error
 	nextTempIndex  int
 	nextLabelIndex int
 	breakLabel     string
@@ -20,36 +21,25 @@ type IrContext struct {
 	isExternalFunction bool
 }
 
-func (ic *IrContext) allocTemp(size int) string {
-	idx := ic.nextTempIndex
-	ic.nextTempIndex++
-	name := fmt.Sprintf("$%d", idx)
-	ic.vars[name] = size
-	return name
-}
-
-func (ic *IrContext) allocLabel() string {
-	idx := ic.nextLabelIndex
-	ic.nextLabelIndex++
-	return fmt.Sprintf("anchor%d", idx)
-}
-
-func Generate(node *ast.Program) (IrProgram, error) {
-	irp := IrProgram{}
-	ic := IrContext{
+func NewGenerator() *Generator {
+	return &Generator{
 		nextLabelIndex: 1,
 		funcs:          make(map[string]types.FuncProto),
 	}
+}
+
+func (g *Generator) Generate(node *ast.Program) (IrProgram, []error) {
+	irp := IrProgram{}
 
 	typeTable, err := types.MakeTypeTable(node.TypeDeclarations)
 	if err != nil {
-		return IrProgram{}, err
+		return IrProgram{}, []error{err}
 	}
 
-	ic.types = typeTable
+	g.types = typeTable
 
 	for _, funcProto := range types.GetFunctionTable(node) {
-		ic.funcs[funcProto.Name] = funcProto
+		g.funcs[funcProto.Name] = funcProto
 	}
 
 	for _, function := range node.Functions {
@@ -57,13 +47,13 @@ func Generate(node *ast.Program) (IrProgram, error) {
 		if function.Body == nil {
 			continue
 		}
-		irFunc := generateFunction(&ic, function)
+		irFunc := g.generateFunction(function)
 		irp.Functions = append(irp.Functions, irFunc)
 	}
 	return irp, nil
 }
 
-func generateFunction(ic *IrContext, node ast.Function) IrFunction {
+func (g *Generator) generateFunction(node ast.Function) IrFunction {
 	irfunc := IrFunction{
 		Name:     node.Name,
 		Args:     []string{},
@@ -71,20 +61,18 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 		Ops:      []Op{},
 	}
 
-	// Create a new context for this function
-	fic := *ic
-	fic.nextTempIndex = 1
-	fic.vars = make(map[string]int)
-	fic.isExternalFunction = node.External
+	g.nextTempIndex = 1
+	g.vars = make(map[string]int)
+	g.isExternalFunction = node.External
 
 	for _, arg := range node.Args {
-		fic.vars[arg.Name] = ic.types.GetSizeNoError(arg.Type)
+		g.vars[arg.Name] = g.types.GetSizeNoError(arg.Type)
 		irfunc.Args = append(irfunc.Args, arg.Name)
-		irfunc.ArgSizes = append(irfunc.ArgSizes, ic.types.GetSizeNoError(arg.Type))
+		irfunc.ArgSizes = append(irfunc.ArgSizes, g.types.GetSizeNoError(arg.Type))
 	}
 
 	// It's safe to dereference body here because we check the function has a body before generateFunction() is called.
-	irfunc.Ops = generateBlockOps(&fic, *node.Body)
+	irfunc.Ops = g.generateBlockOps(*node.Body)
 
 	// Add implicit return in case the function doesn't end with a return
 	// We assume that presence of return with the right type is checked upstream.
@@ -112,98 +100,99 @@ func generateFunction(ic *IrContext, node ast.Function) IrFunction {
 	return irfunc
 }
 
-func generateBlockOps(ic *IrContext, block ast.Block) []Op {
+func (g *Generator) generateBlockOps(block ast.Block) []Op {
 	ops := []Op{}
 	for _, stmt := range block.Statements {
-		stmtOps := generateStatementOps(ic, stmt)
+		stmtOps := g.generateStatementOps(stmt)
 		ops = append(ops, stmtOps...)
 	}
 	return ops
 }
 
-func generateStatementOps(ic *IrContext, node ast.Statement) []Op {
+func (g *Generator) generateStatementOps(node ast.Statement) []Op {
 	ops := []Op{}
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
 		initArg := Arg{Zero: true}
 		if varDecl.Initializer != nil {
 			var initOps []Op
-			initOps, initArg, _ = generateExpressionOps(ic, varDecl.Initializer)
+			initOps, initArg, _ = g.generateExpressionOps(varDecl.Initializer)
 			ops = append(ops, initOps...)
 		}
-		size := ic.types.GetSizeNoError(varDecl.Type)
-		ic.vars[varDecl.Name] = size
+		size := g.types.GetSizeNoError(varDecl.Type)
+		g.vars[varDecl.Name] = size
 		ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: initArg})
 	} else if exprStmt, ok := node.(*ast.ExpressionStatement); ok {
 		// We ignore the result of the expression.
-		exprOps, _, _ := generateExpressionOps(ic, exprStmt.Expression)
+		exprOps, _, _ := g.generateExpressionOps(exprStmt.Expression)
 		ops = append(ops, exprOps...)
 	} else if retStmt, ok := node.(*ast.ReturnStatement); ok {
 		if retStmt.Value != nil {
 			// Return with value
-			exprOps, resultArg, resultSize := generateExpressionOps(ic, retStmt.Value)
+			exprOps, resultArg, resultSize := g.generateExpressionOps(retStmt.Value)
 			ops = append(ops, exprOps...)
 			// TODO: Maybe factor this out into a function that creates the right type of return?
-			if ic.isExternalFunction {
+			if g.isExternalFunction {
 				ops = append(ops, ExternalReturn{Size: resultSize, Value: &resultArg})
 			} else {
 				ops = append(ops, Return{Size: resultSize, Value: &resultArg})
 			}
 		} else {
 			// Bare return
-			if ic.isExternalFunction {
+			if g.isExternalFunction {
 				ops = append(ops, ExternalReturn{Value: nil})
 			} else {
 				ops = append(ops, Return{Value: nil})
 			}
 		}
 	} else if ifStmt, ok := node.(*ast.IfStatement); ok {
-		ops = generateIfOps(ic, *ifStmt)
+		ops = g.generateIfOps(*ifStmt)
 	} else if stmt, ok := node.(*ast.WhileStatement); ok {
-		ops = generateWhileOps(ic, *stmt)
+		ops = g.generateWhileOps(*stmt)
 	} else if _, ok := node.(*ast.BreakStatement); ok {
-		ops = append(ops, Jump{Goto: ic.breakLabel})
+		ops = append(ops, Jump{Goto: g.breakLabel})
 	} else if _, ok := node.(*ast.ContinueStatement); ok {
-		ops = append(ops, Jump{Goto: ic.continueLabel})
+		ops = append(ops, Jump{Goto: g.continueLabel})
 	} else if stmt, ok := node.(*ast.BlockStatement); ok {
-		blockOps := generateBlockOps(ic, stmt.Block)
+		blockOps := g.generateBlockOps(stmt.Block)
 		ops = append(ops, blockOps...)
 	} else {
-		panic(fmt.Sprintf("unknown statement type %v", node))
+		panic(fmt.Errorf("unknown statement type %v", node))
 	}
 	return ops
 }
 
 // generateExpressionOps generates a seequence of ops for a given expression.
 // Returns a slice of ops, Arg representing the value (typically an intermediary), and the size of the value in bytes.
-func generateExpressionOps(ic *IrContext, node ast.Expression) ([]Op, Arg, int) {
+func (g *Generator) generateExpressionOps(node ast.Expression) ([]Op, Arg, int) {
 	if literal, ok := node.(*ast.Literal); ok {
-		return generateLiteralOps(ic, literal)
+		return g.generateLiteralOps(literal)
 	} else if assignment, ok := node.(*ast.Assignment); ok {
-		return generateAssignmentOps(ic, assignment)
+		return g.generateAssignmentOps(assignment)
 	} else if call, ok := node.(*ast.FunctionCall); ok {
-		return generateFunctionCallOps(ic, call)
+		return g.generateFunctionCallOps(call)
 	} else if ref, ok := node.(*ast.VariableReference); ok {
-		return []Op{}, Arg{Variable: ref.Name}, ic.vars[ref.Name]
+		return []Op{}, Arg{Variable: ref.Name}, g.vars[ref.Name]
 	} else if binOp, ok := node.(*ast.BinaryOperation); ok {
-		return generateBinaryOperationOps(ic, binOp)
+		return g.generateBinaryOperationOps(binOp)
 	} else if op, ok := node.(*ast.UnaryOperation); ok {
-		return generateUnaryOperationOps(ic, op)
+		return g.generateUnaryOperationOps(op)
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
-		return generateFieldAccessOps(ic, fa)
+		return g.generateFieldAccessOps(fa)
 	} else if ne, ok := node.(*ast.NewExpression); ok {
-		return generateNewExpressionOps(ic, ne)
+		return g.generateNewExpressionOps(ne)
 	}
-	panic(fmt.Sprintf("Unknown expression type: %v", node))
+	panic(fmt.Errorf("unknown expression type: %v", node))
 }
 
-func generateBinaryOperationOps(ic *IrContext, binOp *ast.BinaryOperation) ([]Op, Arg, int) {
-	leftOps, leftArg, leftSize := generateExpressionOps(ic, binOp.Left)
-	rightOps, rightArg, rightSize := generateExpressionOps(ic, binOp.Right)
+func (g *Generator) generateBinaryOperationOps(binOp *ast.BinaryOperation) ([]Op, Arg, int) {
+	leftOps, leftArg, leftSize := g.generateExpressionOps(binOp.Left)
+	rightOps, rightArg, rightSize := g.generateExpressionOps(binOp.Right)
 	if leftSize != rightSize {
-		panic(fmt.Sprintf("%s: size mismatch between operands of %s", binOp.Loc, binOp.Operator))
+		g.errorf("%s: size mismatch between operands of %s", binOp.Loc, binOp.Operator)
+		return []Op{}, Arg{}, 0
 	}
 	ops := append(leftOps, rightOps...)
-	temp := ic.allocTemp(leftSize)
+	temp := g.allocTemp(leftSize)
 	resultSize := binaryOperationSize(binOp.Operator, leftSize)
 	ops = append(ops, BinaryOp{
 		Result:      temp,
@@ -216,8 +205,8 @@ func generateBinaryOperationOps(ic *IrContext, binOp *ast.BinaryOperation) ([]Op
 	return ops, Arg{Variable: temp}, resultSize
 }
 
-func generateUnaryOperationOps(ic *IrContext, op *ast.UnaryOperation) ([]Op, Arg, int) {
-	ops, arg, operandSize := generateExpressionOps(ic, op.Operand)
+func (g *Generator) generateUnaryOperationOps(op *ast.UnaryOperation) ([]Op, Arg, int) {
+	ops, arg, operandSize := g.generateExpressionOps(op.Operand)
 	var resultSize int
 	switch op.Operator {
 	case "&":
@@ -225,30 +214,33 @@ func generateUnaryOperationOps(ic *IrContext, op *ast.UnaryOperation) ([]Op, Arg
 	case "*":
 		pointerType, ok := op.Operand.GetType().(*ast.PointerType)
 		if !ok {
-			panic(fmt.Errorf("expected a pointer type in dereference, got %v", op.Operand.GetType()))
+			g.errorf("%s: expected a pointer type in dereference, got %v", op.Loc, op.Operand.GetType())
+			return []Op{}, Arg{}, 0
 		}
 		var err error
-		resultSize, err = ic.types.GetSize(pointerType.ElementType)
+		resultSize, err = g.types.GetSize(pointerType.ElementType)
 		if err != nil {
-			panic(fmt.Errorf("cannot find type size in dereference: %v", err))
+			g.errorf("%s: unknown type size in dereference: %s", op.Loc, err)
+			return []Op{}, Arg{}, 0
 		}
 	default:
 		resultSize = operandSize
 	}
-	temp := ic.allocTemp(resultSize)
+	temp := g.allocTemp(resultSize)
 	ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
 	return ops, Arg{Variable: temp}, resultSize
 }
 
-func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, int) {
+func (g *Generator) generateNewExpressionOps(ne *ast.NewExpression) ([]Op, Arg, int) {
 	if sliceType, ok := ne.Type.(*ast.SliceType); ok {
-		ops, sizeArg, sizeSize := generateExpressionOps(ic, ne.Count)
+		ops, sizeArg, sizeSize := g.generateExpressionOps(ne.Count)
 		if sizeSize != types.INT_SIZE {
 			// TODO: Proper error handling!
-			panic(fmt.Errorf("%s: expected the size expression to be a 32-bit integer", ne.Loc))
+			g.errorf("%s: expected the size expression to have size %d, got %d", ne.Loc, types.INT_SIZE, sizeSize)
+			return []Op{}, Arg{}, 0
 		}
-		elementSize := ic.types.GetSizeNoError(sliceType.ElementType)
-		res := ic.allocTemp(types.SLICE_SIZE)
+		elementSize := g.types.GetSizeNoError(sliceType.ElementType)
+		res := g.allocTemp(types.SLICE_SIZE)
 		allocCall := ExternalCall{
 			Result:   res,
 			Function: "Pirx_Slice_Alloc",
@@ -261,8 +253,8 @@ func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, 
 		return ops, Arg{Variable: res}, types.SLICE_SIZE
 	} else {
 		// Regular type allocation -> return a pointer.
-		allocSize := ic.types.GetSizeNoError(ne.TypeExpr)
-		res := ic.allocTemp(types.WORD_SIZE)
+		allocSize := g.types.GetSizeNoError(ne.TypeExpr)
+		res := g.allocTemp(types.WORD_SIZE)
 		// TODO: Maybe make a helper function for generating such function calls?
 		allocCall := ExternalCall{
 			Result:    res,
@@ -276,7 +268,7 @@ func generateNewExpressionOps(ic *IrContext, ne *ast.NewExpression) ([]Op, Arg, 
 	}
 }
 
-func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
+func (g *Generator) generateLiteralOps(literal *ast.Literal) ([]Op, Arg, int) {
 	if literal.IntValue != nil {
 		intValue := int64(*literal.IntValue)
 		return []Op{}, Arg{LiteralInt: &intValue}, 4
@@ -306,54 +298,54 @@ func generateLiteralOps(_ *IrContext, literal *ast.Literal) ([]Op, Arg, int) {
 
 // generateExpressionAddrOps is similar to generateExpressionOps but it produces the address of the result rather than the value.
 // The size is always WORD_SIZE.
-func generateExpressionAddrOps(ic *IrContext, node ast.Expression) ([]Op, Arg) {
+func (g *Generator) generateExpressionAddrOps(node ast.Expression) ([]Op, Arg) {
 	// Literals, function calls, assignments etc. are not supported.
 	if ref, ok := node.(*ast.VariableReference); ok {
-		res := ic.allocTemp(types.WORD_SIZE)
+		res := g.allocTemp(types.WORD_SIZE)
 		ops := []Op{UnaryOp{Result: res, Operation: "&", Value: Arg{Variable: ref.Name}, Size: types.WORD_SIZE}}
 		return ops, Arg{Variable: res}
 	} else if op, ok := node.(*ast.UnaryOperation); ok {
 		if op.Operator == "*" {
-			ops, arg, size := generateExpressionOps(ic, op.Operand)
+			ops, arg, size := g.generateExpressionOps(op.Operand)
 			if size != types.WORD_SIZE {
-				panic(fmt.Errorf("invalid expression size in dereference: %d, expected word size", size))
+				g.errorf("%s: invalid expression size in dereference: %d, expected word size", node.GetLocation(), size)
 			}
 			return ops, arg
 		}
 		panic(fmt.Errorf("unsupported unary operation %s in generateExpressionAddrOps", op.Operator))
 	} else if fa, ok := node.(*ast.FieldLValue); ok {
-		return generateFieldAccessAddrOps(ic, fa.Object, fa.FieldName)
+		return g.generateFieldAccessAddrOps(fa.Object, fa.FieldName)
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
-		return generateFieldAccessAddrOps(ic, fa.Object, fa.FieldName)
+		return g.generateFieldAccessAddrOps(fa.Object, fa.FieldName)
 	}
 	panic(fmt.Errorf("unsupported expression in generateExpressionAddrOps: %#v", node))
 }
 
-func generateFieldAccessOps(ic *IrContext, fa *ast.FieldAccess) ([]Op, Arg, int) {
+func (g *Generator) generateFieldAccessOps(fa *ast.FieldAccess) ([]Op, Arg, int) {
 	// Get field address using generateExpressionAddrOps.
-	ops, addrArg := generateExpressionAddrOps(ic, fa)
+	ops, addrArg := g.generateExpressionAddrOps(fa)
 	// Dereference to get the value.
-	field := getField(ic, fa.Object.GetType(), fa.FieldName)
-	res := ic.allocTemp(field.Size)
+	field := g.getField(fa.Object.GetType(), fa.FieldName)
+	res := g.allocTemp(field.Size)
 	ops = append(ops, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: field.Size})
 	return ops, Arg{Variable: res}, field.Size
 }
 
-func generateFieldAccessAddrOps(ic *IrContext, object ast.Expression, fieldName string) ([]Op, Arg) {
+func (g *Generator) generateFieldAccessAddrOps(object ast.Expression, fieldName string) ([]Op, Arg) {
 	var ops []Op
 	var objArg Arg
 
 	if ast.IsPointerType(object.GetType()) {
 		// If left side is a pointer to the struct, just evaluate it.
-		ops, objArg, _ = generateExpressionOps(ic, object)
+		ops, objArg, _ = g.generateExpressionOps(object)
 	} else {
 		// If struct value, get the address.
-		ops, objArg = generateExpressionAddrOps(ic, object)
+		ops, objArg = g.generateExpressionAddrOps(object)
 	}
 
 	// Add offset.
-	addrTemp := ic.allocTemp(types.WORD_SIZE)
-	field := getField(ic, object.GetType(), fieldName)
+	addrTemp := g.allocTemp(types.WORD_SIZE)
+	field := g.getField(object.GetType(), fieldName)
 	offset := int64(field.Offset)
 	ops = append(ops, BinaryOp{
 		Result:      addrTemp,
@@ -367,29 +359,29 @@ func generateFieldAccessAddrOps(ic *IrContext, object ast.Expression, fieldName 
 	return ops, Arg{Variable: addrTemp}
 }
 
-func generateIfOps(ic *IrContext, stmt ast.IfStatement) []Op {
+func (g *Generator) generateIfOps(stmt ast.IfStatement) []Op {
 	ops := []Op{}
 
 	if stmt.ElseBlock == nil {
-		endLabel := ic.allocLabel()
-		condOps, condArg, condSize := generateExpressionOps(ic, stmt.Condition)
+		endLabel := g.allocLabel()
+		condOps, condArg, condSize := g.generateExpressionOps(stmt.Condition)
 		ops = append(ops, condOps...)
 		// FIXME: For some reason condSize is 8 when it should be 4???
 		ops = append(ops, JumpUnless{Condition: condArg, Goto: endLabel, Size: condSize})
-		blockOps := generateBlockOps(ic, stmt.ThenBlock)
+		blockOps := g.generateBlockOps(stmt.ThenBlock)
 		ops = append(ops, blockOps...)
 		ops = append(ops, Anchor{Label: endLabel})
 	} else {
-		elseLabel := ic.allocLabel()
-		endLabel := ic.allocLabel()
-		condOps, condArg, condSize := generateExpressionOps(ic, stmt.Condition)
+		elseLabel := g.allocLabel()
+		endLabel := g.allocLabel()
+		condOps, condArg, condSize := g.generateExpressionOps(stmt.Condition)
 		ops = append(ops, condOps...)
 		ops = append(ops, JumpUnless{Condition: condArg, Goto: elseLabel, Size: condSize})
-		thenOps := generateBlockOps(ic, stmt.ThenBlock)
+		thenOps := g.generateBlockOps(stmt.ThenBlock)
 		ops = append(ops, thenOps...)
 		ops = append(ops, Jump{Goto: endLabel})
 		ops = append(ops, Anchor{Label: elseLabel})
-		elseOps := generateBlockOps(ic, *stmt.ElseBlock)
+		elseOps := g.generateBlockOps(*stmt.ElseBlock)
 		ops = append(ops, elseOps...)
 		ops = append(ops, Anchor{Label: endLabel})
 	}
@@ -397,48 +389,48 @@ func generateIfOps(ic *IrContext, stmt ast.IfStatement) []Op {
 	return ops
 }
 
-func generateWhileOps(ic *IrContext, stmt ast.WhileStatement) []Op {
-	prevBreakLabel := ic.breakLabel
-	prevContinueLabel := ic.continueLabel
+func (g *Generator) generateWhileOps(stmt ast.WhileStatement) []Op {
+	prevBreakLabel := g.breakLabel
+	prevContinueLabel := g.continueLabel
 
 	ops := []Op{}
-	ic.continueLabel = ic.allocLabel()
-	ic.breakLabel = ic.allocLabel()
+	g.continueLabel = g.allocLabel()
+	g.breakLabel = g.allocLabel()
 
-	ops = append(ops, Anchor{Label: ic.continueLabel})
-	condOps, condArg, condSize := generateExpressionOps(ic, stmt.Condition)
+	ops = append(ops, Anchor{Label: g.continueLabel})
+	condOps, condArg, condSize := g.generateExpressionOps(stmt.Condition)
 	ops = append(ops, condOps...)
-	ops = append(ops, JumpUnless{Condition: condArg, Goto: ic.breakLabel, Size: condSize})
-	blockOps := generateBlockOps(ic, stmt.Body)
+	ops = append(ops, JumpUnless{Condition: condArg, Goto: g.breakLabel, Size: condSize})
+	blockOps := g.generateBlockOps(stmt.Body)
 	ops = append(ops, blockOps...)
-	ops = append(ops, Jump{Goto: ic.continueLabel})
-	ops = append(ops, Anchor{Label: ic.breakLabel})
+	ops = append(ops, Jump{Goto: g.continueLabel})
+	ops = append(ops, Anchor{Label: g.breakLabel})
 
-	ic.breakLabel = prevBreakLabel
-	ic.continueLabel = prevContinueLabel
+	g.breakLabel = prevBreakLabel
+	g.continueLabel = prevContinueLabel
 
 	return ops
 }
 
-func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int) {
+func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int) {
 	if targetVar, ok := assgn.Target.(*ast.VariableLValue); ok {
-		ops, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
+		ops, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
 		ops = append(ops, Assign{Target: targetVar.Name, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if targetRef, ok := assgn.Target.(*ast.DereferenceLValue); ok {
-		ops, lvalueArg, lvalueSize := generateExpressionOps(ic, targetRef.Expression)
-		rvalueOps, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
+		ops, lvalueArg, lvalueSize := g.generateExpressionOps(targetRef.Expression)
+		rvalueOps, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
 		ops = append(ops, rvalueOps...)
-		addrTemp := ic.allocTemp(lvalueSize)
+		addrTemp := g.allocTemp(lvalueSize)
 		ops = append(ops, Assign{Target: addrTemp, Value: lvalueArg, Size: lvalueSize})
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if fieldAccess, ok := assgn.Target.(*ast.FieldLValue); ok {
 		// Get the field's address using the existing helper function.
-		fieldAddrOps, fieldAddrArg := generateFieldAccessAddrOps(ic, fieldAccess.Object, fieldAccess.FieldName)
+		fieldAddrOps, fieldAddrArg := g.generateFieldAccessAddrOps(fieldAccess.Object, fieldAccess.FieldName)
 
 		// Calculate the rvalue we're assigning.
-		rvalueOps, rvalueArg, rvalueSize := generateExpressionOps(ic, assgn.Value)
+		rvalueOps, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
 
 		// Combine operations and write to the field address.
 		ops := append(fieldAddrOps, rvalueOps...)
@@ -451,24 +443,26 @@ func generateAssignmentOps(ic *IrContext, assgn *ast.Assignment) ([]Op, Arg, int
 
 // generateFunctionCallOps generates ops for a function.
 // Returns a slice of ops, an Arg representing the return value, and the size of the return type in bytes.
-func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, int) {
+func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, int) {
 	ops := []Op{}
 	args := []Arg{}
 	sizes := []int{}
 	for _, argNode := range call.Args {
 		// TODO: What to do with the size of the argument?
-		subOps, subArg, subSize := generateExpressionOps(ic, argNode)
+		subOps, subArg, subSize := g.generateExpressionOps(argNode)
 		ops = append(ops, subOps...)
 		args = append(args, subArg)
 		sizes = append(sizes, subSize)
 	}
 
-	funcProto, ok := ic.funcs[call.FunctionName]
+	funcProto, ok := g.funcs[call.FunctionName]
 	if !ok {
+		// We assume this is handled by typecheck.
 		panic(fmt.Sprintf("unknown function %s", call.FunctionName))
 	}
 
 	if !funcProto.Variadic && len(args) != len(funcProto.Args) {
+		// We assume this is handled by typecheck.
 		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Args)))
 	}
 
@@ -476,10 +470,10 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	// TODO: Handle void functions better. Omit the assignment. Perhaps introduce a null target.
 	size := types.WORD_SIZE
 	if funcProto.ReturnType != nil {
-		size = ic.types.GetSizeNoError(funcProto.ReturnType)
+		size = g.types.GetSizeNoError(funcProto.ReturnType)
 	}
 
-	temp := ic.allocTemp(size)
+	temp := g.allocTemp(size)
 	if funcProto.External {
 		name := funcProto.Name
 		if name == "dispose" {
@@ -488,7 +482,7 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 			} else if ast.IsSliceType(call.Args[0].GetType()) {
 				name = "Pirx_Slice_Dispose"
 			} else {
-				panic(fmt.Errorf("invalid argument type for dispose(): %s", call.Args[0].GetType()))
+				g.errorf("%s: invalid argument type for dispose(): %s", call.Loc, call.Args[0].GetType())
 			}
 		} else if funcProto.ExternalName != "" {
 			name = funcProto.ExternalName
@@ -514,7 +508,7 @@ func generateFunctionCallOps(ic *IrContext, call *ast.FunctionCall) ([]Op, Arg, 
 	return ops, Arg{Variable: temp}, size
 }
 
-func getField(ic *IrContext, objType ast.Type, fieldName string) *types.StructField {
+func (g *Generator) getField(objType ast.Type, fieldName string) *types.StructField {
 	var structType ast.Type
 
 	if ptrType, ok := objType.(*ast.PointerType); ok {
@@ -523,15 +517,34 @@ func getField(ic *IrContext, objType ast.Type, fieldName string) *types.StructFi
 		structType = objType
 	}
 
-	structDesc, err := ic.types.GetStruct(structType)
+	structDesc, err := g.types.GetStruct(structType)
 	if err != nil {
 		panic(fmt.Errorf("field access for non-struct types is not (yet) supported. type %v, error: %v", objType, err))
 	}
 	field := structDesc.GetField(fieldName)
 	if field == nil {
-		panic(fmt.Errorf("struct type %v has no field %v", structDesc.Name, fieldName))
+		// TODO: Loc?
+		g.errorf("struct type %v has no field %v", structDesc.Name, fieldName)
 	}
 	return field
+}
+
+func (g *Generator) errorf(format string, arg ...any) {
+	g.errors = append(g.errors, fmt.Errorf(format, arg...))
+}
+
+func (g *Generator) allocTemp(size int) string {
+	idx := g.nextTempIndex
+	g.nextTempIndex++
+	name := fmt.Sprintf("$%d", idx)
+	g.vars[name] = size
+	return name
+}
+
+func (g *Generator) allocLabel() string {
+	idx := g.nextLabelIndex
+	g.nextLabelIndex++
+	return fmt.Sprintf("anchor%d", idx)
 }
 
 func binaryOperationSize(operator string, operandSize int) int {

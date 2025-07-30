@@ -573,13 +573,13 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 		}
 
 		if operator == "=" {
-			target, err := p.convertExpressionToLValue(left)
-			if err != nil {
-				return nil, err
+			// Validate that left side is a valid assignment target
+			if !p.isValidAssignmentTarget(left) {
+				return nil, fmt.Errorf("%s: invalid assignment target: %s", left.GetLocation(), left.String())
 			}
 			left = &ast.Assignment{
 				Loc:    operatorLoc,
-				Target: target,
+				Target: left,
 				Value:  right,
 			}
 		} else {
@@ -1098,67 +1098,19 @@ func (p *Parser) parseVariableReference() (ast.Expression, error) {
 	}, nil
 }
 
-// convertExpressionToLValue converts an expression to an lvalue for assignment targets
-func (p *Parser) convertExpressionToLValue(expr ast.Expression) (ast.LValue, error) {
+// isValidAssignmentTarget checks if an expression can be used as an assignment target
+func (p *Parser) isValidAssignmentTarget(expr ast.Expression) bool {
 	switch e := expr.(type) {
 	case *ast.VariableReference:
-		return &ast.VariableLValue{
-			Loc:  e.GetLocation(),
-			Name: e.Name,
-		}, nil
+		return true
 	case *ast.UnaryOperation:
-		if e.Operator == "*" {
-			return &ast.DereferenceLValue{
-				Loc:        e.GetLocation(),
-				Expression: e.Operand,
-			}, nil
-		}
-		return nil, fmt.Errorf("%s: invalid assignment target: %s", e.GetLocation(), e.String())
+		return e.Operator == "*"
 	case *ast.FieldAccess:
-		var objectExpr ast.Expression
-		if nestedFieldAccess, ok := e.Object.(*ast.FieldAccess); ok {
-			// Recursively convert nested field access
-			objectLValue, err := p.convertExpressionToLValue(nestedFieldAccess)
-			if err != nil {
-				return nil, err
-			}
-			var ok2 bool
-			objectExpr, ok2 = objectLValue.(ast.Expression)
-			if !ok2 {
-				return nil, fmt.Errorf("%s: converted object is not an expression", e.GetLocation())
-			}
-		} else {
-			// Keep other expressions (like VariableReference) as-is
-			objectExpr = e.Object
-		}
-		return &ast.FieldLValue{
-			Loc:       e.GetLocation(),
-			Object:    objectExpr,
-			FieldName: e.FieldName,
-		}, nil
+		return true
 	case *ast.IndexExpression:
-		// If the array itself is an IndexExpression, convert it to IndexLValue too
-		var arrayExpr ast.Expression
-		if nestedIndex, ok := e.Array.(*ast.IndexExpression); ok {
-			nestedLValue, err := p.convertExpressionToLValue(nestedIndex)
-			if err != nil {
-				return nil, err
-			}
-			var ok2 bool
-			arrayExpr, ok2 = nestedLValue.(ast.Expression)
-			if !ok2 {
-				return nil, fmt.Errorf("%s: converted array is not an expression", e.GetLocation())
-			}
-		} else {
-			arrayExpr = e.Array
-		}
-		return &ast.IndexLValue{
-			Loc:   e.GetLocation(),
-			Array: arrayExpr,
-			Index: e.Index,
-		}, nil
+		return true
 	default:
-		return nil, fmt.Errorf("%s: invalid assignment target: %s", expr.GetLocation(), expr.String())
+		return false
 	}
 }
 

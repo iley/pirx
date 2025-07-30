@@ -367,102 +367,6 @@ type Expression interface {
 	isExpression()
 }
 
-// LValue types for assignment targets
-type LValue interface {
-	AstNode
-	isLValue()
-}
-
-type VariableLValue struct {
-	Loc  Location
-	Name string
-	Type Type
-}
-
-func (v *VariableLValue) GetLocation() Location {
-	return v.Loc
-}
-
-func (v *VariableLValue) GetType() Type {
-	return v.Type
-}
-
-func (v *VariableLValue) isLValue() {}
-
-func (v *VariableLValue) isExpression() {}
-
-func (v *VariableLValue) String() string {
-	return v.Name
-}
-
-type DereferenceLValue struct {
-	Loc        Location
-	Expression Expression
-	Type       Type
-}
-
-func (d *DereferenceLValue) GetLocation() Location {
-	return d.Loc
-}
-
-func (d *DereferenceLValue) GetType() Type {
-	return d.Type
-}
-
-func (d *DereferenceLValue) isLValue() {}
-
-func (d *DereferenceLValue) isExpression() {}
-
-func (d *DereferenceLValue) String() string {
-	return fmt.Sprintf("(* %s)", d.Expression.String())
-}
-
-type FieldLValue struct {
-	Loc       Location
-	Object    Expression
-	FieldName string
-	Type      Type
-}
-
-func (f *FieldLValue) GetLocation() Location {
-	return f.Loc
-}
-
-func (f *FieldLValue) GetType() Type {
-	return f.Type
-}
-
-func (f *FieldLValue) isLValue() {}
-
-func (f *FieldLValue) isExpression() {}
-
-func (f *FieldLValue) String() string {
-	return fmt.Sprintf("(.l %s %s)", f.Object.String(), f.FieldName)
-}
-
-type IndexLValue struct {
-	Loc   Location
-	Array Expression
-	Index Expression
-	Type  Type
-}
-
-func (i *IndexLValue) GetLocation() Location {
-	return i.Loc
-}
-
-func (i *IndexLValue) GetType() Type {
-	return i.Type
-}
-
-func (i *IndexLValue) isLValue() {}
-
-func (i *IndexLValue) isExpression() {}
-
-func (i *IndexLValue) String() string {
-	return fmt.Sprintf("([]l %s %s)", i.Array.String(), i.Index.String())
-}
-
 type Literal struct {
 	Loc         Location
 	StringValue *string
@@ -528,7 +432,7 @@ func NewNullLiteral() *Literal {
 
 type Assignment struct {
 	Loc    Location
-	Target LValue
+	Target Expression
 	Value  Expression
 	Type   Type
 }

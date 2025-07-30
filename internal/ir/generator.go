@@ -313,8 +313,6 @@ func (g *Generator) generateExpressionAddrOps(node ast.Expression) ([]Op, Arg) {
 			return ops, arg
 		}
 		panic(fmt.Errorf("unsupported unary operation %s in generateExpressionAddrOps", op.Operator))
-	} else if fa, ok := node.(*ast.FieldLValue); ok {
-		return g.generateFieldAccessAddrOps(fa.Object, fa.FieldName)
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
 		return g.generateFieldAccessAddrOps(fa.Object, fa.FieldName)
 	}
@@ -413,19 +411,19 @@ func (g *Generator) generateWhileOps(stmt ast.WhileStatement) []Op {
 }
 
 func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int) {
-	if targetVar, ok := assgn.Target.(*ast.VariableLValue); ok {
+	if targetVar, ok := assgn.Target.(*ast.VariableReference); ok {
 		ops, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
 		ops = append(ops, Assign{Target: targetVar.Name, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
-	} else if targetRef, ok := assgn.Target.(*ast.DereferenceLValue); ok {
-		ops, lvalueArg, lvalueSize := g.generateExpressionOps(targetRef.Expression)
+	} else if targetRef, ok := assgn.Target.(*ast.UnaryOperation); ok && targetRef.Operator == "*" {
+		ops, lvalueArg, lvalueSize := g.generateExpressionOps(targetRef.Operand)
 		rvalueOps, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
 		ops = append(ops, rvalueOps...)
 		addrTemp := g.allocTemp(lvalueSize)
 		ops = append(ops, Assign{Target: addrTemp, Value: lvalueArg, Size: lvalueSize})
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
-	} else if fieldAccess, ok := assgn.Target.(*ast.FieldLValue); ok {
+	} else if fieldAccess, ok := assgn.Target.(*ast.FieldAccess); ok {
 		// Get the field's address using the existing helper function.
 		fieldAddrOps, fieldAddrArg := g.generateFieldAccessAddrOps(fieldAccess.Object, fieldAccess.FieldName)
 

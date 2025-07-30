@@ -513,22 +513,22 @@ func TestParseIndexingAssignments(t *testing.T) {
 		{
 			name:     "simple index assignment",
 			input:    "arr[0] = 42",
-			expected: "(= ([]l arr 0) 42)",
+			expected: "(= ([] arr 0) 42)",
 		},
 		{
 			name:     "index assignment with expression",
 			input:    "arr[i + 1] = value * 2",
-			expected: "(= ([]l arr (+ i 1)) (* value 2))",
+			expected: "(= ([] arr (+ i 1)) (* value 2))",
 		},
 		{
 			name:     "nested index assignment",
 			input:    "matrix[x][y] = 1",
-			expected: "(= ([]l ([]l matrix x) y) 1)",
+			expected: "(= ([] ([] matrix x) y) 1)",
 		},
 		{
 			name:     "index assignment to field access",
 			input:    "obj.arr[5] = foo()",
-			expected: "(= ([]l (. obj arr) 5) (foo))",
+			expected: "(= ([] (. obj arr) 5) (foo))",
 		},
 	}
 
@@ -553,9 +553,9 @@ func TestParseIndexingAssignments(t *testing.T) {
 			if !ok {
 				t.Errorf("Expected *ast.Assignment, got %T", expr)
 			} else {
-				// Verify the target is an IndexLValue
-				if _, ok := assignment.Target.(*ast.IndexLValue); !ok {
-					t.Errorf("Expected assignment target to be *ast.IndexLValue, got %T", assignment.Target)
+				// Verify the target is an IndexExpression
+				if _, ok := assignment.Target.(*ast.IndexExpression); !ok {
+					t.Errorf("Expected assignment target to be *ast.IndexExpression, got %T", assignment.Target)
 				}
 			}
 		})
@@ -655,7 +655,7 @@ func TestParseMixedFieldAccessAndIndexing(t *testing.T) {
 		{
 			name:     "assignment to mixed access",
 			input:    "obj.array[i] = 42",
-			expected: "(= ([]l (. obj array) i) 42)",
+			expected: "(= ([] (. obj array) i) 42)",
 		},
 	}
 

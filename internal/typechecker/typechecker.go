@@ -147,10 +147,10 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Expression {
 		return c.checkBinaryOperation(binaryOperation)
 	} else if unaryOperation, ok := expr.(*ast.UnaryOperation); ok {
 		return c.checkUnaryOperation(unaryOperation)
-	} else if lvalue, ok := expr.(*ast.FieldLValue); ok {
-		return c.checkFieldLValue(lvalue)
 	} else if fa, ok := expr.(*ast.FieldAccess); ok {
 		return c.checkFieldAccess(fa)
+	} else if indexExpr, ok := expr.(*ast.IndexExpression); ok {
+		return c.checkIndexExpression(indexExpr)
 	} else if newEx, ok := expr.(*ast.NewExpression); ok {
 		return c.checkNewExpression(newEx)
 	}
@@ -270,7 +270,7 @@ func (c *TypeChecker) checkExpressionStatement(e *ast.ExpressionStatement) *ast.
 }
 
 func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignment {
-	checkedTarget := c.checkLValue(assignment.Target)
+	checkedTarget := c.checkExpression(assignment.Target)
 	targetType := checkedTarget.GetType()
 
 	checkedValue := c.checkExpression(assignment.Value)
@@ -296,48 +296,6 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 	result.Target = checkedTarget
 	result.Value = checkedValue
 	result.Type = targetType
-	return &result
-}
-
-func (c *TypeChecker) checkLValue(lval ast.LValue) ast.LValue {
-	switch l := lval.(type) {
-	case *ast.VariableLValue:
-		return c.checkVariableLValue(l)
-	case *ast.DereferenceLValue:
-		return c.checkDereferenceLValue(l)
-	case *ast.FieldLValue:
-		return c.checkFieldLValue(l)
-	default:
-		panic(fmt.Errorf("invalid lvalue type: %T", lval))
-	}
-}
-
-func (c *TypeChecker) checkVariableLValue(lval *ast.VariableLValue) *ast.VariableLValue {
-	typ, uniqueName := c.vars.lookup(lval.Name)
-	if typ == nil {
-		c.errorf("%s: variable %s is not declared before assignment", lval.Loc, lval.Name)
-		typ = ast.Undefined // Use a default type to avoid nil
-	}
-	result := *lval
-	result.Name = uniqueName
-	result.Type = typ
-	return &result
-}
-
-func (c *TypeChecker) checkDereferenceLValue(lval *ast.DereferenceLValue) *ast.DereferenceLValue {
-	exprChecked := c.checkExpression(lval.Expression)
-	refType := exprChecked.GetType()
-	ptrType, ok := refType.(*ast.PointerType)
-	var resultType ast.Type
-	if !ok {
-		c.errorf("%s: dereference of a non-pointer type %s", lval.Loc, refType)
-		resultType = ast.Int // Use a default type to avoid nil
-	} else {
-		resultType = ptrType.ElementType
-	}
-	result := *lval
-	result.Expression = exprChecked
-	result.Type = resultType
 	return &result
 }
 
@@ -497,15 +455,6 @@ func (c *TypeChecker) checkFieldAccess(fa *ast.FieldAccess) *ast.FieldAccess {
 	return &result
 }
 
-func (c *TypeChecker) checkFieldLValue(lvalue *ast.FieldLValue) *ast.FieldLValue {
-	objectExpr := c.checkExpression(lvalue.Object)
-	fieldType := c.getFieldType(lvalue.Loc, objectExpr, lvalue.FieldName)
-	result := *lvalue
-	result.Object = objectExpr
-	result.Type = fieldType
-	return &result
-}
-
 func (c *TypeChecker) getFieldType(loc ast.Location, objectExpr ast.Expression, fieldName string) ast.Type {
 	objectType := objectExpr.GetType()
 
@@ -554,6 +503,37 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 		result.Type = &ast.PointerType{ElementType: n.TypeExpr}
 		return &result
 	}
+}
+
+func (c *TypeChecker) checkIndexExpression(indexExpr *ast.IndexExpression) *ast.IndexExpression {
+	arrayExpr := c.checkExpression(indexExpr.Array)
+	indexExprChecked := c.checkExpression(indexExpr.Index)
+
+	arrayType := arrayExpr.GetType()
+	indexType := indexExprChecked.GetType()
+
+	// Check that index is an integer type
+	if !ast.IsIntegerType(indexType) {
+		c.errorf("%s: slice index must be an integer type, got %s", indexExpr.Loc, indexType)
+	}
+
+	// Check that array is a slice type
+	sliceType, ok := arrayType.(*ast.SliceType)
+	if !ok {
+		c.errorf("%s: indexing requires a slice type, got %s", indexExpr.Loc, arrayType)
+		// Return with error type to continue type checking
+		result := *indexExpr
+		result.Array = arrayExpr
+		result.Index = indexExprChecked
+		result.Type = ast.Undefined
+		return &result
+	}
+
+	result := *indexExpr
+	result.Array = arrayExpr
+	result.Index = indexExprChecked
+	result.Type = sliceType.ElementType
+	return &result
 }
 
 func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, bool) {

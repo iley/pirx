@@ -1,0 +1,13 @@
+func dummy(): int {
+    return 42;
+}
+
+func main(): int {
+    var x = 5;
+    
+    // This should be a compilation error:
+    // Cannot assign to function call result (rvalue)
+    dummy() = x;
+    
+    return 0;
+}

@@ -1,0 +1,3 @@
+pirxc compilation failed: exit status 1
+Output: error parsing program: tests/075_invalid_lvalues_unary.pirx:6:6: invalid assignment target: (- x)
+Error: exit status 1

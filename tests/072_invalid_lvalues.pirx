@@ -1,0 +1,9 @@
+func main(): int {
+    var x = 5;
+    
+    // This should be a compilation error:
+    // Cannot assign to literal (rvalue)
+    42 = x;
+    
+    return 0;
+}

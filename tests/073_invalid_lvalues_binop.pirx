@@ -1,0 +1,12 @@
+// Test that binary operation results cannot be assigned to
+
+func main(): int {
+    var x = 5;
+    var y = 10;
+    
+    // This should be a compilation error:
+    // Cannot assign to binary operation result (rvalue)
+    (x + y) = 15;
+    
+    return 0;
+}

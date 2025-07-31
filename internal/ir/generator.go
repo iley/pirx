@@ -442,6 +442,46 @@ func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int
 	panic(fmt.Errorf("invalid assignment: %#v", assgn))
 }
 
+// generateExternalCall creates an ExternalCall operation with the appropriate function name.
+func (g *Generator) generateExternalCall(funcProto types.FuncProto, resultVar string, args []Arg, sizes []int, size int) ExternalCall {
+	name := funcProto.Name
+	if funcProto.ExternalName != "" {
+		name = funcProto.ExternalName
+	}
+	return ExternalCall{
+		Result:    resultVar,
+		Function:  name,
+		Args:      args,
+		ArgSizes:  sizes,
+		NamedArgs: len(funcProto.Args),
+		Size:      size,
+	}
+}
+
+func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string, arg Arg) ExternalCall {
+	if ast.IsPointerType(call.Args[0].GetType()) {
+		return ExternalCall{
+			Result:    resultVar,
+			Function:  "Pirx_Dispose",
+			Args:      []Arg{arg},
+			ArgSizes:  []int{types.WORD_SIZE},
+			NamedArgs: 1,
+			Size:      types.WORD_SIZE,
+		}
+	} else if ast.IsSliceType(call.Args[0].GetType()) {
+		return ExternalCall{
+			Result:    resultVar,
+			Function:  "Pirx_Slice_Dispose",
+			Args:      []Arg{arg},
+			ArgSizes:  []int{types.SLICE_SIZE},
+			NamedArgs: 1,
+			Size:      types.WORD_SIZE,
+		}
+	} else {
+		panic(fmt.Errorf("%s: invalid argument type for dispose(): %s", call.Loc, call.Args[0].GetType()))
+	}
+}
+
 // generateFunctionCallOps generates ops for a function.
 // Returns a slice of ops, an Arg representing the return value, and the size of the return type in bytes.
 func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, int) {
@@ -476,26 +516,13 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 
 	temp := g.allocTemp(size)
 	if funcProto.External {
-		name := funcProto.Name
-		if name == "dispose" {
-			if ast.IsPointerType(call.Args[0].GetType()) {
-				name = "Pirx_Dispose"
-			} else if ast.IsSliceType(call.Args[0].GetType()) {
-				name = "Pirx_Slice_Dispose"
-			} else {
-				g.errorf("%s: invalid argument type for dispose(): %s", call.Loc, call.Args[0].GetType())
-			}
-		} else if funcProto.ExternalName != "" {
-			name = funcProto.ExternalName
+		var externalCall ExternalCall
+		if funcProto.Name == "dispose" {
+			externalCall = g.generateDisposeCall(call, temp, args[0])
+		} else {
+			externalCall = g.generateExternalCall(funcProto, temp, args, sizes, size)
 		}
-		ops = append(ops, ExternalCall{
-			Result:    temp,
-			Function:  name,
-			Args:      args,
-			ArgSizes:  sizes,
-			NamedArgs: len(funcProto.Args),
-			Size:      size,
-		})
+		ops = append(ops, externalCall)
 	} else {
 		ops = append(ops, Call{
 			Result:   temp,

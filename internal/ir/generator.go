@@ -180,6 +180,8 @@ func (g *Generator) generateExpressionOps(node ast.Expression) ([]Op, Arg, int) 
 		return g.generateFieldAccessOps(fa)
 	} else if ne, ok := node.(*ast.NewExpression); ok {
 		return g.generateNewExpressionOps(ne)
+	} else if index, ok := node.(*ast.IndexExpression); ok {
+		return g.generateIndexOps(index)
 	}
 	panic(fmt.Errorf("unknown expression type: %v", node))
 }
@@ -245,9 +247,10 @@ func (g *Generator) generateNewExpressionOps(ne *ast.NewExpression) ([]Op, Arg, 
 			Result:   res,
 			Function: "Pirx_Slice_Alloc",
 			// TODO: Support independent capacity argument.
-			Args:     []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, sizeArg, sizeArg},
-			ArgSizes: []int{types.INT_SIZE, types.INT_SIZE, types.INT_SIZE},
-			Size:     types.SLICE_SIZE,
+			Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, sizeArg, sizeArg},
+			ArgSizes:  []int{types.INT_SIZE, types.INT_SIZE, types.INT_SIZE},
+			NamedArgs: 3,
+			Size:      types.SLICE_SIZE,
 		}
 		ops = append(ops, allocCall)
 		return ops, Arg{Variable: res}, types.SLICE_SIZE
@@ -416,24 +419,24 @@ func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int
 		ops = append(ops, Assign{Target: targetVar.Name, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if targetRef, ok := assgn.Target.(*ast.UnaryOperation); ok && targetRef.Operator == "*" {
-		ops, lvalueArg, lvalueSize := g.generateExpressionOps(targetRef.Operand)
-		rvalueOps, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
-		ops = append(ops, rvalueOps...)
+		ops, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
+		lvalueOps, lvalueArg, lvalueSize := g.generateExpressionOps(targetRef.Operand)
+		ops = append(ops, lvalueOps...)
 		addrTemp := g.allocTemp(lvalueSize)
 		ops = append(ops, Assign{Target: addrTemp, Value: lvalueArg, Size: lvalueSize})
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if fieldAccess, ok := assgn.Target.(*ast.FieldAccess); ok {
-		// Get the field's address using the existing helper function.
-		fieldAddrOps, fieldAddrArg := g.generateFieldAccessAddrOps(fieldAccess.Object, fieldAccess.FieldName)
-
-		// Calculate the rvalue we're assigning.
 		rvalueOps, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
-
-		// Combine operations and write to the field address.
-		ops := append(fieldAddrOps, rvalueOps...)
+		fieldAddrOps, fieldAddrArg := g.generateFieldAccessAddrOps(fieldAccess.Object, fieldAccess.FieldName)
+		ops := append(rvalueOps, fieldAddrOps...)
 		ops = append(ops, AssignByAddr{Target: fieldAddrArg, Value: rvalueArg, Size: rvalueSize})
-
+		return ops, rvalueArg, rvalueSize
+	} else if index, ok := assgn.Target.(*ast.IndexExpression); ok {
+		rvalueOps, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
+		indexAddrOps, indexAddrArg := g.generateIndexAddrOps(index.Array, index.Index)
+		ops := append(rvalueOps, indexAddrOps...)
+		ops = append(ops, AssignByAddr{Target: indexAddrArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	}
 	panic(fmt.Errorf("invalid assignment: %#v", assgn))
@@ -525,6 +528,56 @@ func (g *Generator) getField(objType ast.Type, fieldName string) *types.StructFi
 		g.errorf("struct type %v has no field %v", structDesc.Name, fieldName)
 	}
 	return field
+}
+
+func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([]Op, Arg) {
+	sliceOps, sliceArg := g.generateExpressionAddrOps(sliceExpr)
+	indexOps, indexArg, indexSize := g.generateExpressionOps(indexExpr)
+	if indexSize != types.INT_SIZE {
+		panic(fmt.Errorf("%s: expected size of the index value to be %d, got %d", sliceExpr.GetLocation(), types.INT_SIZE, indexSize))
+	}
+
+	sliceType, ok := sliceExpr.GetType().(*ast.SliceType)
+	if !ok {
+		panic(fmt.Errorf("%s: cannot index an element of non-slice type %s", sliceExpr.GetLocation(), sliceExpr.GetType()))
+	}
+	elementSize := int64(g.types.GetSizeNoError(sliceType.ElementType))
+
+	ops := append(sliceOps, indexOps...)
+
+	temp := g.allocTemp(types.WORD_SIZE)
+	// temp = slice_addr + (index * element_size)
+	ops = append(
+		ops,
+		// temp = index * element_size
+		BinaryOp{
+			Result:      temp,
+			Left:        indexArg,
+			Operation:   "*",
+			Right:       Arg{LiteralInt: &elementSize},
+			OperandSize: types.WORD_SIZE,
+			Size:        types.WORD_SIZE,
+		},
+		// temp = temp + slice_addr
+		BinaryOp{
+			Result:      temp,
+			Left:        Arg{Variable: temp},
+			Operation:   "+",
+			Right:       sliceArg,
+			OperandSize: types.WORD_SIZE,
+			Size:        types.WORD_SIZE,
+		},
+	)
+
+	return ops, Arg{Variable: temp}
+}
+
+func (g *Generator) generateIndexOps(indexExpr *ast.IndexExpression) ([]Op, Arg, int) {
+	elementSize := g.types.GetSizeNoError(indexExpr.GetType())
+	addrOps, addrArg := g.generateIndexAddrOps(indexExpr.Array, indexExpr.Index)
+	res := g.allocTemp(elementSize)
+	ops := append(addrOps, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: elementSize})
+	return ops, Arg{Variable: res}, elementSize
 }
 
 func (g *Generator) errorf(format string, arg ...any) {

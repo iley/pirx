@@ -1,9 +1,15 @@
 extern func main(): int {
   var s: []int;
+  var x: int;
 
   s = new([]int, 10);
 
-  dispose(s);
+  s[0] = 42;
+  x = s[0];
+
+  printf("%d = %d\n", x, s[0]);
+
+  // dispose(s);
 
   return 0;
 }

@@ -558,7 +558,8 @@ func (g *Generator) getField(objType ast.Type, fieldName string) *types.StructFi
 }
 
 func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([]Op, Arg) {
-	sliceOps, sliceArg := g.generateExpressionAddrOps(sliceExpr)
+	// TODO: Generate boundary check!
+	sliceOps, sliceArg, _ := g.generateExpressionOps(sliceExpr)
 	indexOps, indexArg, indexSize := g.generateExpressionOps(indexExpr)
 	if indexSize != types.INT_SIZE {
 		panic(fmt.Errorf("%s: expected size of the index value to be %d, got %d", sliceExpr.GetLocation(), types.INT_SIZE, indexSize))
@@ -572,23 +573,23 @@ func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([
 
 	ops := append(sliceOps, indexOps...)
 
-	temp := g.allocTemp(types.WORD_SIZE)
-	// temp = slice_addr + (index * element_size)
+	addrTemp := g.allocTemp(types.WORD_SIZE)
 	ops = append(
 		ops,
-		// temp = index * element_size
+		// Not the implicit 4->8 extension.
 		BinaryOp{
-			Result:      temp,
+			Result:      addrTemp,
 			Left:        indexArg,
 			Operation:   "*",
 			Right:       Arg{LiteralInt: &elementSize},
-			OperandSize: types.WORD_SIZE,
+			OperandSize: types.INT_SIZE,
 			Size:        types.WORD_SIZE,
 		},
-		// temp = temp + slice_addr
+		// This is a bit of a hack: we're treating the slice as if it was a single 64-bit address field.
+		// This gives us the access to the .data field which is the first field in the slice struct.
 		BinaryOp{
-			Result:      temp,
-			Left:        Arg{Variable: temp},
+			Result:      addrTemp,
+			Left:        Arg{Variable: addrTemp},
 			Operation:   "+",
 			Right:       sliceArg,
 			OperandSize: types.WORD_SIZE,
@@ -596,10 +597,11 @@ func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([
 		},
 	)
 
-	return ops, Arg{Variable: temp}
+	return ops, Arg{Variable: addrTemp}
 }
 
 func (g *Generator) generateIndexOps(indexExpr *ast.IndexExpression) ([]Op, Arg, int) {
+	// TODO: Generate boundary check!
 	elementSize := g.types.GetSizeNoError(indexExpr.GetType())
 	addrOps, addrArg := g.generateIndexAddrOps(indexExpr.Array, indexExpr.Index)
 	res := g.allocTemp(elementSize)

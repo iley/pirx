@@ -109,6 +109,22 @@ var acceptCmd = &cobra.Command{
 	},
 }
 
+var buildCmd = &cobra.Command{
+	Use:   "build <test>",
+	Short: "Build a test program",
+	Long:  "Build a test program and leave all intermediate files for inspection.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		tests, testsDir, err := setupTests()
+		if err != nil {
+			return err
+		}
+		testIdentifier := args[0]
+		buildProgram(tests, testsDir, testIdentifier)
+		return nil
+	},
+}
+
 func main() {
 	rootCmd.PersistentFlags().IntVarP(&parallelism, "jobs", "j", 1, "Number of parallel jobs")
 	rootCmd.PersistentFlags().StringVarP(&optLevel, "O", "O", "", "optimization level to pass to pirx build")
@@ -118,6 +134,7 @@ func main() {
 	rootCmd.AddCommand(testCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(acceptCmd)
+	rootCmd.AddCommand(buildCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		// Handle errors manually to maintain exact same output format
@@ -209,6 +226,37 @@ func runProgram(tests []TestCase, testsDir string, testIdentifier string) {
 	fmt.Print(output)
 
 	cleanupFiles(generatedFiles)
+}
+
+func buildProgram(tests []TestCase, testsDir string, testIdentifier string) {
+	pirxFile, err := findPirxFile(tests, testsDir, testIdentifier)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	baseName := strings.TrimSuffix(filepath.Base(pirxFile), ".pirx")
+	fmt.Printf("Building: %s\n", baseName)
+
+	result, success, generatedFiles := compileProgram(pirxFile, testsDir, baseName)
+	if !success {
+		fmt.Printf("Compilation failed:\n%s\n", result)
+		fmt.Printf("Intermediate files left for inspection:\n")
+		for _, file := range generatedFiles {
+			if _, err := os.Stat(file); err == nil {
+				fmt.Printf("  %s\n", file)
+			}
+		}
+		os.Exit(1)
+	}
+
+	fmt.Printf("Build successful. Files created:\n")
+	for _, file := range generatedFiles {
+		if _, err := os.Stat(file); err == nil {
+			fmt.Printf("  %s\n", file)
+		}
+	}
+	fmt.Printf("Binary: %s\n", result)
 }
 
 func acceptTest(tests []TestCase, testsDir string, testIdentifier string) {

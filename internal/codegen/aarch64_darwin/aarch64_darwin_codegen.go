@@ -198,7 +198,7 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 
 func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 	if assign.Value.Variable != "" {
-		generateMemoryCopy(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
+		generateMemoryCopyToReg(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
@@ -227,7 +227,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) error {
 	if assign.Value.Variable != "" {
 		// Variable to variable.
-		generateMemoryCopyByAddr(cc, assign.Value, 0, assign.Size, assign.Target)
+		generateMemoryCopyToReference(cc, assign.Value, assign.Size, assign.Target)
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
 		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
@@ -250,7 +250,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 	for i, arg := range call.Args {
 		argSize := call.ArgSizes[i]
 		offset += argSize
-		generateMemoryCopy(cc, arg, argSize, "sp", -offset)
+		generateMemoryCopyToReg(cc, arg, argSize, "sp", -offset)
 	}
 
 	// Save x19 to the stack because it currently holds this function's result address.
@@ -428,10 +428,7 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 		generateAddressLoad(cc, 0, op.Size, op.Value)
 		generateStoreToLocal(cc, 0, op.Size, op.Result)
 	case "*":
-		generateRegisterLoad(cc, 9, types.WORD_SIZE, op.Value)
-		reg := registerByIndex(0, op.Size)
-		fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
-		generateStoreToLocal(cc, 0, op.Size, op.Result)
+		generateMemoryCopyFromRef(cc, op.Value, op.Size, op.Result)
 	default:
 		panic(fmt.Errorf("unsupported unary operation %s", op.Operation))
 	}
@@ -441,7 +438,7 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 func generateReturn(cc *CodegenContext, ret ir.Return) {
 	// Copy the return value into the slot provided by the caller via x19.
 	if ret.Value != nil {
-		generateMemoryCopy(cc, *ret.Value, ret.Size, "x19", 0)
+		generateMemoryCopyToReg(cc, *ret.Value, ret.Size, "x19", 0)
 	}
 
 	fmt.Fprintf(cc.output, "  b .L%s_exit\n", cc.functionName)
@@ -626,43 +623,70 @@ func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Ar
 	}
 }
 
-// generateMemoryCopy generates code for copying memory from source to a base register + offset.
-// Trashes x9.
-func generateMemoryCopy(cc *CodegenContext, source ir.Arg, size int, baseReg string, baseOffset int) {
-	tmpRegister := 9
+// Copy `size` bytes from `source` to the memory location identified by a register and an offset.
+// Trashes x0.
+func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseReg string, baseOffset int) {
+	tempRegister := 0
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			generateRegisterLoadWithOffset(cc, tmpRegister, 8, source, offset)
-			generateRegisterStore(cc, tmpRegister, 8, baseReg, baseOffset+offset)
+			generateRegisterLoadWithOffset(cc, tempRegister, 8, source, offset)
+			generateRegisterStore(cc, tempRegister, 8, baseReg, baseOffset+offset)
 			offset += 8
 		} else if size-offset >= 4 {
-			generateRegisterLoadWithOffset(cc, tmpRegister, 4, source, offset)
-			generateRegisterStore(cc, tmpRegister, 4, baseReg, baseOffset+offset)
+			generateRegisterLoadWithOffset(cc, tempRegister, 4, source, offset)
+			generateRegisterStore(cc, tempRegister, 4, baseReg, baseOffset+offset)
 			offset += 4
 		} else {
-			generateRegisterLoadWithOffset(cc, tmpRegister, 1, source, offset)
-			generateRegisterStore(cc, tmpRegister, 1, baseReg, baseOffset+offset)
+			generateRegisterLoadWithOffset(cc, tempRegister, 1, source, offset)
+			generateRegisterStore(cc, tempRegister, 1, baseReg, baseOffset+offset)
 			offset += 1
 		}
 	}
 }
 
-// generateMemoryCopyByAddr generates code for copying memory from source to an address.
-func generateMemoryCopyByAddr(cc *CodegenContext, source ir.Arg, regIndex int, size int, target ir.Arg) {
+// Copy `size` bytes from `source` to a memory location based that `targetRef` points to.
+// Trashes x0.
+func generateMemoryCopyToReference(cc *CodegenContext, source ir.Arg, size int, targetRef ir.Arg) {
+	tempRegister := 0
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			generateRegisterLoadWithOffset(cc, regIndex, 8, source, offset)
-			generateStoreByAddr(cc, regIndex, 8, target, offset)
+			generateRegisterLoadWithOffset(cc, tempRegister, 8, source, offset)
+			generateStoreByAddr(cc, tempRegister, 8, targetRef, offset)
 			offset += 8
 		} else if size-offset >= 4 {
-			generateRegisterLoadWithOffset(cc, regIndex, 4, source, offset)
-			generateStoreByAddr(cc, regIndex, 4, target, offset)
+			generateRegisterLoadWithOffset(cc, tempRegister, 4, source, offset)
+			generateStoreByAddr(cc, tempRegister, 4, targetRef, offset)
 			offset += 4
 		} else {
-			generateRegisterLoadWithOffset(cc, regIndex, 1, source, offset)
-			generateStoreByAddr(cc, regIndex, 1, target, offset)
+			generateRegisterLoadWithOffset(cc, tempRegister, 1, source, offset)
+			generateStoreByAddr(cc, tempRegister, 1, targetRef, offset)
+			offset += 1
+		}
+	}
+}
+
+// Copy `size` bytes from memory location `sourceRef` points to, to the local variable `target`.
+// Trashes x0 and x1.
+func generateMemoryCopyFromRef(cc *CodegenContext, sourceRef ir.Arg, size int, target string) {
+	// Load the source address to x1.
+	sourceAddrReg := 1
+	generateRegisterLoad(cc, sourceAddrReg, types.WORD_SIZE, sourceRef)
+
+	offset := 0
+	for offset < size {
+		if size-offset >= 8 {
+			fmt.Fprintf(cc.output, "  ldr x0, [x1, #%d]\n", offset)
+			generateStoreToLocalWithOffset(cc, 0, 8, target, offset)
+			offset += 8
+		} else if size-offset >= 4 {
+			fmt.Fprintf(cc.output, "  ldr w0, [x1, #%d]\n", offset)
+			generateStoreToLocalWithOffset(cc, 0, 4, target, offset)
+			offset += 4
+		} else {
+			fmt.Fprintf(cc.output, "  ldrb w0, [x1, #%d]\n", offset)
+			generateStoreToLocalWithOffset(cc, 0, 1, target, offset)
 			offset += 1
 		}
 	}

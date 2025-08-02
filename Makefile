@@ -1,12 +1,13 @@
 GO_SOURCES := $(shell find . -type f -name '*.go' ! -name '*_test.go' -not -path './vendor/*')
 GO_MODULE_FILES := go.mod go.sum
+TEST_CONCURRENCY := 16
 
 default: pirx pirxc testrunner
 
-pirx: $(GO_SOURCES) $(GO_MODULE_FILES) pirxc
+pirx: $(GO_SOURCES) $(GO_MODULE_FILES)
 	go build -mod=vendor -o pirx ./cmd/pirx
 
-pirxc: $(GO_SOURCES) $(GO_MODULE_FILES) stdlib
+pirxc: $(GO_SOURCES) $(GO_MODULE_FILES)
 	go build -mod=vendor -o pirxc ./cmd/pirxc
 
 testrunner: pirx
@@ -21,11 +22,11 @@ gotests:
 
 testall: testrunner
 	@echo " *** Running all end-to-end tests"
-	./testrunner -j 8 testall
+	./testrunner -j $(TEST_CONCURRENCY) testall
 
 testall_o0: testrunner
 	@echo " *** Running all end-to-end tests with no optimization"
-	./testrunner -j 8 testall -O0
+	./testrunner -j $(TEST_CONCURRENCY) testall -O0
 
 clean:
 	$(MAKE) -C ./stdlib clean

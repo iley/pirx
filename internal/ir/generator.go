@@ -318,6 +318,8 @@ func (g *Generator) generateExpressionAddrOps(node ast.Expression) ([]Op, Arg) {
 		panic(fmt.Errorf("unsupported unary operation %s in generateExpressionAddrOps", op.Operator))
 	} else if fa, ok := node.(*ast.FieldAccess); ok {
 		return g.generateFieldAccessAddrOps(fa.Object, fa.FieldName)
+	} else if index, ok := node.(*ast.IndexExpression); ok {
+		return g.generateIndexAddrOps(index.Array, index.Index)
 	}
 	panic(fmt.Errorf("unsupported expression in generateExpressionAddrOps: %#v", node))
 }

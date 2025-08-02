@@ -615,6 +615,15 @@ func (g *Generator) generateIndexOps(indexExpr *ast.IndexExpression) ([]Op, Arg,
 
 func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op, Arg, int) {
 	// TODO: Generate more optimial IR. Perhaps make the increment an unary op?
+	var operator string
+	switch expr.Operator {
+	case "++":
+		operator = "+"
+	case "--":
+		operator = "-"
+	default:
+		panic(fmt.Errorf("%s: unsupported postfix operator %s", expr.Loc, expr.Operator))
+	}
 	operandSize := g.types.GetSizeNoError(expr.GetType())
 	ops, operandArg := g.generateExpressionAddrOps(expr.Operand)
 	temp := g.allocTemp(operandSize)
@@ -628,7 +637,7 @@ func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op,
 		BinaryOp{
 			Result:      temp,
 			Left:        Arg{Variable: temp},
-			Operation:   "+",
+			Operation:   operator,
 			Right:       Arg{LiteralInt: util.Int64Ptr(1)},
 			Size:        operandSize,
 			OperandSize: operandSize,

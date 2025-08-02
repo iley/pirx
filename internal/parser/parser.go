@@ -758,6 +758,24 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 				Operator: "++",
 				Operand:  expr,
 			}
+		} else if lex.IsOperator("--") {
+			// consume '--'
+			decLex, err := p.consume()
+			if err != nil {
+				return nil, err
+			}
+			decLoc := locationFromLexeme(decLex)
+
+			// Validate that operand is a valid assignment target
+			if !p.isValidAssignmentTarget(expr) {
+				return nil, fmt.Errorf("%s: invalid operand for postfix decrement: %s", expr.GetLocation(), expr.String())
+			}
+
+			expr = &ast.PostfixOperator{
+				Loc:      decLoc,
+				Operator: "--",
+				Operand:  expr,
+			}
 		} else {
 			break
 		}

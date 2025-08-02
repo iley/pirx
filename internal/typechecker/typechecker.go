@@ -508,6 +508,7 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 }
 
 func (c *TypeChecker) checkPostfixOperator(po *ast.PostfixOperator) *ast.PostfixOperator {
+	// TODO: Make postfix operators valid only in the expression statement context.
 	var operandType ast.Type
 	checkedOperand := c.checkExpression(po.Operand)
 	// The only postfix operators currently supported (++ and --) work on integers.

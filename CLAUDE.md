@@ -58,6 +58,8 @@ You can run individual end-to-end tests like so:
 * `./testrunner run NNN` - execute the test and print its output to stdout/stderr without comparing to the reference. Use this when you want to see the output of a test program.
 * `./testrunner accept NNN` - execute the test and persist its output to the .out or .err file automatically. Use this only after running the test via `./testrunner run` and double-checking that its output exactly matches your expectations.
 
+You can also run a single end-to-end test via make: `make test_001` is equivalent to `make && ./testrunner test 001`. It makes sure that we're running the latest version of the compiler.
+
 ### Running the compiler stages
 
 You can also run individual stages for the compiler directly:

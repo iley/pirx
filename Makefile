@@ -10,7 +10,7 @@ pirx: $(GO_SOURCES) $(GO_MODULE_FILES)
 pirxc: $(GO_SOURCES) $(GO_MODULE_FILES)
 	go build -mod=vendor -o pirxc ./cmd/pirxc
 
-testrunner: pirx
+testrunner: pirx pirxc
 	go build -mod=vendor -o testrunner ./cmd/testrunner
 
 test: gotests testall
@@ -44,5 +44,9 @@ lint:
 
 fmt:
 	golangci-lint fmt
+
+# Pattern rule for running individual tests: make test_046 runs ./testrunner test 046
+test_%: testrunner
+	./testrunner test $*
 
 .PHONY: clean default examples test stdlib

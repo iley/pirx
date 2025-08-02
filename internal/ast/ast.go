@@ -608,3 +608,24 @@ func (n *NewExpression) String() string {
 	}
 	return fmt.Sprintf("(new %s)", n.TypeExpr.String())
 }
+
+type PostfixOperator struct {
+	Loc      Location
+	Operator string
+	Operand  Expression
+	Type     Type
+}
+
+func (p *PostfixOperator) GetLocation() Location {
+	return p.Loc
+}
+
+func (p *PostfixOperator) GetType() Type {
+	return p.Type
+}
+
+func (p *PostfixOperator) isExpression() {}
+
+func (p *PostfixOperator) String() string {
+	return fmt.Sprintf("(%s %s)", p.Operator, p.Operand.String())
+}

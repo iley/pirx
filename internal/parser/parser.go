@@ -684,7 +684,7 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("%s: unknown expression: %v", lex.Loc, lex)
 	}
 
-	// Handle field access and indexing postfix operations
+	// Handle field access, indexing, and postfix increment operations
 	for {
 		lex, err := p.peek()
 		if err != nil {
@@ -739,6 +739,24 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 				Loc:   bracketLoc,
 				Array: expr,
 				Index: indexExpr,
+			}
+		} else if lex.IsOperator("++") {
+			// consume '++'
+			incLex, err := p.consume()
+			if err != nil {
+				return nil, err
+			}
+			incLoc := locationFromLexeme(incLex)
+
+			// Validate that operand is a valid assignment target
+			if !p.isValidAssignmentTarget(expr) {
+				return nil, fmt.Errorf("%s: invalid operand for postfix increment: %s", expr.GetLocation(), expr.String())
+			}
+
+			expr = &ast.PostfixOperator{
+				Loc:      incLoc,
+				Operator: "++",
+				Operand:  expr,
 			}
 		} else {
 			break
@@ -1109,6 +1127,8 @@ func (p *Parser) isValidAssignmentTarget(expr ast.Expression) bool {
 		return true
 	case *ast.IndexExpression:
 		return true
+	case *ast.PostfixOperator:
+		return false // postfix operators can't be assignment targets
 	default:
 		return false
 	}

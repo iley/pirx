@@ -399,6 +399,23 @@ func (l *Lexer) Next() (Lexeme, error) {
 			l.unreadRune()
 			return l.makeLexeme(LEX_OPERATOR, "+", startLine, startCol), nil
 		}
+	case r == '-':
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				return Lexeme{Type: LEX_EOF}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		switch nextR {
+		case '=':
+			return l.makeLexeme(LEX_OPERATOR, "-=", startLine, startCol), nil
+		case '-':
+			return l.makeLexeme(LEX_OPERATOR, "--", startLine, startCol), nil
+		default:
+			l.unreadRune()
+			return l.makeLexeme(LEX_OPERATOR, "-", startLine, startCol), nil
+		}
 	default:
 		// Check for single-character tokens
 		if tokenType, ok := singleCharTokens[r]; ok {

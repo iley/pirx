@@ -2,7 +2,7 @@ GO_SOURCES := $(shell find . -type f -name '*.go' ! -name '*_test.go' -not -path
 GO_MODULE_FILES := go.mod go.sum
 TEST_CONCURRENCY := 16
 
-default: pirx pirxc testrunner
+default: pirx pirxc testrunner stdlib
 
 pirx: $(GO_SOURCES) $(GO_MODULE_FILES)
 	go build -mod=vendor -o pirx ./cmd/pirx
@@ -10,7 +10,7 @@ pirx: $(GO_SOURCES) $(GO_MODULE_FILES)
 pirxc: $(GO_SOURCES) $(GO_MODULE_FILES)
 	go build -mod=vendor -o pirxc ./cmd/pirxc
 
-testrunner: pirx pirxc
+testrunner: pirx pirxc stdlib
 	go build -mod=vendor -o testrunner ./cmd/testrunner
 
 test: gotests testall

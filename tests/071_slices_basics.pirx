@@ -4,13 +4,13 @@ extern func main(): int {
   var i = 0;
   while i < 10 {
     s[i] = i * 2;
-    i = i + 1;
+    i++;
   }
 
   i = 0;
   while i < 10 {
     printf("%d\n", s[i]);
-    i = i + 1;
+    i++;
   }
 
   dispose(s);

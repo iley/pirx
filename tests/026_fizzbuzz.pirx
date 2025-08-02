@@ -10,7 +10,7 @@ extern func main(): int {
     } else {
       printf("%d\n", x);
     }
-    x = x + 1;
+    x++;
   }
   return 0;
 }

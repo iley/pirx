@@ -5,19 +5,19 @@ extern func main(): int {
   while i < 10 {
     numbers[i] = new(int);
     *(numbers[i]) = i + 1;
-    i = i + 1;
+    i++;
   }
 
   i = 0;
   while i < 10 {
     printf("%d\n", *(numbers[i]));
-    i = i + 1;
+    i++;
   }
 
   i = 0;
   while i < 10 {
     dispose(numbers[i]);
-    i = i + 1;
+    i++;
   }
 
   dispose(numbers);

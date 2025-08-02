@@ -2,8 +2,8 @@ extern func main(): int {
   var i32: int = 2147483647; // 2^31-1
   var i64: int64 = 2147483647l; // 2^31-1
 
-  i32 = i32 + 1;
-  i64 = i64 + 1l;
+  i32++;
+  i64++;
 
   printf("i32 = %ld i64 = %lld\n", i32, i64);
   return 0;

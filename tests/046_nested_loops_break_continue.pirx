@@ -12,9 +12,9 @@ extern func main(): int {
         break;
       }
       printf("  Inner loop j=%d\n", j);
-      j = j + 1;
+      j++;
     }
-    i = i + 1;
+    i++;
   }
   
   printf("\n");
@@ -27,13 +27,13 @@ extern func main(): int {
     while j < 4 {
       if j == 1 {
         printf("  Continuing inner loop at j=%d\n", j);
-        j = j + 1;
+        j++;
         continue;
       }
       printf("  Inner loop j=%d\n", j);
-      j = j + 1;
+      j++;
     }
-    i = i + 1;
+    i++;
   }
   
   return 0;

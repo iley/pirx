@@ -1,7 +1,7 @@
 extern func main(): int {
   var x : int = 0;
   while x < 10 {
-    x = x + 1;
+    x++;
     if x % 2 == 0 {
       continue;
     }

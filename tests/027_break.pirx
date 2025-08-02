@@ -6,7 +6,7 @@ extern func main(): int {
       break;
     }
     printf("%d\n", x);
-    x = x + 1;
+    x++;
   }
 
   return 0;

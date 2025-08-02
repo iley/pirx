@@ -13,14 +13,14 @@ extern func main(): int {
     vectors[i].x = n;
     vectors[i].y = n * 10;
     vectors[i].z = n * 100;
-    n = n + 1;
-    i = i + 1;
+    n++;
+    i++;
   }
 
   i = 0;
   while i < 10 {
     printf("(%d, %d, %d)\n", vectors[i].x, vectors[i].y, vectors[i].z);
-    i = i + 1;
+    i++;
   }
 
   dispose(vectors);

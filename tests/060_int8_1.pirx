@@ -6,7 +6,7 @@ extern func main(): int {
   printf("%d\n", x);
 
   x = 127i8;
-  x = x + 1i8;
+  x++;
   printf("%d\n", x);
 
   return 0;

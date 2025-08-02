@@ -6,7 +6,7 @@ extern func main(): int {
   var row = 0;
   while row < nrows {
     matrix[row] = new([]int, ncols);
-    row = row + 1;
+    row++;
   }
 
   var n = 1;
@@ -15,10 +15,10 @@ extern func main(): int {
     var col = 0;
     while col < ncols {
       matrix[row][col] = n;
-      n = n + 1;
-      col = col + 1;
+      n++;
+      col++;
     }
-    row = row + 1;
+    row++;
   }
 
   row = 0;
@@ -29,16 +29,16 @@ extern func main(): int {
       if col != ncols - 1 {
         printf(" ");
       }
-      col = col + 1;
+      col++;
     }
     printf("\n");
-    row = row + 1;
+    row++;
   }
 
   row = 0;
   while row < nrows {
     dispose(matrix[row]);
-    row = row + 1;
+    row++;
   }
 
   dispose(matrix);

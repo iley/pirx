@@ -134,6 +134,20 @@ func New(inputReader io.Reader, filename string) *Lexer {
 	}
 }
 
+// loc creates a Location for the current lexeme position
+func (l *Lexer) loc(line, col int) Location {
+	return Location{Filename: l.filename, Line: line, Col: col}
+}
+
+// makeLexeme creates a Lexeme with the given type, string, and location
+func (l *Lexer) makeLexeme(tokenType TokenType, str string, line, col int) Lexeme {
+	return Lexeme{
+		Type: tokenType,
+		Str:  str,
+		Loc:  l.loc(line, col),
+	}
+}
+
 // readRune reads the next rune from the input
 func (l *Lexer) readRune() (rune, int, error) {
 	var r rune
@@ -243,11 +257,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 		if err != nil {
 			if err == io.EOF {
 				// Just a single '/' at EOF
-				return Lexeme{
-					Type: LEX_OPERATOR,
-					Str:  "/",
-					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-				}, nil
+				return l.makeLexeme(LEX_OPERATOR, "/", startLine, startCol), nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
@@ -261,11 +271,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 		} else {
 			// It's just a division operator, put back the second character
 			l.unreadRune()
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "/",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "/", startLine, startCol), nil
 		}
 	case r == '=':
 		// Check for equality operator
@@ -273,29 +279,17 @@ func (l *Lexer) Next() (Lexeme, error) {
 		if err != nil {
 			if err == io.EOF {
 				// Just a single '=' at EOF
-				return Lexeme{
-					Type: LEX_OPERATOR,
-					Str:  "=",
-					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-				}, nil
+				return l.makeLexeme(LEX_OPERATOR, "=", startLine, startCol), nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
 		if nextR == '=' {
 			// It's an equality operator
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "==",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "==", startLine, startCol), nil
 		} else {
 			// It's just an assignment operator, put back the second character
 			l.unreadRune()
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "=",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "=", startLine, startCol), nil
 		}
 	case r == '!':
 		// Check for not-equal operator
@@ -303,29 +297,17 @@ func (l *Lexer) Next() (Lexeme, error) {
 		if err != nil {
 			if err == io.EOF {
 				// Just a single '!' at EOF
-				return Lexeme{
-					Type: LEX_OPERATOR,
-					Str:  "!",
-					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-				}, nil
+				return l.makeLexeme(LEX_OPERATOR, "!", startLine, startCol), nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
 		if nextR == '=' {
 			// It's a not-equal operator
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "!=",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "!=", startLine, startCol), nil
 		} else {
 			// It's just a negation operator, put back the second character
 			l.unreadRune()
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "!",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "!", startLine, startCol), nil
 		}
 	case r == '<':
 		// Check for less-than-or-equal operator
@@ -333,29 +315,17 @@ func (l *Lexer) Next() (Lexeme, error) {
 		if err != nil {
 			if err == io.EOF {
 				// Just a single '<' at EOF
-				return Lexeme{
-					Type: LEX_OPERATOR,
-					Str:  "<",
-					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-				}, nil
+				return l.makeLexeme(LEX_OPERATOR, "<", startLine, startCol), nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
 		if nextR == '=' {
 			// It's a less-than-or-equal operator
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "<=",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "<=", startLine, startCol), nil
 		} else {
 			// It's just a less-than operator, put back the second character
 			l.unreadRune()
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "<",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "<", startLine, startCol), nil
 		}
 	case r == '>':
 		// Check for greater-than-or-equal operator
@@ -363,29 +333,17 @@ func (l *Lexer) Next() (Lexeme, error) {
 		if err != nil {
 			if err == io.EOF {
 				// Just a single '>' at EOF
-				return Lexeme{
-					Type: LEX_OPERATOR,
-					Str:  ">",
-					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-				}, nil
+				return l.makeLexeme(LEX_OPERATOR, ">", startLine, startCol), nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
 		if nextR == '=' {
 			// It's a greater-than-or-equal operator
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  ">=",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, ">=", startLine, startCol), nil
 		} else {
 			// It's just a greater-than operator, put back the second character
 			l.unreadRune()
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  ">",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, ">", startLine, startCol), nil
 		}
 	case r == '&':
 		// Check for logical AND operator or address-of operator
@@ -393,29 +351,17 @@ func (l *Lexer) Next() (Lexeme, error) {
 		if err != nil {
 			if err == io.EOF {
 				// Single '&' at EOF - address-of operator
-				return Lexeme{
-					Type: LEX_OPERATOR,
-					Str:  "&",
-					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-				}, nil
+				return l.makeLexeme(LEX_OPERATOR, "&", startLine, startCol), nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
 		if nextR == '&' {
 			// It's a logical AND operator
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "&&",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "&&", startLine, startCol), nil
 		} else {
 			// Single '&' is address-of operator
 			l.unreadRune()
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "&",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "&", startLine, startCol), nil
 		}
 	case r == '|':
 		// Check for logical OR operator
@@ -429,11 +375,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 		}
 		if nextR == '|' {
 			// It's a logical OR operator
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "||",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "||", startLine, startCol), nil
 		} else {
 			// Single '|' is not supported, return EOF for unknown character
 			l.unreadRune()
@@ -450,33 +392,17 @@ func (l *Lexer) Next() (Lexeme, error) {
 		}
 		switch nextR {
 		case '=':
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "+=",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "+=", startLine, startCol), nil
 		case '+':
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "++",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "++", startLine, startCol), nil
 		default:
 			l.unreadRune()
-			return Lexeme{
-				Type: LEX_OPERATOR,
-				Str:  "+",
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_OPERATOR, "+", startLine, startCol), nil
 		}
 	default:
 		// Check for single-character tokens
 		if tokenType, ok := singleCharTokens[r]; ok {
-			return Lexeme{
-				Type: tokenType,
-				Str:  string(r),
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(tokenType, string(r), startLine, startCol), nil
 		}
 		// For now, return EOF for unknown characters
 		return Lexeme{Type: LEX_EOF}, nil
@@ -506,18 +432,10 @@ func (l *Lexer) lexIdent(startLine, startCol int) (Lexeme, error) {
 
 	// Check if it's a keyword
 	if keywords[ident] {
-		return Lexeme{
-			Type: LEX_KEYWORD,
-			Str:  ident,
-			Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-		}, nil
+		return l.makeLexeme(LEX_KEYWORD, ident, startLine, startCol), nil
 	}
 
-	return Lexeme{
-		Type: LEX_IDENT,
-		Str:  ident,
-		Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-	}, nil
+	return l.makeLexeme(LEX_IDENT, ident, startLine, startCol), nil
 }
 
 // lexString reads a string literal
@@ -534,11 +452,7 @@ func (l *Lexer) lexString(startLine, startCol int) (Lexeme, error) {
 		}
 
 		if r == '"' {
-			return Lexeme{
-				Type: LEX_STRING,
-				Str:  str,
-				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-			}, nil
+			return l.makeLexeme(LEX_STRING, str, startLine, startCol), nil
 		}
 
 		if r == '\\' {
@@ -595,11 +509,7 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 		if err != nil {
 			if err == io.EOF {
 				// Just "0" at EOF
-				return Lexeme{
-					Type: LEX_NUMBER,
-					Str:  num,
-					Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-				}, nil
+				return l.makeLexeme(LEX_NUMBER, num, startLine, startCol), nil
 			}
 			return Lexeme{}, err
 		}
@@ -660,11 +570,7 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 		num += string(r)
 	}
 
-	return Lexeme{
-		Type: LEX_NUMBER,
-		Str:  num,
-		Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-	}, nil
+	return l.makeLexeme(LEX_NUMBER, num, startLine, startCol), nil
 }
 
 // lexHexNumber reads a hexadecimal number literal
@@ -716,11 +622,7 @@ func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, er
 		num += string(r)
 	}
 
-	return Lexeme{
-		Type: LEX_NUMBER,
-		Str:  num,
-		Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
-	}, nil
+	return l.makeLexeme(LEX_NUMBER, num, startLine, startCol), nil
 }
 
 func isValidHexDigit(r rune) bool {

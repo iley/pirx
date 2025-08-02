@@ -73,7 +73,6 @@ var singleCharTokens = map[rune]TokenType{
 	',': LEX_PUNCTUATION,
 	':': LEX_PUNCTUATION,
 	'.': LEX_PUNCTUATION,
-	'+': LEX_OPERATOR,
 	'-': LEX_OPERATOR,
 	'*': LEX_OPERATOR,
 	'%': LEX_OPERATOR,
@@ -439,6 +438,36 @@ func (l *Lexer) Next() (Lexeme, error) {
 			// Single '|' is not supported, return EOF for unknown character
 			l.unreadRune()
 			return Lexeme{Type: LEX_EOF}, nil
+		}
+	case r == '+':
+		// Check for ++ and +=.
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				return Lexeme{Type: LEX_EOF}, nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		switch nextR {
+		case '=':
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "+=",
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
+			}, nil
+		case '+':
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "++",
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
+			}, nil
+		default:
+			l.unreadRune()
+			return Lexeme{
+				Type: LEX_OPERATOR,
+				Str:  "+",
+				Loc:  Location{Filename: l.filename, Line: startLine, Col: startCol},
+			}, nil
 		}
 	default:
 		// Check for single-character tokens

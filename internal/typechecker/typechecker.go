@@ -153,6 +153,8 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Expression {
 		return c.checkIndexExpression(indexExpr)
 	} else if newEx, ok := expr.(*ast.NewExpression); ok {
 		return c.checkNewExpression(newEx)
+	} else if po, ok := expr.(*ast.PostfixOperator); ok {
+		return c.checkPostfixOperator(po)
 	}
 	panic(fmt.Sprintf("Invalid expression type: %v", expr))
 }
@@ -503,6 +505,22 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 		result.Type = &ast.PointerType{ElementType: n.TypeExpr}
 		return &result
 	}
+}
+
+func (c *TypeChecker) checkPostfixOperator(po *ast.PostfixOperator) *ast.PostfixOperator {
+	var operandType ast.Type
+	checkedOperand := c.checkExpression(po.Operand)
+	// The only postfix operators currently supported (++ and --) work on integers.
+	if ast.IsIntegerType(checkedOperand.GetType()) {
+		operandType = checkedOperand.GetType()
+	} else {
+		operandType = ast.Undefined
+		c.errorf("%s: postfix %s can only be applied to an integer type", po.Loc, po.Operator)
+	}
+	result := *po
+	result.Operand = checkedOperand
+	result.Type = operandType
+	return &result
 }
 
 func (c *TypeChecker) checkIndexExpression(indexExpr *ast.IndexExpression) *ast.IndexExpression {

@@ -182,6 +182,8 @@ func (g *Generator) generateExpressionOps(node ast.Expression) ([]Op, Arg, int) 
 		return g.generateNewExpressionOps(ne)
 	} else if index, ok := node.(*ast.IndexExpression); ok {
 		return g.generateIndexOps(index)
+	} else if po, ok := node.(*ast.PostfixOperator); ok {
+		return g.generatePostfixOperatorOps(po)
 	}
 	panic(fmt.Errorf("unknown expression type: %v", node))
 }
@@ -609,6 +611,35 @@ func (g *Generator) generateIndexOps(indexExpr *ast.IndexExpression) ([]Op, Arg,
 	res := g.allocTemp(elementSize)
 	ops := append(addrOps, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: elementSize})
 	return ops, Arg{Variable: res}, elementSize
+}
+
+func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op, Arg, int) {
+	// TODO: Generate more optimial IR. Perhaps make the increment an unary op?
+	operandSize := g.types.GetSizeNoError(expr.GetType())
+	ops, operandArg := g.generateExpressionAddrOps(expr.Operand)
+	temp := g.allocTemp(operandSize)
+	ops = append(ops,
+		UnaryOp{
+			Result:    temp,
+			Operation: "*",
+			Value:     operandArg,
+			Size:      operandSize,
+		},
+		BinaryOp{
+			Result:      temp,
+			Left:        Arg{Variable: temp},
+			Operation:   "+",
+			Right:       Arg{LiteralInt: util.Int64Ptr(1)},
+			Size:        operandSize,
+			OperandSize: operandSize,
+		},
+		AssignByAddr{
+			Target: operandArg,
+			Value:  Arg{Variable: temp},
+			Size:   operandSize,
+		},
+	)
+	return ops, Arg{Variable: temp}, operandSize
 }
 
 func (g *Generator) errorf(format string, arg ...any) {

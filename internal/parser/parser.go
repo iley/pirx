@@ -453,6 +453,10 @@ func statementRequiresSemicolon(stmt ast.Statement) bool {
 	if _, ok := stmt.(*ast.WhileStatement); ok {
 		return false
 	}
+	// For statements don't require semicolons since they end with a block
+	if _, ok := stmt.(*ast.ForStatement); ok {
+		return false
+	}
 	// Block statements don't require semicolons since they end with a brace
 	if _, ok := stmt.(*ast.BlockStatement); ok {
 		return false
@@ -509,6 +513,13 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 			return nil, err
 		}
 		return whileStmt, nil
+	}
+	if lex.IsKeyword("for") {
+		forStmt, err := p.parseForStatement()
+		if err != nil {
+			return nil, err
+		}
+		return forStmt, nil
 	}
 	if lex.IsPunctuation("{") {
 		blockStmt, err := p.parseBlockStatement()
@@ -1267,6 +1278,94 @@ func (p *Parser) parseWhileStatement() (*ast.WhileStatement, error) {
 	return &ast.WhileStatement{
 		Loc:       whileLoc,
 		Condition: condition,
+		Body:      *body,
+	}, nil
+}
+
+func (p *Parser) parseForStatement() (*ast.ForStatement, error) {
+	// consume 'for'
+	forLex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	forLoc := locationFromLexeme(forLex)
+
+	// parse initialization statement
+	var init ast.Statement
+	lex, err := p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation(";") {
+		init, err = p.parseStatement()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// consume ';' after init
+	lex, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation(";") {
+		return nil, fmt.Errorf("%s: expected ';' after for loop initialization, got %v", lex.Loc, lex)
+	}
+
+	// parse condition expression
+	var condition ast.Expression
+	lex, err = p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation(";") {
+		condition, err = p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// consume ';' after condition
+	lex, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation(";") {
+		return nil, fmt.Errorf("%s: expected ';' after for loop condition, got %v", lex.Loc, lex)
+	}
+
+	// parse update expression
+	var update ast.Expression
+	lex, err = p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation("{") {
+		update, err = p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// parse body block
+	lex, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation("{") {
+		return nil, fmt.Errorf("%s: expected '{' after for loop header, got %v", lex.Loc, lex)
+	}
+
+	body, err := p.parseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.ForStatement{
+		Loc:       forLoc,
+		Init:      init,
+		Condition: condition,
+		Update:    update,
 		Body:      *body,
 	}, nil
 }

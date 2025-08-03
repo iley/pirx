@@ -305,6 +305,40 @@ func (w *WhileStatement) String() string {
 	return fmt.Sprintf("(while %s %s)", w.Condition.String(), w.Body.String())
 }
 
+type ForStatement struct {
+	Loc       Location
+	Init      Statement  // initialization statement (e.g., var i = 0)
+	Condition Expression // loop condition (e.g., i < 10)
+	Update    Expression // update expression (e.g., i++)
+	Body      Block      // loop body
+}
+
+func (f *ForStatement) GetLocation() Location {
+	return f.Loc
+}
+
+func (f *ForStatement) GetType() Type {
+	return nil
+}
+
+func (f *ForStatement) isStatement() {}
+
+func (f *ForStatement) String() string {
+	initStr := ""
+	if f.Init != nil {
+		initStr = f.Init.String()
+	}
+	condStr := ""
+	if f.Condition != nil {
+		condStr = f.Condition.String()
+	}
+	updateStr := ""
+	if f.Update != nil {
+		updateStr = f.Update.String()
+	}
+	return fmt.Sprintf("(for %s %s %s %s)", initStr, condStr, updateStr, f.Body.String())
+}
+
 type BreakStatement struct {
 	Loc Location
 }

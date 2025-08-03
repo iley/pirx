@@ -28,6 +28,10 @@ testall_o0: testrunner
 	@echo " *** Running all end-to-end tests with no optimization"
 	./testrunner -j $(TEST_CONCURRENCY) testall -O0
 
+# Pattern rule for running individual tests: make test_046 runs ./testrunner test 046
+test_%: testrunner
+	./testrunner test $*
+
 clean:
 	$(MAKE) -C ./stdlib clean
 	$(MAKE) -C ./examples clean
@@ -45,8 +49,7 @@ lint:
 fmt:
 	golangci-lint fmt
 
-# Pattern rule for running individual tests: make test_046 runs ./testrunner test 046
-test_%: testrunner
-	./testrunner test $*
+cloc:
+	cloc . --exclude-dir=vendor
 
 .PHONY: clean default examples test stdlib

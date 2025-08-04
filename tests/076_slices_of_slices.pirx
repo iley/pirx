@@ -8,14 +8,14 @@ extern func main(): int {
   }
 
   var n = 1;
-  for row = 0; row < nrows; row++ {
+  for var row = 0; row < nrows; row++ {
     for var col = 0; col < ncols; col++ {
       matrix[row][col] = n;
       n++;
     }
   }
 
-  for row = 0; row < nrows; row++ {
+  for var row = 0; row < nrows; row++ {
     for var col = 0; col < ncols; col++ {
       printf("%2d", matrix[row][col]);
       if col != ncols - 1 {
@@ -25,7 +25,7 @@ extern func main(): int {
     printf("\n");
   }
 
-  for row = 0; row < nrows; row++ {
+  for var row = 0; row < nrows; row++ {
     dispose(matrix[row]);
   }
 

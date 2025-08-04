@@ -5,7 +5,7 @@ extern func main(): int {
     s[i] = i * 2;
   }
 
-  for i = 0; i < 10; i++ {
+  for var i = 0; i < 10; i++ {
     printf("%d\n", s[i]);
   }
 

@@ -81,7 +81,8 @@ func main() {
 		return
 	}
 
-	// Run typechecking first so we can report errors accurately...
+	ast = desugar.Run(ast)
+
 	tc := typechecker.NewTypeChecker(ast)
 	typedAst, programErrors := tc.Check()
 	if len(programErrors) > 0 {
@@ -91,9 +92,6 @@ func main() {
 		os.Exit(1)
 	}
 	ast = typedAst
-
-	// ... then perform desugaring (e.g. expand `for` into `while`).
-	ast = desugar.Run(ast)
 
 	if *targetString == "final_ast" {
 		fmt.Printf("%s\n", ast.String())

@@ -129,6 +129,8 @@ func (c *TypeChecker) checkStatement(stmt ast.Statement) ast.Statement {
 		return c.checkContinueStatement(contStmt)
 	} else if blockStmt, ok := stmt.(*ast.BlockStatement); ok {
 		return c.checkBlockStatement(blockStmt)
+	} else if forLoop, ok := stmt.(*ast.ForStatement); ok {
+		return c.checkForLoop(forLoop)
 	} else {
 		panic(fmt.Sprintf("unsupported statement type: %v", stmt))
 	}
@@ -422,6 +424,20 @@ func (c *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) *ast.WhileSt
 	return &ast.WhileStatement{
 		Loc:       stmt.Loc,
 		Condition: checkedCondition,
+		Body:      *checkedBody,
+	}
+}
+
+func (c *TypeChecker) checkForLoop(forLoop *ast.ForStatement) *ast.ForStatement {
+	checkedInit := c.checkStatement(forLoop.Init)
+	checkedCond := c.checkExpression(forLoop.Condition)
+	checkedUpdate := c.checkExpression(forLoop.Update)
+	checkedBody := c.checkBlock(&forLoop.Body)
+	return &ast.ForStatement{
+		Loc:       forLoop.Loc,
+		Init:      checkedInit,
+		Condition: checkedCond,
+		Update:    checkedUpdate,
 		Body:      *checkedBody,
 	}
 }

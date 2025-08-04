@@ -1,0 +1,14 @@
+extern func main(): int {
+  for var i = 0; i < 10; i++ {
+    printf("%d\n", i);
+  }
+
+  // `for` currently does not (currently) put initializer into a separate scope.
+  for i = 0; i < 3; i++ {
+    for var j = 0; j < 3; j++ {
+      printf("%d + %d = %d\n", i, j, i+j);
+    }
+  }
+
+  return 0;
+}

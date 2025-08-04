@@ -3,42 +3,30 @@ extern func main(): int {
   var ncols = 5;
 
   var matrix = new([][]int, nrows);
-  var row = 0;
-  while row < nrows {
+  for var row = 0; row < nrows; row++ {
     matrix[row] = new([]int, ncols);
-    row++;
   }
 
   var n = 1;
-  row = 0;
-  while row < nrows {
-    var col = 0;
-    while col < ncols {
+  for row = 0; row < nrows; row++ {
+    for var col = 0; col < ncols; col++ {
       matrix[row][col] = n;
       n++;
-      col++;
     }
-    row++;
   }
 
-  row = 0;
-  while row < nrows {
-    var col = 0;
-    while col < ncols {
+  for row = 0; row < nrows; row++ {
+    for var col = 0; col < ncols; col++ {
       printf("%2d", matrix[row][col]);
       if col != ncols - 1 {
         printf(" ");
       }
-      col++;
     }
     printf("\n");
-    row++;
   }
 
-  row = 0;
-  while row < nrows {
+  for row = 0; row < nrows; row++ {
     dispose(matrix[row]);
-    row++;
   }
 
   dispose(matrix);

@@ -8,19 +8,15 @@ extern func main(): int {
   var vectors = new([]Vec3, 10);
 
   var n = 1;
-  var i = 0;
-  while i < 10 {
+  for var i = 0; i < 10; i++ {
     vectors[i].x = n;
     vectors[i].y = n * 10;
     vectors[i].z = n * 100;
     n++;
-    i++;
   }
 
-  i = 0;
-  while i < 10 {
+  for i = 0; i < 10; i++ {
     printf("(%d, %d, %d)\n", vectors[i].x, vectors[i].y, vectors[i].z);
-    i++;
   }
 
   dispose(vectors);

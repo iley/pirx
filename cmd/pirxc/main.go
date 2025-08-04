@@ -33,34 +33,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := parser.New()
-	for _, inputFileName := range inputFileNames {
-		inputFile, err := os.Open(inputFileName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error opening input file: %v\n", err)
-			os.Exit(1)
-		}
-		defer inputFile.Close()
-
-		lex := lexer.New(inputFile, inputFileName)
-		err = p.Parse(lex)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error parsing program: %v\n", err)
-			os.Exit(1)
-		}
-	}
-	ast := p.GetProgram()
-
-	tc := typechecker.NewTypeChecker(ast)
-	typedAst, programErrors := tc.Check()
-	if len(programErrors) > 0 {
-		for _, err := range programErrors {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-		}
-		os.Exit(1)
-	}
-	ast = typedAst
-
 	var output io.Writer
 
 	if *outputString == "-" {
@@ -84,10 +56,38 @@ func main() {
 		output = outputFile
 	}
 
+	p := parser.New()
+	for _, inputFileName := range inputFileNames {
+		inputFile, err := os.Open(inputFileName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error opening input file: %v\n", err)
+			os.Exit(1)
+		}
+		defer inputFile.Close()
+
+		lex := lexer.New(inputFile, inputFileName)
+		err = p.Parse(lex)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error parsing program: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	ast := p.GetProgram()
+
 	if *targetString == "ast" {
 		fmt.Printf("%s\n", ast.String())
 		return
 	}
+
+	tc := typechecker.NewTypeChecker(ast)
+	typedAst, programErrors := tc.Check()
+	if len(programErrors) > 0 {
+		for _, err := range programErrors {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+		}
+		os.Exit(1)
+	}
+	ast = typedAst
 
 	irg := ir.NewGenerator()
 	programIr, codegenErrors := irg.Generate(ast)

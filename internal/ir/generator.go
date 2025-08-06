@@ -330,7 +330,7 @@ func (g *Generator) generateFieldAccessOps(fa *ast.FieldAccess) ([]Op, Arg, int)
 	// Get field address using generateExpressionAddrOps.
 	ops, addrArg := g.generateExpressionAddrOps(fa)
 	// Dereference to get the value.
-	field := g.getField(fa.Object.GetType(), fa.FieldName)
+	field := g.getField(fa.Loc, fa.Object.GetType(), fa.FieldName)
 	res := g.allocTemp(field.Size)
 	ops = append(ops, UnaryOp{Result: res, Value: addrArg, Operation: "*", Size: field.Size})
 	return ops, Arg{Variable: res}, field.Size
@@ -350,7 +350,7 @@ func (g *Generator) generateFieldAccessAddrOps(object ast.Expression, fieldName 
 
 	// Add offset.
 	addrTemp := g.allocTemp(types.WORD_SIZE)
-	field := g.getField(object.GetType(), fieldName)
+	field := g.getField(object.GetLocation(), object.GetType(), fieldName)
 	offset := int64(field.Offset)
 	ops = append(ops, BinaryOp{
 		Result:      addrTemp,
@@ -540,7 +540,7 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 	return ops, Arg{Variable: temp}, size
 }
 
-func (g *Generator) getField(objType ast.Type, fieldName string) *types.StructField {
+func (g *Generator) getField(loc ast.Location, objType ast.Type, fieldName string) *types.StructField {
 	var structType ast.Type
 
 	if ptrType, ok := objType.(*ast.PointerType); ok {
@@ -551,12 +551,11 @@ func (g *Generator) getField(objType ast.Type, fieldName string) *types.StructFi
 
 	structDesc, err := g.types.GetStruct(structType)
 	if err != nil {
-		panic(fmt.Errorf("field access for non-struct types is not (yet) supported. type %v, error: %v", objType, err))
+		panic(fmt.Errorf("%s: field access for non-struct types is not (yet) supported. type %v, error: %v", loc, objType, err))
 	}
 	field := structDesc.GetField(fieldName)
 	if field == nil {
-		// TODO: Loc?
-		g.errorf("struct type %v has no field %v", structDesc.Name, fieldName)
+		g.errorf("%s: struct type %v has no field %v", loc, structDesc.Name, fieldName)
 	}
 	return field
 }

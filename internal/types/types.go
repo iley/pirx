@@ -173,17 +173,17 @@ func (tt *TypeTable) GetSizeNoError(typ ast.Type) int {
 func (tt *TypeTable) GetStruct(typ ast.Type) (*StructDescriptor, error) {
 	pt, ok := typ.(*ast.BaseType)
 	if !ok {
-		return nil, fmt.Errorf("type %s does not represent a struct", typ)
+		return nil, fmt.Errorf("type %v does not represent a struct", typ)
 	}
 
 	typeDesc, exists := tt.types[pt.Name]
 	if !exists {
-		return nil, fmt.Errorf("type %s does not exist", typ)
+		return nil, fmt.Errorf("type %v does not exist", typ)
 	}
 
 	structDesc, ok := typeDesc.(*StructDescriptor)
 	if !ok {
-		return nil, fmt.Errorf("type %s is not a struct", typ)
+		return nil, fmt.Errorf("type %v is not a struct", typ)
 	}
 
 	return structDesc, nil

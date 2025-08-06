@@ -41,6 +41,7 @@ func (c *TypeChecker) Check() (*ast.Program, []error) {
 	types, err := types.MakeTypeTable(c.program.TypeDeclarations)
 	if err != nil {
 		c.errors = append(c.errors, err)
+		return &ast.Program{}, c.errors
 	}
 	c.types = types
 

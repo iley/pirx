@@ -551,7 +551,7 @@ func (g *Generator) getField(loc ast.Location, objType ast.Type, fieldName strin
 
 	structDesc, err := g.types.GetStruct(structType)
 	if err != nil {
-		panic(fmt.Errorf("%s: field access for non-struct types is not (yet) supported. type %v, error: %v", loc, objType, err))
+		panic(fmt.Errorf("%s: field access for non-struct types is not (yet) supported. type %v, error: %v", loc, structType, err))
 	}
 	field := structDesc.GetField(fieldName)
 	if field == nil {

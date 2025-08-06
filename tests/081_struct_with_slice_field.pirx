@@ -1,0 +1,25 @@
+struct Point {
+  x: int;
+  y: int;
+}
+
+struct Path {
+  points: []Point;
+}
+
+extern func main(): int {
+  var path: Path;
+
+  path.points = new([]Point, 10);
+
+  for var i = 0; i < 10; i++ {
+    path.points[i].x = i + 1;
+    path.points[i].y = 2 * (i + 1);
+  }
+
+  for var i = 0; i < 10; i++ {
+    printf("(%d, %d)\n", path.points[i].x, path.points[i].y);
+  }
+
+  return 0;
+}

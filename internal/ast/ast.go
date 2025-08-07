@@ -20,7 +20,6 @@ type Program struct {
 	Loc                  Location
 	Functions            []Function
 	TypeDeclarations     []TypeDeclaration
-	ConstantDeclarations []ConstantDeclaration
 	VariableDeclarations []VariableDeclaration
 }
 
@@ -38,10 +37,6 @@ func (p *Program) String() string {
 	for _, decl := range p.TypeDeclarations {
 		sb.WriteString(" ")
 		sb.WriteString(decl.String())
-	}
-	for _, constDecl := range p.ConstantDeclarations {
-		sb.WriteString(" ")
-		sb.WriteString(constDecl.String())
 	}
 	for _, varDecl := range p.VariableDeclarations {
 		sb.WriteString(" ")
@@ -202,6 +197,7 @@ type VariableDeclaration struct {
 	Name        string
 	Type        Type       // Optional type annotation (nil for type inference)
 	Initializer Expression // Optional initializer expression
+	IsConstant  bool       // true if this is a constant declaration (val), false for variable (var)
 }
 
 func (d *VariableDeclaration) GetLocation() Location {
@@ -222,38 +218,15 @@ func (d *VariableDeclaration) String() string {
 		typeStr = "inferred"
 	}
 
+	keyword := "decl"
+	if d.IsConstant {
+		keyword = "val"
+	}
+
 	if d.Initializer != nil {
-		return fmt.Sprintf("(decl %s %s %s)", d.Name, typeStr, d.Initializer.String())
+		return fmt.Sprintf("(%s %s %s %s)", keyword, d.Name, typeStr, d.Initializer.String())
 	}
-	return fmt.Sprintf("(decl %s %s)", d.Name, typeStr)
-}
-
-type ConstantDeclaration struct {
-	Loc         Location
-	Name        string
-	Type        Type       // Optional type annotation (nil for type inference)
-	Initializer Expression // Required initializer expression
-}
-
-func (c *ConstantDeclaration) GetLocation() Location {
-	return c.Loc
-}
-
-func (c *ConstantDeclaration) GetType() Type {
-	return nil
-}
-
-func (c *ConstantDeclaration) isStatement() {}
-
-func (c *ConstantDeclaration) String() string {
-	typeStr := ""
-	if c.Type != nil {
-		typeStr = c.Type.String()
-	} else {
-		typeStr = "inferred"
-	}
-
-	return fmt.Sprintf("(val %s %s %s)", c.Name, typeStr, c.Initializer.String())
+	return fmt.Sprintf("(%s %s %s)", keyword, d.Name, typeStr)
 }
 
 type ExpressionStatement struct {

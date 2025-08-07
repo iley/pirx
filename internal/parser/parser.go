@@ -62,6 +62,7 @@ func (p *Parser) Parse(l *lexer.Lexer) error {
 	functions := []ast.Function{}
 	typeDeclarations := []ast.TypeDeclaration{}
 	constantDeclarations := []ast.ConstantDeclaration{}
+	variableDeclarations := []ast.VariableDeclaration{}
 
 	for {
 		lex, err := p.peek()
@@ -92,6 +93,20 @@ func (p *Parser) Parse(l *lexer.Lexer) error {
 			if !lex.IsPunctuation(";") {
 				return fmt.Errorf("%s: expected ';' after global constant declaration, got %v", lex.Loc, lex)
 			}
+		} else if lex.IsKeyword("var") {
+			varDecl, err := p.parseVariableDeclaration()
+			if err != nil {
+				return err
+			}
+			variableDeclarations = append(variableDeclarations, *varDecl)
+			// Consume semicolon after global variable declaration
+			lex, err = p.consume()
+			if err != nil {
+				return err
+			}
+			if !lex.IsPunctuation(";") {
+				return fmt.Errorf("%s: expected ';' after global variable declaration, got %v", lex.Loc, lex)
+			}
 		} else if lex.IsKeyword("extern") || lex.IsKeyword("func") {
 			fn, err := p.parseFunction()
 			if err != nil {
@@ -99,16 +114,17 @@ func (p *Parser) Parse(l *lexer.Lexer) error {
 			}
 			functions = append(functions, fn)
 		} else {
-			return fmt.Errorf("%s: expected 'struct', 'val', 'func' or 'extern', got %v", lex.Loc, lex)
+			return fmt.Errorf("%s: expected 'struct', 'val', 'var', 'func' or 'extern', got %v", lex.Loc, lex)
 		}
 	}
 
 	if p.program == nil {
-		p.program = &ast.Program{Loc: programLoc, Functions: functions, TypeDeclarations: typeDeclarations, ConstantDeclarations: constantDeclarations}
+		p.program = &ast.Program{Loc: programLoc, Functions: functions, TypeDeclarations: typeDeclarations, ConstantDeclarations: constantDeclarations, VariableDeclarations: variableDeclarations}
 	} else {
 		p.program.Functions = append(p.program.Functions, functions...)
 		p.program.TypeDeclarations = append(p.program.TypeDeclarations, typeDeclarations...)
 		p.program.ConstantDeclarations = append(p.program.ConstantDeclarations, constantDeclarations...)
+		p.program.VariableDeclarations = append(p.program.VariableDeclarations, variableDeclarations...)
 	}
 	return nil
 }

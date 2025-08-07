@@ -21,6 +21,7 @@ type Program struct {
 	Functions            []Function
 	TypeDeclarations     []TypeDeclaration
 	ConstantDeclarations []ConstantDeclaration
+	VariableDeclarations []VariableDeclaration
 }
 
 func (p *Program) GetLocation() Location {
@@ -41,6 +42,10 @@ func (p *Program) String() string {
 	for _, constDecl := range p.ConstantDeclarations {
 		sb.WriteString(" ")
 		sb.WriteString(constDecl.String())
+	}
+	for _, varDecl := range p.VariableDeclarations {
+		sb.WriteString(" ")
+		sb.WriteString(varDecl.String())
 	}
 	for _, fn := range p.Functions {
 		sb.WriteString(" ")

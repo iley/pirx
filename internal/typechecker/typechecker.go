@@ -516,6 +516,7 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 		}
 		result := *n
 		result.Type = n.TypeExpr
+		result.Count = c.checkExpression(n.Count)
 		return &result
 	} else {
 		result := *n

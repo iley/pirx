@@ -1,0 +1,14 @@
+struct Vector {
+  x: int;
+  y: int;
+}
+
+extern func main(): int {
+  var v: Vector;
+  printf("%d\n", v.z); // non-existent field
+
+  // We used to have a bug where size in new() wasn't typechecked.
+  var slice = new([]int, v.foo * v.bar);
+
+  return 0;
+}

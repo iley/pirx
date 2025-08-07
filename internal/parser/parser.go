@@ -61,6 +61,7 @@ func (p *Parser) Parse(l *lexer.Lexer) error {
 
 	functions := []ast.Function{}
 	typeDeclarations := []ast.TypeDeclaration{}
+	constantDeclarations := []ast.ConstantDeclaration{}
 
 	for {
 		lex, err := p.peek()
@@ -77,6 +78,20 @@ func (p *Parser) Parse(l *lexer.Lexer) error {
 				return err
 			}
 			typeDeclarations = append(typeDeclarations, structDecl)
+		} else if lex.IsKeyword("val") {
+			constDecl, err := p.parseConstantDeclaration()
+			if err != nil {
+				return err
+			}
+			constantDeclarations = append(constantDeclarations, *constDecl)
+			// Consume semicolon after global constant declaration
+			lex, err = p.consume()
+			if err != nil {
+				return err
+			}
+			if !lex.IsPunctuation(";") {
+				return fmt.Errorf("%s: expected ';' after global constant declaration, got %v", lex.Loc, lex)
+			}
 		} else if lex.IsKeyword("extern") || lex.IsKeyword("func") {
 			fn, err := p.parseFunction()
 			if err != nil {
@@ -84,15 +99,16 @@ func (p *Parser) Parse(l *lexer.Lexer) error {
 			}
 			functions = append(functions, fn)
 		} else {
-			return fmt.Errorf("%s: expected 'struct', 'func' or 'extern', got %v", lex.Loc, lex)
+			return fmt.Errorf("%s: expected 'struct', 'val', 'func' or 'extern', got %v", lex.Loc, lex)
 		}
 	}
 
 	if p.program == nil {
-		p.program = &ast.Program{Loc: programLoc, Functions: functions, TypeDeclarations: typeDeclarations}
+		p.program = &ast.Program{Loc: programLoc, Functions: functions, TypeDeclarations: typeDeclarations, ConstantDeclarations: constantDeclarations}
 	} else {
 		p.program.Functions = append(p.program.Functions, functions...)
 		p.program.TypeDeclarations = append(p.program.TypeDeclarations, typeDeclarations...)
+		p.program.ConstantDeclarations = append(p.program.ConstantDeclarations, constantDeclarations...)
 	}
 	return nil
 }
@@ -476,6 +492,13 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 			return nil, err
 		}
 		return varDecl, nil
+	}
+	if lex.IsKeyword("val") {
+		constDecl, err := p.parseConstantDeclaration()
+		if err != nil {
+			return nil, err
+		}
+		return constDecl, nil
 	}
 	if lex.IsKeyword("return") {
 		retStmt, err := p.parseReturnStatement()
@@ -1065,6 +1088,67 @@ func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 
 	return &ast.VariableDeclaration{
 		Loc:         varLoc,
+		Name:        name,
+		Type:        typeExpr,
+		Initializer: initializer,
+	}, nil
+}
+
+func (p *Parser) parseConstantDeclaration() (*ast.ConstantDeclaration, error) {
+	// consume 'val'
+	valLex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	valLoc := locationFromLexeme(valLex)
+
+	// constant name
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if lex.Type != lexer.LEX_IDENT {
+		return nil, fmt.Errorf("%s: expected constant name, got %v", lex.Loc, lex)
+	}
+	name := lex.Str
+
+	// check for optional type annotation (colon)
+	var typeExpr ast.Type
+	lex, err = p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if lex.IsPunctuation(":") {
+		// consume ':'
+		_, err = p.consume()
+		if err != nil {
+			return nil, err
+		}
+
+		// parse type
+		typeExpr, err = p.parseType()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// expect '=' for initializer
+	lex, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsOperator("=") {
+		return nil, fmt.Errorf("%s: expected '=' after constant name, got %v", lex.Loc, lex)
+	}
+
+	// parse initializer expression
+	initializer, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.ConstantDeclaration{
+		Loc:         valLoc,
 		Name:        name,
 		Type:        typeExpr,
 		Initializer: initializer,

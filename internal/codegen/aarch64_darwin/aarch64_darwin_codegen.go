@@ -92,15 +92,9 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// Generate offsets from SP for all locals.
 	offset := 0
 	for _, lname := range sortedLocals {
-		// Align each slot by either 4 bytes (for 32-bit types) or 8 bytes for everything else.
-		// This should be a no-op for most slots because of the sorting above.
-		var align int
-		if lsizes[lname] == 4 {
-			align = 4
-		} else {
-			align = 8
-		}
-
+		// Ideally we'd want to align structs by the first element's size, but for simplicity we just default to 8 for anything larger than 8 bytes.
+		// That is somewhat wasteful but who cares at this stage?
+		align := min(8, lsizes[lname])
 		offset = util.Align(offset, align)
 		locals[lname] = offset
 		offset += lsizes[lname]

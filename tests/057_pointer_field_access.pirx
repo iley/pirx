@@ -3,7 +3,7 @@ struct Vector {
   y: int;
 }
 
-extern func main(): int {
+func main(): int {
   var v: Vector;
   v.x = 1;
   v.y = 2;

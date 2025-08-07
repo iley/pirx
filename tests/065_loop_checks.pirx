@@ -1,4 +1,4 @@
-extern func main(): int {
+func main(): int {
   break; // break without loop
   continue; // continue without loop
 

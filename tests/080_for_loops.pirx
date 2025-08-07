@@ -1,4 +1,4 @@
-extern func main(): int {
+func main(): int {
   for var i = 0; i < 10; i++ {
     printf("%d\n", i);
   }

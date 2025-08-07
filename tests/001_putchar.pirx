@@ -1,4 +1,4 @@
-extern func main(): int {
+func main(): int {
     putchar(65);
     return 0;
 } 

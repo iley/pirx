@@ -50,12 +50,23 @@ func (g *Generator) Generate(node *ast.Program) (IrProgram, []error) {
 		irFunc := g.generateFunction(function)
 		irp.Functions = append(irp.Functions, irFunc)
 	}
+
+	mainStub := g.generateMain()
+	irp.Functions = append(irp.Functions, mainStub)
+
 	return irp, nil
 }
 
 func (g *Generator) generateFunction(node ast.Function) IrFunction {
+	name := node.Name
+	// Rename the main function because we're going to generate our own main stub.
+	// Note we don't do a similar rename on the call side because we assume nobody would call main() directly.
+	if name == "main" {
+		name = "Pirx_Main"
+	}
+
 	irfunc := IrFunction{
-		Name:     node.Name,
+		Name:     name,
 		Args:     []string{},
 		ArgSizes: []int{},
 		Ops:      []Op{},
@@ -648,6 +659,29 @@ func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op,
 		},
 	)
 	return ops, Arg{Variable: temp}, operandSize
+}
+
+func (g *Generator) generateMain() IrFunction {
+	ops := []Op{
+		Call{
+			Result:   "$ret",
+			Function: "Pirx_Main",
+			Args:     []Arg{},
+			ArgSizes: []int{},
+			Size:     types.INT_SIZE,
+		},
+		ExternalReturn{
+			Value: &Arg{Variable: "$ret"},
+			Size:  types.INT_SIZE,
+		},
+	}
+
+	return IrFunction{
+		Name:     "main",
+		Args:     []string{},
+		ArgSizes: []int{},
+		Ops:      ops,
+	}
 }
 
 func (g *Generator) errorf(format string, arg ...any) {

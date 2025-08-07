@@ -15,7 +15,7 @@ func another_func(param: int) {
     }
 }
 
-extern func main(): int {
+func main(): int {
     var a: int;
     var b: int;
     var a: int;  // Variable re-declaration

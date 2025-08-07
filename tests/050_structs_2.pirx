@@ -5,7 +5,7 @@ struct Vector {
   y: int;
 }
 
-extern func main(): int {
+func main(): int {
   var v: Vector;
   var p: *Vector;
 

@@ -25,7 +25,7 @@ struct struct_15 {
 
 extern func returns_15_bytes(): struct_15;
 
-extern func main(): int {
+func main(): int {
   var s9: struct_9;
   s9 = returns_9_bytes();
 

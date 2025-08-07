@@ -11,7 +11,7 @@ func second(x: int, y: int) : int {
     return y;
 }
 
-extern func main(): int {
+func main(): int {
     var x: int = first(65, 66);
     var y: int = second(65, 66);
 

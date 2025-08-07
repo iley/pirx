@@ -7,7 +7,7 @@ struct Path {
   points: []Point;
 }
 
-extern func main(): int {
+func main(): int {
   var path: Path;
 
   path.points = new([]Point, 10);

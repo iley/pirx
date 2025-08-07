@@ -1,4 +1,4 @@
-extern func main(): int {
+func main(): int {
   var x: int = 15;
   if x < 10 {
     printf("less than 10\n");

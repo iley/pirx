@@ -1,4 +1,4 @@
-extern func main(): int {
+func main(): int {
   var int_var = 1;
   var bool_var = true;
 

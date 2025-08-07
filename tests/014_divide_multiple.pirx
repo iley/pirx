@@ -1,4 +1,4 @@
-extern func main(): int {
+func main(): int {
   var result: int = 24 / 4 / 2;
   printf("24 / 4 / 2 = %d\n", result);
   result = 8 * 3 / 2;

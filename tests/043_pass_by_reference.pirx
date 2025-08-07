@@ -2,7 +2,7 @@ func add(x: int, y: int, out: *int) {
   *out = x + y;
 }
 
-extern func main(): int {
+func main(): int {
   var out: int;
   add(2, 2, &out);
   printf("2 + 2 = %d\n", out);

@@ -4,7 +4,7 @@ struct Vector {
   z: int;
 }
 
-extern func main(): int {
+func main(): int {
   var v: Vector;
 
   v.x = 1;

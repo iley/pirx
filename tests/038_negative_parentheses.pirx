@@ -1,4 +1,4 @@
-extern func main(): int {
+func main(): int {
   var x: int = -(5 + 3);
   var y: int = (-2) * (-4);
   printf("x = %d\n", x);

@@ -1,4 +1,4 @@
-extern func main(): int {
+func main(): int {
   var x: int64;
   x = 65537l; // 2^16+1
   printf("x = %lld\n", x);

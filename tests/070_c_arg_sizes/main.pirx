@@ -15,7 +15,7 @@ extern func print_struct_16(s: struct_16);
 
 extern func print_struct_16_extra_args(x: int, s: struct_16, y: int);
 
-extern func main(): int {
+func main(): int {
   var s12: struct_12;
   s12.a = 16909060;  // 0x01020304
   s12.b = 84281096;  // 0x05060708

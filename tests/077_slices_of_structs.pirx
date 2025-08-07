@@ -4,7 +4,7 @@ struct Vec3 {
   z: int;
 }
 
-extern func main(): int {
+func main(): int {
   var vectors = new([]Vec3, 10);
 
   var n = 1;

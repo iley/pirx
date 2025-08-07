@@ -5,7 +5,7 @@ func factorial(x: int): int {
   return x * factorial(x - 1);
 }
 
-extern func main(): int {
+func main(): int {
   printf("%d\n", factorial(10));
   return 0;
 }

@@ -16,6 +16,8 @@ type varStack struct {
 type varDescriptor struct {
 	typ        ast.Type
 	uniqueName string
+	global     bool
+	constant   bool
 }
 
 type varStackFrame map[string]varDescriptor
@@ -25,6 +27,10 @@ func newVarStack() *varStack {
 		frames:      []varStackFrame{},
 		usageCounts: make(map[string]int),
 	}
+}
+
+func (vs *varStack) resetUsageCounts() {
+	vs.usageCounts = make(map[string]int)
 }
 
 func (vs *varStack) startScope() {
@@ -37,33 +43,46 @@ func (vs *varStack) endScope() {
 
 // declare attempts to add a variable to the inner-most frame
 // returns whether that was successful
-func (vs *varStack) declare(name string, typ ast.Type) bool {
+func (vs *varStack) declare(name string, typ ast.Type, global bool, constant bool) bool {
 	lastFrame := vs.frames[len(vs.frames)-1]
 	if _, exists := lastFrame[name]; exists {
 		return false
 	}
 
-	vs.usageCounts[name] += 1
-	uniqueName := name
-	if vs.usageCounts[name] > 1 {
-		uniqueName = fmt.Sprintf("%s@%d", name, vs.usageCounts[name]-1)
+	vs.usageCounts[name]++
+
+	// Assign a unique name to the variable:
+	// 1. All globals look like "@name"
+	// 2. First reference in a function is not renamed
+	// 3. All further references get a "#N" suffix
+	var uniqueName string
+	if global {
+		uniqueName = "@" + name
+	} else {
+		if vs.usageCounts[name] > 1 {
+			uniqueName = fmt.Sprintf("%s#%d", name, vs.usageCounts[name]-1)
+		} else {
+			uniqueName = name
+		}
 	}
 
 	lastFrame[name] = varDescriptor{
 		typ:        typ,
 		uniqueName: uniqueName,
+		global:     global,
+		constant:   constant,
 	}
 
 	return true
 }
 
 // lookup attempts to lookup a variable's type. Returns nil if variable was not defined.
-func (vs varStack) lookup(name string) (ast.Type, string) {
+func (vs varStack) lookup(name string) (varDescriptor, bool) {
 	for i := len(vs.frames) - 1; i >= 0; i-- {
 		vd, ok := vs.frames[i][name]
 		if ok {
-			return vd.typ, vd.uniqueName
+			return vd, true
 		}
 	}
-	return nil, ""
+	return varDescriptor{}, false
 }

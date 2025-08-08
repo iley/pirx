@@ -24,7 +24,7 @@ type CodegenContext struct {
 	stringLiterals map[string]string
 
 	// Function-specific.
-	locals       map[string]int
+	locals       map[string]int // name -> size
 	frameSize    int
 	functionName string
 }
@@ -35,6 +35,8 @@ func Generate(output io.Writer, irp ir.IrProgram) error {
 	for i, s := range common.GatherStrings(irp) {
 		stringLiterals[s] = fmt.Sprintf(".Lstr%d", i)
 	}
+
+	globalVariables := common.GatherGlobals(irp)
 
 	cc := &CodegenContext{
 		output:         output,
@@ -52,15 +54,40 @@ func Generate(output io.Writer, irp ir.IrProgram) error {
 		}
 	}
 
-	if len(stringLiterals) > 0 {
-		fmt.Fprintf(output, "\n// String literals.\n")
-		fmt.Fprintf(output, ".data\n")
-	}
-	for str, label := range stringLiterals {
-		fmt.Fprintf(output, "%s: .string \"%s\"\n", label, util.EscapeString(str))
-	}
+	generateStringLiterals(cc, stringLiterals)
+	generateGlobalVariables(cc, globalVariables)
 
 	return nil
+}
+
+func generateStringLiterals(cc *CodegenContext, literals map[string]string) {
+	if len(literals) == 0 {
+		return
+	}
+
+	fmt.Fprintf(cc.output, "\n// String literals.\n")
+	fmt.Fprintf(cc.output, ".section  __TEXT,__cstring,cstring_literals\n")
+	for str, label := range literals {
+		fmt.Fprintf(cc.output, "%s: .string \"%s\"\n", label, util.EscapeString(str))
+	}
+}
+
+func generateGlobalVariables(cc *CodegenContext, globals map[string]int) {
+	if len(globals) == 0 {
+		return
+	}
+
+	sortedGlobals := slices.Collect(maps.Keys(globals))
+	slices.Sort(sortedGlobals)
+
+	fmt.Fprintf(cc.output, "// Global variables\n")
+	for _, name := range sortedGlobals {
+		label := getGlobalLabel(name)
+		size := globals[name]
+		p2align := util.MinPowerOfTwo(size)
+		fmt.Fprintf(cc.output, ".zerofill __DATA,__bss,%s,%d,%d\n", label, size, p2align)
+	}
+	fmt.Fprintf(cc.output, ".subsections_via_symbols\n")
 }
 
 func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
@@ -74,6 +101,9 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// We need to know how many unique locals we have in total so we can allocate space on the stack below.
 	for _, op := range f.Ops {
 		if target := op.GetTarget(); target != "" {
+			if ir.IsGlobal(target) {
+				continue
+			}
 			if _, seen := lsizes[target]; seen {
 				continue
 			}
@@ -196,24 +226,44 @@ func generateOp(cc *CodegenContext, op ir.Op) error {
 
 func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 	if assign.Value.Variable != "" {
-		generateMemoryCopyToReg(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
+		if ir.IsGlobal(assign.Target) {
+			// Load global's address into x1.
+			generateAddressLoad(cc, 1, types.WORD_SIZE, ir.Arg{Variable: assign.Target})
+			generateMemoryCopyToReg(cc, assign.Value, assign.Size, "x1", 0)
+		} else {
+			generateMemoryCopyToReg(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
+		}
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
-		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
-		generateStoreToLocal(cc, 0, assign.Size, assign.Target)
+		if ir.IsGlobal(assign.Target) {
+			// Load global's address into x1.
+			generateAddressLoad(cc, 1, types.WORD_SIZE, ir.Arg{Variable: assign.Target})
+			// Load the value into x0.
+			generateRegisterLoad(cc, 0, assign.Size, assign.Value)
+			// x0 -> [x1]
+			generateRegisterStore(cc, 0, assign.Size, "x1", 0)
+		} else {
+			generateRegisterLoad(cc, 0, assign.Size, assign.Value)
+			generateStoreToLocal(cc, 0, assign.Size, assign.Target)
+		}
 	} else if assign.Value.Zero {
-		generateRegisterLoad(cc, 0, 8, assign.Value)
-		offset := 0
-		for offset < assign.Size {
-			if assign.Size-offset >= 8 {
-				generateStoreToLocalWithOffset(cc, 0, 8, assign.Target, offset)
-				offset += 8
-			} else if assign.Size-offset >= 4 {
-				generateStoreToLocalWithOffset(cc, 0, 4, assign.Target, offset)
-				offset += 4
-			} else {
-				generateStoreToLocalWithOffset(cc, 0, 1, assign.Target, offset)
-				offset += 1
+		if ir.IsGlobal(assign.Target) {
+			// Do nothing.
+			// This is a hack based on the fact that assignment of Arg{Zero: true} only happens in initialization, and globals are zero-initialized by the linker anyway.
+		} else {
+			generateRegisterLoad(cc, 0, 8, assign.Value)
+			offset := 0
+			for offset < assign.Size {
+				if assign.Size-offset >= 8 {
+					generateStoreToLocalWithOffset(cc, 0, 8, assign.Target, offset)
+					offset += 8
+				} else if assign.Size-offset >= 4 {
+					generateStoreToLocalWithOffset(cc, 0, 4, assign.Target, offset)
+					offset += 4
+				} else {
+					generateStoreToLocalWithOffset(cc, 0, 1, assign.Target, offset)
+					offset += 1
+				}
 			}
 		}
 	} else {
@@ -517,26 +567,37 @@ func generateRegisterLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg)
 }
 
 func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, arg ir.Arg, offset int) {
-	// TODO: Support for non-local variables.
 	reg := registerByIndex(regIndex, regSize)
 
 	if arg.Variable != "" {
-		fullOffset := int64(cc.locals[arg.Variable]) + int64(offset)
-		if fullOffset <= MAX_SP_OFFSET {
-			// Easy case: offset from SP.
-			if regSize == 1 {
-				fmt.Fprintf(cc.output, "  ldrsb %s, [sp, #%d]\n", reg, fullOffset)
-			} else {
-				fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, fullOffset)
-			}
-		} else {
-			// Calculate the address in an intermediary register.
-			generateLiteralLoad(cc, "x9", 8, fullOffset)
-			fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
+		// TODO: This function has become too large, break it down.
+		if ir.IsGlobal(arg.Variable) {
+			label := getGlobalLabel(arg.Variable)
+			fmt.Fprintf(cc.output, "  adrp x9, %s@PAGE\n", label)
+			fmt.Fprintf(cc.output, "  add x9, x9, %s@PAGEOFF + %d\n", label, offset)
 			if regSize == 1 {
 				fmt.Fprintf(cc.output, "  ldrsb %s, [x9]\n", reg)
 			} else {
 				fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
+			}
+		} else {
+			fullOffset := int64(cc.locals[arg.Variable]) + int64(offset)
+			if fullOffset <= MAX_SP_OFFSET {
+				// Easy case: offset from SP.
+				if regSize == 1 {
+					fmt.Fprintf(cc.output, "  ldrsb %s, [sp, #%d]\n", reg, fullOffset)
+				} else {
+					fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, fullOffset)
+				}
+			} else {
+				// Calculate the address in an intermediary register.
+				generateLiteralLoad(cc, "x9", 8, fullOffset)
+				fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
+				if regSize == 1 {
+					fmt.Fprintf(cc.output, "  ldrsb %s, [x9]\n", reg)
+				} else {
+					fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
+				}
 			}
 		}
 	} else if arg.LiteralInt != nil {
@@ -562,13 +623,24 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 }
 
 func generateAddressLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) {
-	// TODO: Support for non-local variables.
 	if arg.Variable == "" {
 		panic(fmt.Errorf("can only load address of variables, got %s", arg))
 	}
+
+	// TODO: Get rid of regSize argument.
+	if regSize != types.WORD_SIZE {
+		panic(fmt.Errorf("can only load address into a register of size %d", types.WORD_SIZE))
+	}
+
 	reg := registerByIndex(regIndex, regSize)
-	offset := int64(cc.locals[arg.Variable])
-	fmt.Fprintf(cc.output, "  add %s, sp, #%d\n", reg, offset)
+	if ir.IsGlobal(arg.Variable) {
+		label := getGlobalLabel(arg.Variable)
+		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
+		fmt.Fprintf(cc.output, "  add %s, %s, %s@PAGEOFF\n", reg, reg, label)
+	} else {
+		offset := int64(cc.locals[arg.Variable])
+		fmt.Fprintf(cc.output, "  add %s, sp, #%d\n", reg, offset)
+	}
 }
 
 // generateStoreToLocal generates code for storing a register into a local variable by the register index and size.
@@ -720,4 +792,8 @@ func registerByIndex(index, size int) string {
 func alignSP(offset int) int {
 	// SP must always be aligned by 16 bytes on ARM64.
 	return util.Align(offset, 16)
+}
+
+func getGlobalLabel(name string) string {
+	return "_" + strings.TrimPrefix(name, "@")
 }

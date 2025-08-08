@@ -1,0 +1,8 @@
+var ANSWER = 42;
+var UNINITIALIZED: int;
+
+func main(): int {
+  printf("the answer is %d\n", ANSWER);
+  printf("an uninitialized value is %d\n", UNINITIALIZED);
+  return 0;
+}

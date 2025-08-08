@@ -15,8 +15,9 @@ type Generator struct {
 	breakLabel     string
 	continueLabel  string
 	funcs          map[string]types.FuncProto
+	globalVars     map[string]int
 	// Local variables: name -> size in bytes.
-	vars               map[string]int
+	localVars          map[string]int
 	types              *types.TypeTable
 	isExternalFunction bool
 }
@@ -38,6 +39,11 @@ func (g *Generator) Generate(node *ast.Program) (IrProgram, []error) {
 
 	g.types = typeTable
 
+	g.globalVars = make(map[string]int)
+	for _, varDecl := range node.VariableDeclarations {
+		g.globalVars[varDecl.Name] = g.types.GetSizeNoError(varDecl.Type)
+	}
+
 	for _, funcProto := range types.GetFunctionTable(node) {
 		g.funcs[funcProto.Name] = funcProto
 	}
@@ -50,6 +56,9 @@ func (g *Generator) Generate(node *ast.Program) (IrProgram, []error) {
 		irFunc := g.generateFunction(function)
 		irp.Functions = append(irp.Functions, irFunc)
 	}
+
+	initStub := g.generateInit(node.VariableDeclarations)
+	irp.Functions = append(irp.Functions, initStub)
 
 	mainStub := g.generateMain()
 	irp.Functions = append(irp.Functions, mainStub)
@@ -73,11 +82,11 @@ func (g *Generator) generateFunction(node ast.Function) IrFunction {
 	}
 
 	g.nextTempIndex = 1
-	g.vars = make(map[string]int)
+	g.localVars = make(map[string]int)
 	g.isExternalFunction = node.External
 
 	for _, arg := range node.Args {
-		g.vars[arg.Name] = g.types.GetSizeNoError(arg.Type)
+		g.localVars[arg.Name] = g.types.GetSizeNoError(arg.Type)
 		irfunc.Args = append(irfunc.Args, arg.Name)
 		irfunc.ArgSizes = append(irfunc.ArgSizes, g.types.GetSizeNoError(arg.Type))
 	}
@@ -130,7 +139,7 @@ func (g *Generator) generateStatementOps(node ast.Statement) []Op {
 			ops = append(ops, initOps...)
 		}
 		size := g.types.GetSizeNoError(varDecl.Type)
-		g.vars[varDecl.Name] = size
+		g.localVars[varDecl.Name] = size
 		ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: initArg})
 	} else if exprStmt, ok := node.(*ast.ExpressionStatement); ok {
 		// We ignore the result of the expression.
@@ -182,7 +191,8 @@ func (g *Generator) generateExpressionOps(node ast.Expression) ([]Op, Arg, int) 
 	} else if call, ok := node.(*ast.FunctionCall); ok {
 		return g.generateFunctionCallOps(call)
 	} else if ref, ok := node.(*ast.VariableReference); ok {
-		return []Op{}, Arg{Variable: ref.Name}, g.vars[ref.Name]
+		size := g.getVariableSize(ref.Name)
+		return []Op{}, Arg{Variable: ref.Name}, size
 	} else if binOp, ok := node.(*ast.BinaryOperation); ok {
 		return g.generateBinaryOperationOps(binOp)
 	} else if op, ok := node.(*ast.UnaryOperation); ok {
@@ -664,6 +674,13 @@ func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op,
 func (g *Generator) generateMain() IrFunction {
 	ops := []Op{
 		Call{
+			Result:   "$ret", // not actually used, but (currently) required.
+			Function: "Pirx_Init",
+			Args:     []Arg{},
+			ArgSizes: []int{},
+			Size:     types.INT_SIZE,
+		},
+		Call{
 			Result:   "$ret",
 			Function: "Pirx_Main",
 			Args:     []Arg{},
@@ -684,6 +701,30 @@ func (g *Generator) generateMain() IrFunction {
 	}
 }
 
+func (g *Generator) generateInit(globalDeclarations []ast.VariableDeclaration) IrFunction {
+	ops := []Op{}
+
+	for _, decl := range globalDeclarations {
+		if decl.Initializer == nil {
+			size := g.types.GetSizeNoError(decl.Type)
+			ops = append(ops, Assign{Size: size, Target: decl.Name, Value: Arg{Zero: true}})
+		} else {
+			initOps, initArg, initSize := g.generateExpressionOps(decl.Initializer)
+			ops = append(ops, initOps...)
+			ops = append(ops, Assign{Size: initSize, Target: decl.Name, Value: initArg})
+		}
+	}
+
+	ops = append(ops, Return{Size: types.INT_SIZE, Value: &Arg{LiteralInt: util.Int64Ptr(0)}})
+
+	return IrFunction{
+		Name:     "Pirx_Init",
+		Args:     []string{},
+		ArgSizes: []int{},
+		Ops:      ops,
+	}
+}
+
 func (g *Generator) errorf(format string, arg ...any) {
 	g.errors = append(g.errors, fmt.Errorf(format, arg...))
 }
@@ -692,7 +733,7 @@ func (g *Generator) allocTemp(size int) string {
 	idx := g.nextTempIndex
 	g.nextTempIndex++
 	name := fmt.Sprintf("$%d", idx)
-	g.vars[name] = size
+	g.localVars[name] = size
 	return name
 }
 
@@ -700,6 +741,16 @@ func (g *Generator) allocLabel() string {
 	idx := g.nextLabelIndex
 	g.nextLabelIndex++
 	return fmt.Sprintf("anchor%d", idx)
+}
+
+func (g *Generator) getVariableSize(name string) int {
+	if globalSize, ok := g.globalVars[name]; ok {
+		return globalSize
+	}
+	if localSize, ok := g.localVars[name]; ok {
+		return localSize
+	}
+	panic(fmt.Errorf("unknown variable %s", name))
 }
 
 func binaryOperationSize(operator string, operandSize int) int {

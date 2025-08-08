@@ -21,3 +21,22 @@ func GatherStrings(p ir.IrProgram) []string {
 	}
 	return slices.Collect(maps.Keys(uniqueStrings))
 }
+
+type NameAndSize struct {
+	Name string
+	Size int
+}
+
+func GatherGlobals(p ir.IrProgram) map[string]int {
+	nameToSize := make(map[string]int)
+	for _, f := range p.Functions {
+		for _, op := range f.Ops {
+			target := op.GetTarget()
+			if ir.IsGlobal(target) {
+				nameToSize[target] = op.GetSize()
+			}
+		}
+	}
+
+	return nameToSize
+}

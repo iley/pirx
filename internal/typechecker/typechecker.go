@@ -25,6 +25,7 @@ func NewTypeChecker(program *ast.Program) *TypeChecker {
 	return &TypeChecker{
 		program:       program,
 		declaredFuncs: make(map[string]types.FuncProto),
+		vars:          newVarStack(),
 		errors:        []error{},
 	}
 }
@@ -45,6 +46,13 @@ func (c *TypeChecker) Check() (*ast.Program, []error) {
 	}
 	c.types = types
 
+	c.vars.startScope()
+
+	checkedVarDecls := make([]ast.VariableDeclaration, len(c.program.VariableDeclarations))
+	for i, decl := range c.program.VariableDeclarations {
+		checkedVarDecls[i] = *c.checkVariableDeclaration(&decl /*global=*/, true)
+	}
+
 	checkedFunctions := make([]ast.Function, len(c.program.Functions))
 	for i, fn := range c.program.Functions {
 		checkedFunctions[i] = c.checkFunction(fn)
@@ -54,23 +62,24 @@ func (c *TypeChecker) Check() (*ast.Program, []error) {
 	copy(typeDecls, c.program.TypeDeclarations)
 
 	return &ast.Program{
-		Loc:              c.program.Loc,
-		Functions:        checkedFunctions,
-		TypeDeclarations: typeDecls,
+		Loc:                  c.program.Loc,
+		Functions:            checkedFunctions,
+		TypeDeclarations:     typeDecls,
+		VariableDeclarations: checkedVarDecls,
 	}, c.errors
 }
 
 func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 	c.currentFunc = c.declaredFuncs[fn.Name]
 	c.hasReturn = false
-	c.vars = newVarStack()
 	c.nestedLoops = 0
 
-	// Create the root scope for the function.
+	c.vars.resetUsageCounts()
 	c.vars.startScope()
+	defer c.vars.endScope()
 
 	for _, arg := range fn.Args {
-		ok := c.vars.declare(arg.Name, arg.Type)
+		ok := c.vars.declare(arg.Name, arg.Type /*global=*/, false /*constant=*/, false)
 		if !ok {
 			c.errorf("%s: duplicate function argument: %s", fn.Loc, arg.Name)
 		}
@@ -102,10 +111,11 @@ func (c *TypeChecker) checkBlock(block *ast.Block) *ast.Block {
 	checkedStatements := make([]ast.Statement, len(block.Statements))
 
 	c.vars.startScope()
+	defer c.vars.endScope()
+
 	for i, stmt := range block.Statements {
 		checkedStatements[i] = c.checkStatement(stmt)
 	}
-	c.vars.endScope()
 
 	return &ast.Block{
 		Loc:        block.Loc,
@@ -115,7 +125,7 @@ func (c *TypeChecker) checkBlock(block *ast.Block) *ast.Block {
 
 func (c *TypeChecker) checkStatement(stmt ast.Statement) ast.Statement {
 	if varDecl, ok := stmt.(*ast.VariableDeclaration); ok {
-		return c.checkVariableDeclaration(varDecl)
+		return c.checkVariableDeclaration(varDecl /*global=*/, false)
 	} else if exprStmt, ok := stmt.(*ast.ExpressionStatement); ok {
 		return c.checkExpressionStatement(exprStmt)
 	} else if retStmt, ok := stmt.(*ast.ReturnStatement); ok {
@@ -185,7 +195,7 @@ func (c *TypeChecker) checkLiteral(lit *ast.Literal) *ast.Literal {
 	return &result
 }
 
-func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *ast.VariableDeclaration {
+func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration, global bool) *ast.VariableDeclaration {
 	var checkedInitializer ast.Expression
 	typ := decl.Type
 
@@ -208,16 +218,19 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration) *a
 		}
 	}
 
-	ok := c.vars.declare(decl.Name, typ)
+	ok := c.vars.declare(decl.Name, typ, global, decl.IsConstant)
 	if !ok {
 		c.errorf("%s: variable %s is already declared", decl.Loc, decl.Name)
 	}
 
-	_, uniqueName := c.vars.lookup(decl.Name)
+	varDesc, ok := c.vars.lookup(decl.Name)
+	if !ok {
+		panic("variable lookup failed after declaration")
+	}
 
 	result := *decl
 	result.Initializer = checkedInitializer
-	result.Name = uniqueName
+	result.Name = varDesc.uniqueName
 	result.Type = typ
 	return &result
 }
@@ -292,9 +305,17 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 		}
 	}
 
-	// Ensure we always have a valid type
+	if varRef, ok := checkedTarget.(*ast.VariableReference); ok {
+		if vd, ok := c.vars.lookup(varRef.Name); ok {
+			if vd.constant {
+				c.errorf("%s: cannot assign value to constant %s", assignment.Loc, varRef.Name)
+			}
+		}
+	}
+
+	// Ensure we always have a valid type to avoid nil dereference.
 	if targetType == nil {
-		targetType = ast.Int
+		targetType = ast.Undefined
 	}
 
 	result := *assignment
@@ -305,15 +326,15 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 }
 
 func (c *TypeChecker) checkVariableReference(ref *ast.VariableReference) *ast.VariableReference {
-	typ, uniqueName := c.vars.lookup(ref.Name)
-	if typ == nil {
+	vd, ok := c.vars.lookup(ref.Name)
+	if !ok {
 		c.errorf("%s: variable %s is not declared before reference", ref.Loc, ref.Name)
-		typ = ast.Undefined // Use a default type to avoid nil
+		vd.typ = ast.Undefined // Use a default type to avoid nil
 	}
 
 	result := *ref
-	result.Name = uniqueName
-	result.Type = typ
+	result.Name = vd.uniqueName
+	result.Type = vd.typ
 	return &result
 }
 

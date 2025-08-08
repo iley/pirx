@@ -303,7 +303,7 @@ func removeIneffectiveAssignmentsPass(body []Op) []Op {
 	for _, op := range body {
 		if assign, ok := op.(Assign); ok {
 			// Skip ineffective assignments.
-			if refCount[assign.Target] == 0 {
+			if refCount[assign.Target] == 0 && !IsGlobal(assign.Target) {
 				continue
 			}
 		}

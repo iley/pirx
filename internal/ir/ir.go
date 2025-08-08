@@ -14,7 +14,7 @@ The IR is a basic three-address code. Each operation has size associated with it
 That is the size of the result of the operation in bytes.
 
 Here are the currently supported operations:
- * Assign(Target, Value) - assign value to a variable given its name.
+ * Assign(Target, Value) - assign value to a variable given its name. If a variable name starts with a "@" it's global.
  * AssignByAddr(Target, Value) - assign value to a variable given its address.
  * UnaryOp(Target, Operation, Value) - perform operation Op (e.g. unary minus) and assig result to the Target.
  * BinaryOp(Target, Operation, Left, Right) - performa a binary operation (e.g. add or multiply).
@@ -26,6 +26,10 @@ Here are the currently supported operations:
  * JumpUnless(Condition, Lable) - jump unless condition is true.
  * Anchor(Lable) - define a label for Jump/JumpUnless.
 */
+
+func IsGlobal(name string) bool {
+	return strings.HasPrefix(name, "@")
+}
 
 type IrProgram struct {
 	Functions []IrFunction
@@ -82,6 +86,28 @@ func (a Assign) GetArgs() []Arg {
 }
 
 func (a Assign) GetSize() int {
+	return a.Size
+}
+
+type AssignGlobal struct {
+	Target string
+	Value  Arg
+	Size   int
+}
+
+func (a AssignGlobal) String() string {
+	return fmt.Sprintf("Assign%d(%s, %s)", a.Size, a.Target, a.Value)
+}
+
+func (a AssignGlobal) GetTarget() string {
+	return a.Target
+}
+
+func (a AssignGlobal) GetArgs() []Arg {
+	return []Arg{a.Value}
+}
+
+func (a AssignGlobal) GetSize() int {
 	return a.Size
 }
 

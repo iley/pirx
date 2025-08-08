@@ -87,7 +87,6 @@ func generateGlobalVariables(cc *CodegenContext, globals map[string]int) {
 		p2align := util.MinPowerOfTwo(size)
 		fmt.Fprintf(cc.output, ".zerofill __DATA,__bss,%s,%d,%d\n", label, size, p2align)
 	}
-	fmt.Fprintf(cc.output, ".subsections_via_symbols\n")
 }
 
 func generateFunction(cc *CodegenContext, f ir.IrFunction) error {

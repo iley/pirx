@@ -6,6 +6,7 @@ import (
 	"io"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/iley/pirx/internal/codegen/common"
 	"github.com/iley/pirx/internal/ir"
@@ -86,7 +87,10 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// Sort the locals by size to waste less stack space on alignment.
 	sortedLocals := slices.Collect(maps.Keys(lsizes))
 	slices.SortFunc(sortedLocals, func(a, b string) int {
-		return lsizes[a] - lsizes[b]
+		if lsizes[a] != lsizes[b] {
+			return lsizes[a] - lsizes[b]
+		}
+		return strings.Compare(a, b)
 	})
 
 	// Generate offsets from SP for all locals.

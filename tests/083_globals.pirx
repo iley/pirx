@@ -40,6 +40,8 @@ func main(): int {
   
   // Test struct
   printf("origin: (%d, %d)\n", ORIGIN.x, ORIGIN.y);
+  POINT_A.x = 1;
+  POINT_A.y = 2;
   printf("point A: (%d, %d)\n", POINT_A.x, POINT_A.y);
   
   // Test pointers

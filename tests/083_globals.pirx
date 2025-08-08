@@ -1,8 +1,69 @@
+// Different primitive types
 var ANSWER = 42;
 var UNINITIALIZED: int;
+var BYTE_VAL: int8 = 127i8;
+var BIG_NUM: int64 = 1234567890l;
+var IS_TRUE: bool = true;
+var IS_FALSE: bool;
+
+// Struct type
+struct Point {
+  x: int;
+  y: int;
+}
+
+var ORIGIN: Point;
+var POINT_A: Point;
+
+// Pointer types
+var NULL_PTR: *int;
+var INT_PTR: *int = &ANSWER;
+
+// Slice type (heap-allocated)
+var NUMBERS: []int;
+
+// Constants
+val PI = 3;
+val MAX_SIZE: int64 = 1000l;
+
+// Complex expressions
+var CALCULATED = ANSWER + 8;
 
 func main(): int {
-  printf("the answer is %d\n", ANSWER);
-  printf("an uninitialized value is %d\n", UNINITIALIZED);
+  // Test primitive types
+  printf("answer: %d\n", ANSWER);
+  printf("uninitialized int: %d\n", UNINITIALIZED);
+  printf("int8 value: %d\n", BYTE_VAL);
+  printf("int64 value: %ld\n", BIG_NUM);
+  printf("bool true: %d\n", IS_TRUE);
+  printf("bool false: %d\n", IS_FALSE);
+  
+  // Test struct
+  printf("origin: (%d, %d)\n", ORIGIN.x, ORIGIN.y);
+  printf("point A: (%d, %d)\n", POINT_A.x, POINT_A.y);
+  
+  // Test pointers
+  printf("null pointer: %p\n", NULL_PTR);
+  if (INT_PTR != NULL_PTR) {
+    printf("int pointer: not null (value: %d)\n", *INT_PTR);
+  } else {
+    printf("int pointer: null\n");
+  }
+  
+  // Test slice
+  NUMBERS = new([]int, 3);
+  NUMBERS[0] = 1;
+  NUMBERS[1] = 2;
+  NUMBERS[2] = 3;
+  printf("slice: [%d, %d, %d]\n", NUMBERS[0], NUMBERS[1], NUMBERS[2]);
+  dispose(NUMBERS);
+  
+  // Test constants
+  printf("pi constant: %d\n", PI);
+  printf("max size constant: %ld\n", MAX_SIZE);
+  
+  // Test calculated value
+  printf("calculated value: %d\n", CALCULATED);
+  
   return 0;
 }

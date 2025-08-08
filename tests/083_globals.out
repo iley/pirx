@@ -1,2 +1,14 @@
-the answer is 42
-an uninitialized value is 0
+answer: 42
+uninitialized int: 0
+int8 value: 127
+int64 value: 1234567890
+bool true: 1
+bool false: 0
+origin: (0, 0)
+point A: (0, 0)
+null pointer: 0x0
+int pointer: not null (value: 42)
+slice: [1, 2, 3]
+pi constant: 3
+max size constant: 1000
+calculated value: 50

@@ -223,5 +223,6 @@ func desugarSizeof(dc *desugarContext, call *ast.FunctionCall) ast.Expression {
 	return &ast.Literal{
 		Loc:      call.Loc,
 		IntValue: util.Int32Ptr(argSize),
+		Type:     ast.Int,
 	}
 }

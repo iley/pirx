@@ -23,6 +23,10 @@ var (
 	// Represents a value that can be passed to dispose() i.e. either a pointer or a slice.
 	// Not directly accessible to the user.
 	Disposable = &BaseType{Name: "disposable"}
+	// Not directly accessible to the user.
+	Any = &BaseType{Name: "any"}
+	// Not directly accessible to the user.
+	AnyList = &BaseType{Name: "anylist"}
 )
 
 // Type represents a Pirx type
@@ -120,7 +124,7 @@ func IsSliceType(typ Type) bool {
 	return ok
 }
 
-var pseudoTypes = []Type{Void, VoidPtr, NullPtr, Undefined, Disposable}
+var pseudoTypes = []Type{Void, VoidPtr, NullPtr, Undefined, Disposable, Any, AnyList}
 
 func IsConcreteType(typ Type) bool {
 	return !slices.Contains(pseudoTypes, typ)

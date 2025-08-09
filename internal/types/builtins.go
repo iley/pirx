@@ -23,5 +23,10 @@ func getBuiltins() []FuncProto {
 			Args:         []Arg{{"p", ast.Disposable}},
 			External:     true,
 		},
+		{
+			Name:         "append",
+			ExternalName: "Pirx_Slice_Append",
+			Args:         []Arg{{"list", ast.AnyList}, {"elem", ast.Any}},
+		},
 	}
 }

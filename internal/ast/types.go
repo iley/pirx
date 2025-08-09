@@ -5,6 +5,13 @@ import (
 	"slices"
 )
 
+const (
+	WORD_SIZE  = 8
+	BOOL_SIZE  = 4
+	INT_SIZE   = 4
+	SLICE_SIZE = 16
+)
+
 // Common base types - singleton instances
 var (
 	Int    = &BaseType{Name: "int"}

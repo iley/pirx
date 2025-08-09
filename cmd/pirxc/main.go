@@ -81,8 +81,6 @@ func main() {
 		return
 	}
 
-	ast = desugar.Run(ast)
-
 	tc := typechecker.NewTypeChecker(ast)
 	typedAst, programErrors := tc.Check()
 	if len(programErrors) > 0 {
@@ -92,6 +90,16 @@ func main() {
 		os.Exit(1)
 	}
 	ast = typedAst
+
+	// Desugaring must run after the typechecker because it relies on types (e.g. for sizeof()).
+	var desugarErrors []error
+	ast, desugarErrors = desugar.Run(ast)
+	if len(desugarErrors) > 0 {
+		for _, err := range desugarErrors {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+		}
+		os.Exit(1)
+	}
 
 	if *targetString == "final_ast" {
 		fmt.Printf("%s\n", ast.String())

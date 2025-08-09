@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/iley/pirx/internal/ast"
-	"github.com/iley/pirx/internal/types"
 	"github.com/iley/pirx/internal/util"
 )
 
@@ -14,37 +13,32 @@ type Generator struct {
 	nextLabelIndex int
 	breakLabel     string
 	continueLabel  string
-	funcs          map[string]types.FuncProto
+	funcs          map[string]ast.FuncProto
 	globalVars     map[string]int
 	// Local variables: name -> size in bytes.
 	localVars          map[string]int
-	types              *types.TypeTable
+	types              *ast.TypeTable
 	isExternalFunction bool
 }
 
 func NewGenerator() *Generator {
 	return &Generator{
 		nextLabelIndex: 1,
-		funcs:          make(map[string]types.FuncProto),
+		funcs:          make(map[string]ast.FuncProto),
 	}
 }
 
 func (g *Generator) Generate(node *ast.Program) (IrProgram, []error) {
 	irp := IrProgram{}
 
-	typeTable, err := types.MakeTypeTable(node.TypeDeclarations)
-	if err != nil {
-		return IrProgram{}, []error{err}
-	}
-
-	g.types = typeTable
+	g.types = node.TypeTable
 
 	g.globalVars = make(map[string]int)
 	for _, varDecl := range node.VariableDeclarations {
 		g.globalVars[varDecl.Name] = g.types.GetSizeNoError(varDecl.Type)
 	}
 
-	for _, funcProto := range types.GetFunctionTable(node) {
+	for _, funcProto := range ast.GetFunctionTable(node) {
 		g.funcs[funcProto.Name] = funcProto
 	}
 
@@ -235,7 +229,7 @@ func (g *Generator) generateUnaryOperationOps(op *ast.UnaryOperation) ([]Op, Arg
 	var resultSize int
 	switch op.Operator {
 	case "&":
-		resultSize = types.WORD_SIZE
+		resultSize = ast.WORD_SIZE
 	case "*":
 		pointerType, ok := op.Operand.GetType().(*ast.PointerType)
 		if !ok {
@@ -259,38 +253,38 @@ func (g *Generator) generateUnaryOperationOps(op *ast.UnaryOperation) ([]Op, Arg
 func (g *Generator) generateNewExpressionOps(ne *ast.NewExpression) ([]Op, Arg, int) {
 	if sliceType, ok := ne.Type.(*ast.SliceType); ok {
 		ops, sizeArg, sizeSize := g.generateExpressionOps(ne.Count)
-		if sizeSize != types.INT_SIZE {
+		if sizeSize != ast.INT_SIZE {
 			// TODO: Proper error handling!
-			g.errorf("%s: expected the size expression to have size %d, got %d", ne.Loc, types.INT_SIZE, sizeSize)
+			g.errorf("%s: expected the size expression to have size %d, got %d", ne.Loc, ast.INT_SIZE, sizeSize)
 			return []Op{}, Arg{}, 0
 		}
 		elementSize := g.types.GetSizeNoError(sliceType.ElementType)
-		res := g.allocTemp(types.SLICE_SIZE)
+		res := g.allocTemp(ast.SLICE_SIZE)
 		allocCall := ExternalCall{
 			Result:   res,
 			Function: "Pirx_Slice_Alloc",
 			// TODO: Support independent capacity argument.
 			Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, sizeArg, sizeArg},
-			ArgSizes:  []int{types.INT_SIZE, types.INT_SIZE, types.INT_SIZE},
+			ArgSizes:  []int{ast.INT_SIZE, ast.INT_SIZE, ast.INT_SIZE},
 			NamedArgs: 3,
-			Size:      types.SLICE_SIZE,
+			Size:      ast.SLICE_SIZE,
 		}
 		ops = append(ops, allocCall)
-		return ops, Arg{Variable: res}, types.SLICE_SIZE
+		return ops, Arg{Variable: res}, ast.SLICE_SIZE
 	} else {
 		// Regular type allocation -> return a pointer.
 		allocSize := g.types.GetSizeNoError(ne.TypeExpr)
-		res := g.allocTemp(types.WORD_SIZE)
+		res := g.allocTemp(ast.WORD_SIZE)
 		// TODO: Maybe make a helper function for generating such function calls?
 		allocCall := ExternalCall{
 			Result:    res,
 			Function:  "Pirx_Alloc",
 			Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(allocSize))}},
-			ArgSizes:  []int{types.WORD_SIZE},
+			ArgSizes:  []int{ast.WORD_SIZE},
 			NamedArgs: 1,
-			Size:      types.WORD_SIZE,
+			Size:      ast.WORD_SIZE,
 		}
-		return []Op{allocCall}, Arg{Variable: res}, types.WORD_SIZE
+		return []Op{allocCall}, Arg{Variable: res}, ast.WORD_SIZE
 	}
 }
 
@@ -316,7 +310,7 @@ func (g *Generator) generateLiteralOps(literal *ast.Literal) ([]Op, Arg, int) {
 		return []Op{}, Arg{LiteralInt: &intValue}, 4
 	} else if literal.NullValue {
 		value := int64(0)
-		return []Op{}, Arg{LiteralInt: &value}, types.WORD_SIZE
+		return []Op{}, Arg{LiteralInt: &value}, ast.WORD_SIZE
 	} else {
 		panic(fmt.Sprintf("invalid literal type: %#v", literal))
 	}
@@ -327,13 +321,13 @@ func (g *Generator) generateLiteralOps(literal *ast.Literal) ([]Op, Arg, int) {
 func (g *Generator) generateExpressionAddrOps(node ast.Expression) ([]Op, Arg) {
 	// Literals, function calls, assignments etc. are not supported.
 	if ref, ok := node.(*ast.VariableReference); ok {
-		res := g.allocTemp(types.WORD_SIZE)
-		ops := []Op{UnaryOp{Result: res, Operation: "&", Value: Arg{Variable: ref.Name}, Size: types.WORD_SIZE}}
+		res := g.allocTemp(ast.WORD_SIZE)
+		ops := []Op{UnaryOp{Result: res, Operation: "&", Value: Arg{Variable: ref.Name}, Size: ast.WORD_SIZE}}
 		return ops, Arg{Variable: res}
 	} else if op, ok := node.(*ast.UnaryOperation); ok {
 		if op.Operator == "*" {
 			ops, arg, size := g.generateExpressionOps(op.Operand)
-			if size != types.WORD_SIZE {
+			if size != ast.WORD_SIZE {
 				g.errorf("%s: invalid expression size in dereference: %d, expected word size", node.GetLocation(), size)
 			}
 			return ops, arg
@@ -370,7 +364,7 @@ func (g *Generator) generateFieldAccessAddrOps(object ast.Expression, fieldName 
 	}
 
 	// Add offset.
-	addrTemp := g.allocTemp(types.WORD_SIZE)
+	addrTemp := g.allocTemp(ast.WORD_SIZE)
 	field := g.getField(object.GetLocation(), object.GetType(), fieldName)
 	offset := int64(field.Offset)
 	ops = append(ops, BinaryOp{
@@ -378,8 +372,8 @@ func (g *Generator) generateFieldAccessAddrOps(object ast.Expression, fieldName 
 		Left:        objArg,
 		Operation:   "+",
 		Right:       Arg{LiteralInt: &offset},
-		Size:        types.WORD_SIZE,
-		OperandSize: types.WORD_SIZE,
+		Size:        ast.WORD_SIZE,
+		OperandSize: ast.WORD_SIZE,
 	})
 	// Dereference.
 	return ops, Arg{Variable: addrTemp}
@@ -468,7 +462,7 @@ func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int
 }
 
 // generateExternalCall creates an ExternalCall operation with the appropriate function name.
-func (g *Generator) generateExternalCall(funcProto types.FuncProto, resultVar string, args []Arg, sizes []int, size int) ExternalCall {
+func (g *Generator) generateExternalCall(funcProto ast.FuncProto, resultVar string, args []Arg, sizes []int, size int) ExternalCall {
 	name := funcProto.Name
 	if funcProto.ExternalName != "" {
 		name = funcProto.ExternalName
@@ -489,18 +483,18 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 			Result:    resultVar,
 			Function:  "Pirx_Dispose",
 			Args:      []Arg{arg},
-			ArgSizes:  []int{types.WORD_SIZE},
+			ArgSizes:  []int{ast.WORD_SIZE},
 			NamedArgs: 1,
-			Size:      types.WORD_SIZE,
+			Size:      ast.WORD_SIZE,
 		}
 	} else if ast.IsSliceType(call.Args[0].GetType()) {
 		return ExternalCall{
 			Result:    resultVar,
 			Function:  "Pirx_Slice_Dispose",
 			Args:      []Arg{arg},
-			ArgSizes:  []int{types.SLICE_SIZE},
+			ArgSizes:  []int{ast.SLICE_SIZE},
 			NamedArgs: 1,
-			Size:      types.WORD_SIZE,
+			Size:      ast.WORD_SIZE,
 		}
 	} else {
 		panic(fmt.Errorf("%s: invalid argument type for dispose(): %s", call.Loc, call.Args[0].GetType()))
@@ -534,7 +528,7 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 
 	// This is a workaround for void functions. For now we just make it look like they return a word.
 	// TODO: Handle void functions better. Omit the assignment. Perhaps introduce a null target.
-	size := types.WORD_SIZE
+	size := ast.WORD_SIZE
 	if funcProto.ReturnType != nil {
 		size = g.types.GetSizeNoError(funcProto.ReturnType)
 	}
@@ -561,7 +555,7 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 	return ops, Arg{Variable: temp}, size
 }
 
-func (g *Generator) getField(loc ast.Location, objType ast.Type, fieldName string) *types.StructField {
+func (g *Generator) getField(loc ast.Location, objType ast.Type, fieldName string) *ast.StructFieldDescriptor {
 	var structType ast.Type
 
 	if ptrType, ok := objType.(*ast.PointerType); ok {
@@ -585,8 +579,8 @@ func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([
 	// TODO: Generate boundary check!
 	sliceOps, sliceArg, _ := g.generateExpressionOps(sliceExpr)
 	indexOps, indexArg, indexSize := g.generateExpressionOps(indexExpr)
-	if indexSize != types.INT_SIZE {
-		panic(fmt.Errorf("%s: expected size of the index value to be %d, got %d", sliceExpr.GetLocation(), types.INT_SIZE, indexSize))
+	if indexSize != ast.INT_SIZE {
+		panic(fmt.Errorf("%s: expected size of the index value to be %d, got %d", sliceExpr.GetLocation(), ast.INT_SIZE, indexSize))
 	}
 
 	sliceType, ok := sliceExpr.GetType().(*ast.SliceType)
@@ -597,7 +591,7 @@ func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([
 
 	ops := append(sliceOps, indexOps...)
 
-	addrTemp := g.allocTemp(types.WORD_SIZE)
+	addrTemp := g.allocTemp(ast.WORD_SIZE)
 	ops = append(
 		ops,
 		// Not the implicit 4->8 extension.
@@ -606,8 +600,8 @@ func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([
 			Left:        indexArg,
 			Operation:   "*",
 			Right:       Arg{LiteralInt: &elementSize},
-			OperandSize: types.INT_SIZE,
-			Size:        types.WORD_SIZE,
+			OperandSize: ast.INT_SIZE,
+			Size:        ast.WORD_SIZE,
 		},
 		// This is a bit of a hack: we're treating the slice as if it was a single 64-bit address field.
 		// This gives us the access to the .data field which is the first field in the slice struct.
@@ -616,8 +610,8 @@ func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([
 			Left:        Arg{Variable: addrTemp},
 			Operation:   "+",
 			Right:       sliceArg,
-			OperandSize: types.WORD_SIZE,
-			Size:        types.WORD_SIZE,
+			OperandSize: ast.WORD_SIZE,
+			Size:        ast.WORD_SIZE,
 		},
 	)
 
@@ -678,18 +672,18 @@ func (g *Generator) generateMain() IrFunction {
 			Function: "Pirx_Init",
 			Args:     []Arg{},
 			ArgSizes: []int{},
-			Size:     types.INT_SIZE,
+			Size:     ast.INT_SIZE,
 		},
 		Call{
 			Result:   "$ret",
 			Function: "Pirx_Main",
 			Args:     []Arg{},
 			ArgSizes: []int{},
-			Size:     types.INT_SIZE,
+			Size:     ast.INT_SIZE,
 		},
 		ExternalReturn{
 			Value: &Arg{Variable: "$ret"},
-			Size:  types.INT_SIZE,
+			Size:  ast.INT_SIZE,
 		},
 	}
 
@@ -715,7 +709,7 @@ func (g *Generator) generateInit(globalDeclarations []ast.VariableDeclaration) I
 		}
 	}
 
-	ops = append(ops, Return{Size: types.INT_SIZE, Value: &Arg{LiteralInt: util.Int64Ptr(0)}})
+	ops = append(ops, Return{Size: ast.INT_SIZE, Value: &Arg{LiteralInt: util.Int64Ptr(0)}})
 
 	return IrFunction{
 		Name:     "Pirx_Init",
@@ -756,7 +750,7 @@ func (g *Generator) getVariableSize(name string) int {
 func binaryOperationSize(operator string, operandSize int) int {
 	switch operator {
 	case "==", "!=", "<", ">", "<=", ">=":
-		return types.BOOL_SIZE
+		return ast.BOOL_SIZE
 	}
 	return operandSize
 }

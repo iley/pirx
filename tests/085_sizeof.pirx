@@ -1,0 +1,13 @@
+struct Vector3 {
+  x: int;
+  y: int;
+  z: int;
+}
+
+func main(): int {
+  var v: Vector3;
+
+  printf("sizeof(v) = %d\n", sizeof(v));
+
+  return 0;
+}

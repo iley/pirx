@@ -21,6 +21,7 @@ type Program struct {
 	Functions            []Function
 	TypeDeclarations     []TypeDeclaration
 	VariableDeclarations []VariableDeclaration
+	TypeTable            *TypeTable
 }
 
 func (p *Program) GetLocation() Location {

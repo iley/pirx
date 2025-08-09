@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/codegen/common"
 	"github.com/iley/pirx/internal/ir"
-	"github.com/iley/pirx/internal/types"
 	"github.com/iley/pirx/internal/util"
 )
 
@@ -151,7 +151,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 		argsBlockSize += argSize
 	}
 	// Add one word for the saved x19.
-	argsBlockSize += types.WORD_SIZE
+	argsBlockSize += ast.WORD_SIZE
 	// Include SP padding.
 	argsBlockSize = alignSP(argsBlockSize)
 
@@ -227,7 +227,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 	if assign.Value.Variable != "" {
 		if ir.IsGlobal(assign.Target) {
 			// Load global's address into x1.
-			generateAddressLoad(cc, 1, types.WORD_SIZE, ir.Arg{Variable: assign.Target})
+			generateAddressLoad(cc, 1, ast.WORD_SIZE, ir.Arg{Variable: assign.Target})
 			generateMemoryCopyToReg(cc, assign.Value, assign.Size, "x1", 0)
 		} else {
 			generateMemoryCopyToReg(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
@@ -236,7 +236,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 		// Assign integer constant to variable.
 		if ir.IsGlobal(assign.Target) {
 			// Load global's address into x1.
-			generateAddressLoad(cc, 1, types.WORD_SIZE, ir.Arg{Variable: assign.Target})
+			generateAddressLoad(cc, 1, ast.WORD_SIZE, ir.Arg{Variable: assign.Target})
 			// Load the value into x0.
 			generateRegisterLoad(cc, 0, assign.Size, assign.Value)
 			// x0 -> [x1]
@@ -301,9 +301,9 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 	}
 
 	// Save x19 to the stack because it currently holds this function's result address.
-	offset += types.WORD_SIZE
+	offset += ast.WORD_SIZE
 	savedX19Offset := offset
-	generateRegisterStore(cc, 19, types.WORD_SIZE, "sp", -offset)
+	generateRegisterStore(cc, 19, ast.WORD_SIZE, "sp", -offset)
 
 	// Don't forget about stack alignment.
 	offset = alignSP(offset)
@@ -368,7 +368,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) erro
 		// Arguments go on the stack.
 		// First, move SP to allocate space for the args. Don't forget to align SP.
 		// TODO: Walk the arguments and add their sizes up (including padding).
-		spShift = alignSP(types.WORD_SIZE * (len(remainingArgs)))
+		spShift = alignSP(ast.WORD_SIZE * (len(remainingArgs)))
 
 		// Then generate the stack pushes.
 		for i, arg := range remainingArgs {
@@ -379,7 +379,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) erro
 				// Sign extend 32-bit values to 64-bit
 				fmt.Fprintf(cc.output, "  sxtw x10, w10\n")
 			}
-			generateRegisterStore(cc, 10, types.WORD_SIZE, "sp", i*types.WORD_SIZE-int(spShift))
+			generateRegisterStore(cc, 10, ast.WORD_SIZE, "sp", i*ast.WORD_SIZE-int(spShift))
 		}
 	}
 
@@ -608,7 +608,7 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 		if offset != 0 {
 			panic("cannot load a literal string with offset")
 		}
-		if regSize != types.WORD_SIZE {
+		if regSize != ast.WORD_SIZE {
 			panic(fmt.Errorf("cannot load a string literal into register of size %d", regSize))
 		}
 		label := cc.stringLiterals[*arg.LiteralString]
@@ -627,8 +627,8 @@ func generateAddressLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) 
 	}
 
 	// TODO: Get rid of regSize argument.
-	if regSize != types.WORD_SIZE {
-		panic(fmt.Errorf("can only load address into a register of size %d", types.WORD_SIZE))
+	if regSize != ast.WORD_SIZE {
+		panic(fmt.Errorf("can only load address into a register of size %d", ast.WORD_SIZE))
 	}
 
 	reg := registerByIndex(regIndex, regSize)
@@ -678,8 +678,8 @@ func generateRegisterStore(cc *CodegenContext, regIndex, regSize int, baseReg st
 // Loads the pointer address into a register and stores the value through it.
 func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Arg, offset int) {
 	// Load the destination address.
-	generateRegisterLoad(cc, 1, types.WORD_SIZE, target)
-	addrReg := registerByIndex(1, types.WORD_SIZE)
+	generateRegisterLoad(cc, 1, ast.WORD_SIZE, target)
+	addrReg := registerByIndex(1, ast.WORD_SIZE)
 	srcReg := registerByIndex(regIndex, regSize)
 	// Add offset to the address.
 	if offset != 0 {
@@ -741,7 +741,7 @@ func generateMemoryCopyToReference(cc *CodegenContext, source ir.Arg, size int, 
 func generateMemoryCopyFromRef(cc *CodegenContext, sourceRef ir.Arg, size int, target string) {
 	// Load the source address to x1.
 	sourceAddrReg := 1
-	generateRegisterLoad(cc, sourceAddrReg, types.WORD_SIZE, sourceRef)
+	generateRegisterLoad(cc, sourceAddrReg, ast.WORD_SIZE, sourceRef)
 
 	offset := 0
 	for offset < size {

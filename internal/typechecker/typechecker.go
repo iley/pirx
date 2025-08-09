@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/iley/pirx/internal/ast"
-	"github.com/iley/pirx/internal/types"
 )
 
 // TypeChecker checks and fills in types in a program.
@@ -13,10 +12,10 @@ import (
 type TypeChecker struct {
 	program       *ast.Program
 	vars          *varStack
-	declaredFuncs map[string]types.FuncProto
-	types         *types.TypeTable
+	declaredFuncs map[string]ast.FuncProto
+	types         *ast.TypeTable
 	errors        []error
-	currentFunc   types.FuncProto
+	currentFunc   ast.FuncProto
 	hasReturn     bool
 	nestedLoops   int
 }
@@ -24,7 +23,7 @@ type TypeChecker struct {
 func NewTypeChecker(program *ast.Program) *TypeChecker {
 	return &TypeChecker{
 		program:       program,
-		declaredFuncs: make(map[string]types.FuncProto),
+		declaredFuncs: make(map[string]ast.FuncProto),
 		vars:          newVarStack(),
 		errors:        []error{},
 	}
@@ -34,12 +33,12 @@ func (c *TypeChecker) Check() (*ast.Program, []error) {
 	// TODO: Check that function declarations use valid types.
 
 	// Gather function prototypes so we can check arguments and types later.
-	protos := types.GetFunctionTable(c.program)
+	protos := ast.GetFunctionTable(c.program)
 	for _, proto := range protos {
 		c.declaredFuncs[proto.Name] = proto
 	}
 
-	types, err := types.MakeTypeTable(c.program.TypeDeclarations)
+	types, err := ast.MakeTypeTable(c.program.TypeDeclarations)
 	if err != nil {
 		c.errors = append(c.errors, err)
 		return &ast.Program{}, c.errors
@@ -66,6 +65,7 @@ func (c *TypeChecker) Check() (*ast.Program, []error) {
 		Functions:            checkedFunctions,
 		TypeDeclarations:     typeDecls,
 		VariableDeclarations: checkedVarDecls,
+		TypeTable:            types,
 	}, c.errors
 }
 
@@ -457,6 +457,10 @@ func (c *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) *ast.WhileSt
 }
 
 func (c *TypeChecker) checkForLoop(forLoop *ast.ForStatement) *ast.ForStatement {
+	// Create a scope for the loop variable.
+	c.vars.startScope()
+	defer c.vars.endScope()
+
 	checkedInit := c.checkStatement(forLoop.Init)
 	checkedCond := c.checkExpression(forLoop.Condition)
 	checkedUpdate := c.checkExpression(forLoop.Update)

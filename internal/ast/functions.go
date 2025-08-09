@@ -1,0 +1,70 @@
+package ast
+
+type FuncProto struct {
+	Name         string
+	ExternalName string
+	Args         []FuncArg
+	ReturnType   Type
+	Variadic     bool
+	// For external functions we need to follow C ABI.
+	External bool
+}
+
+type FuncArg struct {
+	Name string
+	Typ  Type
+}
+
+func GetFunctionTable(program *Program) []FuncProto {
+	protos := []FuncProto{}
+	protos = append(protos, getBuiltins()...)
+
+	for _, fn := range program.Functions {
+		proto := FuncProto{
+			Name:       fn.Name,
+			Args:       []FuncArg{},
+			ReturnType: fn.ReturnType,
+			External:   fn.External,
+		}
+		for _, p := range fn.Args {
+			proto.Args = append(proto.Args, FuncArg{p.Name, p.Type})
+		}
+		protos = append(protos, proto)
+	}
+
+	return protos
+}
+
+func getBuiltins() []FuncProto {
+	return []FuncProto{
+		{
+			Name:       "printf",
+			Args:       []FuncArg{{"fmt", String}},
+			ReturnType: Int,
+			Variadic:   true,
+			External:   true,
+		},
+		{
+			Name:       "putchar",
+			Args:       []FuncArg{{"ch", Int}},
+			ReturnType: Int,
+			External:   true,
+		},
+		{
+			Name:         "dispose",
+			ExternalName: "Pirx_Dispose",
+			Args:         []FuncArg{{"p", Disposable}},
+			External:     true,
+		},
+		{
+			Name:         "append",
+			ExternalName: "Pirx_Slice_Append",
+			Args:         []FuncArg{{"list", AnyList}, {"elem", Any}},
+		},
+		{
+			// This is not really a function, but we need a definition to make type checker happy.
+			Name: "sizeof",
+			Args: []FuncArg{{"expr", Any}},
+		},
+	}
+}

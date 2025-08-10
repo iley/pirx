@@ -1,9 +1,0 @@
-struct vec2 {
-  x: int;
-  y: int;
-}
-
-func main(): int {
-  var a: vec2;
-  return 0;
-}

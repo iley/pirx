@@ -3,21 +3,15 @@ func factorial(n: int) : int {
     return 1;
   }
 
-  var result: int;
-  result = 1;
-
-  var i: int;
-  i = 2;
-  while i < n {
+  var result = 1;
+  var i = 2;
+  for var i = 2; i < n; i++ {
     result = result * i;
-    i = i + 1;
   }
   return result;
 }
 
 func main(): int {
-  var r: int;
-  r = factorial(10);
-  printf("10! = %lld\n", r);
+  printf("10! = %lld\n", factorial(10));
   return 0;
 }

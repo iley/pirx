@@ -1,6 +1,0 @@
-extern func stdlib_demo();
-
-func main(): int {
-  stdlib_demo();
-  return 0;
-}

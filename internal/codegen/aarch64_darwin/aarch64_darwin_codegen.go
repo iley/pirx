@@ -569,39 +569,50 @@ func generateRegisterLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg)
 	generateRegisterLoadWithOffset(cc, regIndex, regSize, arg, 0)
 }
 
+func generateGlobalVariableLoadWithOffset(cc *CodegenContext, reg string, regSize int, variable string, offset int) {
+	label := getGlobalLabel(variable)
+	fmt.Fprintf(cc.output, "  adrp x9, %s@PAGE\n", label)
+	fmt.Fprintf(cc.output, "  add x9, x9, %s@PAGEOFF + %d\n", label, offset)
+	if regSize == 1 {
+		fmt.Fprintf(cc.output, "  ldrsb %s, [x9]\n", reg)
+	} else {
+		fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
+	}
+}
+
+func generateLocalVariableLoadWithOffset(cc *CodegenContext, reg string, regSize int, variable string, offset int) {
+	fullOffset := int64(cc.locals[variable]) + int64(offset)
+	if fullOffset <= MAX_SP_OFFSET {
+		if regSize == 1 {
+			fmt.Fprintf(cc.output, "  ldrsb %s, [sp, #%d]\n", reg, fullOffset)
+		} else {
+			fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, fullOffset)
+		}
+	} else {
+		generateLiteralLoad(cc, "x9", 8, fullOffset)
+		fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
+		if regSize == 1 {
+			fmt.Fprintf(cc.output, "  ldrsb %s, [x9]\n", reg)
+		} else {
+			fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
+		}
+	}
+}
+
+func generateStringLiteralLoad(cc *CodegenContext, reg string, literal string) {
+	label := cc.stringLiterals[literal]
+	fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
+	fmt.Fprintf(cc.output, "  add %s, %s, %s@PAGEOFF\n", reg, reg, label)
+}
+
 func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, arg ir.Arg, offset int) {
 	reg := registerByIndex(regIndex, regSize)
 
 	if arg.Variable != "" {
-		// TODO: This function has become too large, break it down.
 		if ir.IsGlobal(arg.Variable) {
-			label := getGlobalLabel(arg.Variable)
-			fmt.Fprintf(cc.output, "  adrp x9, %s@PAGE\n", label)
-			fmt.Fprintf(cc.output, "  add x9, x9, %s@PAGEOFF + %d\n", label, offset)
-			if regSize == 1 {
-				fmt.Fprintf(cc.output, "  ldrsb %s, [x9]\n", reg)
-			} else {
-				fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
-			}
+			generateGlobalVariableLoadWithOffset(cc, reg, regSize, arg.Variable, offset)
 		} else {
-			fullOffset := int64(cc.locals[arg.Variable]) + int64(offset)
-			if fullOffset <= MAX_SP_OFFSET {
-				// Easy case: offset from SP.
-				if regSize == 1 {
-					fmt.Fprintf(cc.output, "  ldrsb %s, [sp, #%d]\n", reg, fullOffset)
-				} else {
-					fmt.Fprintf(cc.output, "  ldr %s, [sp, #%d]\n", reg, fullOffset)
-				}
-			} else {
-				// Calculate the address in an intermediary register.
-				generateLiteralLoad(cc, "x9", 8, fullOffset)
-				fmt.Fprintf(cc.output, "  add x9, sp, x9\n")
-				if regSize == 1 {
-					fmt.Fprintf(cc.output, "  ldrsb %s, [x9]\n", reg)
-				} else {
-					fmt.Fprintf(cc.output, "  ldr %s, [x9]\n", reg)
-				}
-			}
+			generateLocalVariableLoadWithOffset(cc, reg, regSize, arg.Variable, offset)
 		}
 	} else if arg.LiteralInt != nil {
 		if offset != 0 {
@@ -615,9 +626,7 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 		if regSize != ast.WORD_SIZE {
 			panic(fmt.Errorf("cannot load a string literal into register of size %d", regSize))
 		}
-		label := cc.stringLiterals[*arg.LiteralString]
-		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)
-		fmt.Fprintf(cc.output, "  add %s, %s, %s@PAGEOFF\n", reg, reg, label)
+		generateStringLiteralLoad(cc, reg, *arg.LiteralString)
 	} else if arg.Zero {
 		fmt.Fprintf(cc.output, "  mov %s, #0\n", reg)
 	} else {

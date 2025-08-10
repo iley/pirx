@@ -1,0 +1,14 @@
+var count = 0;
+
+func inc() {
+  count++;
+}
+
+func main(): int {
+  for var i = 0; i < 10; i++ {
+    inc();
+    printf("%d\n", count);
+  }
+
+  return 0;
+}

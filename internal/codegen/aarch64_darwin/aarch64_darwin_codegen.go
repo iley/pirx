@@ -227,7 +227,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 	if assign.Value.Variable != "" {
 		if ir.IsGlobal(assign.Target) {
 			// Load global's address into x1.
-			generateAddressLoad(cc, 1, ast.WORD_SIZE, ir.Arg{Variable: assign.Target})
+			generateAddressLoad(cc, 1, ir.Arg{Variable: assign.Target})
 			generateMemoryCopyToReg(cc, assign.Value, assign.Size, "x1", 0)
 		} else {
 			generateMemoryCopyToReg(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
@@ -236,7 +236,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 		// Assign integer constant to variable.
 		if ir.IsGlobal(assign.Target) {
 			// Load global's address into x1.
-			generateAddressLoad(cc, 1, ast.WORD_SIZE, ir.Arg{Variable: assign.Target})
+			generateAddressLoad(cc, 1, ir.Arg{Variable: assign.Target})
 			// Load the value into x0.
 			generateRegisterLoad(cc, 0, assign.Size, assign.Value)
 			// x0 -> [x1]
@@ -476,7 +476,7 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 		fmt.Fprintf(cc.output, "  neg %s, %s\n", reg, reg)
 		generateStoreToLocal(cc, 0, op.Size, op.Result)
 	case "&":
-		generateAddressLoad(cc, 0, op.Size, op.Value)
+		generateAddressLoad(cc, 0, op.Value)
 		generateStoreToLocal(cc, 0, op.Size, op.Result)
 	case "*":
 		generateMemoryCopyFromRef(cc, op.Value, op.Size, op.Result)
@@ -634,17 +634,12 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, a
 	}
 }
 
-func generateAddressLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) {
+func generateAddressLoad(cc *CodegenContext, regIndex int, arg ir.Arg) {
 	if arg.Variable == "" {
 		panic(fmt.Errorf("can only load address of variables, got %s", arg))
 	}
 
-	// TODO: Get rid of regSize argument.
-	if regSize != ast.WORD_SIZE {
-		panic(fmt.Errorf("can only load address into a register of size %d", ast.WORD_SIZE))
-	}
-
-	reg := registerByIndex(regIndex, regSize)
+	reg := registerByIndex(regIndex, ast.WORD_SIZE)
 	if ir.IsGlobal(arg.Variable) {
 		label := getGlobalLabel(arg.Variable)
 		fmt.Fprintf(cc.output, "  adrp %s, %s@PAGE\n", reg, label)

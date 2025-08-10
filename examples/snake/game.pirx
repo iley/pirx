@@ -13,13 +13,12 @@ val DIR_RIGHT = 2;
 val DIR_DOWN = 3;
 val DIR_LEFT = 4;
 
+val BGCOLOR = RGB(50i8, 50i8, 50i8);
+val FGCOLOR = RGB(-50i8, -50i8, -50i8);
+val SNAKE_COLOR = RGB(0i8, -80i8, 0i8);
+val APPLE_COLOR = RGB(-50i8, 0i8, 0i8);
 
 struct State {
-  bgcolor: Color;
-  fgcolor: Color;
-  snakeColor: Color;
-  appleColor: Color;
-
   cellSize: int;
   rows: int;
   cols: int;
@@ -27,17 +26,11 @@ struct State {
   winWidth: int;
   winHeight: int;
 
-  snakePositions: []Point;
-  snakeLength: int;
-
   gameState: int;
 
-  // 0 = UP
-  // 1 = RIGHT
-  // 2 = DOWN
-  // 3 = LEFT
+  snakePositions: []Point;
+  snakeLength: int;
   direction: int;
-
   applePosition: Point;
 }
 
@@ -60,10 +53,6 @@ func main(): int {
 }
 
 func Init(state: *State) {
-  state.bgcolor = RGB(50i8, 50i8, 50i8);
-  state.fgcolor = RGB(-50i8, -50i8, -50i8);
-  state.snakeColor = RGB(0i8, -80i8, 0i8);
-  state.appleColor = RGB(-50i8, 0i8, 0i8);
 
   state.cellSize = 20;
   // Odd numbers so we can put the snake smack in the middle of the screen (for the start screen to look better).
@@ -229,7 +218,7 @@ func GameOver(state: *State) {
 // *** Drawing ***
 
 func DoDrawing(state: *State) {
-  ClearBackground(state.bgcolor);
+  ClearBackground(BGCOLOR);
   DrawGrid(state);
   DrawSnake(state);
   DrawApple(state);
@@ -238,11 +227,11 @@ func DoDrawing(state: *State) {
 func DrawGrid(state: *State) {
   for var i = 0; i < state.cols - 1; i++ {
     var x = state.cellSize * (i+1);
-    DrawLine(x, 0, x, state.winHeight-1, state.fgcolor);
+    DrawLine(x, 0, x, state.winHeight-1, FGCOLOR);
   }
   for var i = 0; i < state.rows - 1; i++ {
     var y = state.cellSize * (i+1);
-    DrawLine(0, y, state.winWidth-1, y, state.fgcolor);
+    DrawLine(0, y, state.winWidth-1, y, FGCOLOR);
   }
 }
 
@@ -254,12 +243,12 @@ func DrawCell(state: *State, row: int, col: int, color: Color) {
 
 func DrawSnake(state: *State) {
   for var i = 0; i < state.snakeLength; i++ {
-    DrawCell(state, state.snakePositions[i].row, state.snakePositions[i].col, state.snakeColor);
+    DrawCell(state, state.snakePositions[i].row, state.snakePositions[i].col, SNAKE_COLOR);
   }
 }
 
 func DrawApple(state: *State) {
-  DrawCell(state, state.applePosition.row, state.applePosition.col, state.appleColor);
+  DrawCell(state, state.applePosition.row, state.applePosition.col, APPLE_COLOR);
 }
 
 func WrapCoord(value: int, max: int): int {

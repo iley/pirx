@@ -1,0 +1,272 @@
+struct Point {
+  row: int;
+  col: int;
+}
+
+val STATE_NOT_STARTED = 0;
+val STATE_RUNNING = 1;
+val STATE_GAME_OVER = 2;
+val STATE_PAUSE = 3;
+
+val DIR_UP = 1;
+val DIR_RIGHT = 2;
+val DIR_DOWN = 3;
+val DIR_LEFT = 4;
+
+
+struct State {
+  bgcolor: Color;
+  fgcolor: Color;
+  snakeColor: Color;
+  appleColor: Color;
+
+  cellSize: int;
+  rows: int;
+  cols: int;
+
+  winWidth: int;
+  winHeight: int;
+
+  snakePositions: []Point;
+  snakeLength: int;
+
+  gameState: int;
+
+  // 0 = UP
+  // 1 = RIGHT
+  // 2 = DOWN
+  // 3 = LEFT
+  direction: int;
+
+  applePosition: Point;
+}
+
+func main(): int {
+  var state: State;
+
+  Init(&state);
+
+  InitWindow(state.winWidth, state.winHeight, "Pirx Snake - Press any key to start");
+  SetTargetFPS(8);
+
+  while !WindowShouldClose() {
+    DoUpdate(&state);
+    BeginDrawing();
+    DoDrawing(&state);
+    EndDrawing();
+  }
+  CloseWindow();
+  return 0;
+}
+
+func Init(state: *State) {
+  state.bgcolor = RGB(50i8, 50i8, 50i8);
+  state.fgcolor = RGB(-50i8, -50i8, -50i8);
+  state.snakeColor = RGB(0i8, -80i8, 0i8);
+  state.appleColor = RGB(-50i8, 0i8, 0i8);
+
+  state.cellSize = 20;
+  // Odd numbers so we can put the snake smack in the middle of the screen (for the start screen to look better).
+  state.rows = 25;
+  state.cols = 25;
+
+  state.winWidth = state.cellSize * state.rows;
+  state.winHeight = state.cellSize * state.cols;
+
+  state.snakePositions = new([]Point, state.rows * state.cols);
+  state.snakeLength = 1;
+  // Start at the center.
+  state.snakePositions[0].row = state.rows / 2;
+  state.snakePositions[0].col = state.cols / 2;
+
+  state.gameState = 0; // NOT_STARTED
+
+  state.direction = 2; // RIGHT
+
+  PlaceApple(state);
+}
+
+// *** Game state updates ***
+
+func DoUpdate(state: *State) {
+  if state.gameState == STATE_NOT_STARTED {
+    var key = GetKeyPressed();
+    if key != 0 {
+      // User pressed any key -> start the game.
+      SetGameState(state, STATE_RUNNING);
+    }
+    return;
+  }
+
+  if state.gameState == STATE_RUNNING {
+    UpdateRunningGame(state);
+  }
+
+  if state.gameState == STATE_GAME_OVER {
+    var key = GetKeyPressed();
+    if key != 0 {
+      // User pressed any key -> reset the state and start a new game.
+      Init(state);
+      SetGameState(state, STATE_NOT_STARTED);
+    }
+    return;
+  }
+
+  if state.gameState == STATE_PAUSE {
+    var key = GetKeyPressed();
+    // Unpause the game on any key.
+    if key != 0 {
+      SetGameState(state, STATE_RUNNING);
+    }
+  }
+}
+
+func SetGameState(state: *State, gameState: int) {
+  state.gameState = gameState;
+  if state.gameState == STATE_NOT_STARTED {
+    SetWindowTitle("Pirx Snake - Press any key to start");
+  } else if state.gameState == STATE_RUNNING {
+    SetWindowTitle("Pirx Snake");
+  } else if state.gameState == STATE_GAME_OVER {
+    SetWindowTitle("Pirx Snake - Game Over!");
+  } else if state.gameState == STATE_PAUSE {
+    SetWindowTitle("Pirx Snake - Pause");
+  }
+}
+
+func UpdateRunningGame(state: *State) {
+  // Handle user input.
+  var key = GetKeyPressed();
+  if key == KEY_SPACE {
+    SetGameState(state, STATE_PAUSE);
+    return;
+  }
+
+  if key == KEY_UP {
+    if state.direction != DIR_DOWN {
+      state.direction = DIR_UP;
+    }
+  } else if key == KEY_RIGHT {
+    if state.direction != DIR_LEFT {
+      state.direction = DIR_RIGHT;
+    }
+  } else if key == KEY_DOWN {
+    if state.direction != DIR_UP {
+      state.direction = DIR_DOWN;
+    }
+  } else if key == KEY_LEFT {
+    if state.direction != DIR_RIGHT {
+      state.direction = DIR_LEFT;
+    }
+  }
+
+  // Calculate the new position of the head.
+  var newHead = state.snakePositions[0];
+  if state.direction == DIR_UP {
+    newHead.row--;
+  } else if state.direction == DIR_RIGHT {
+    newHead.col++;
+  } else if state.direction == DIR_DOWN {
+    newHead.row++;
+  } else if state.direction == DIR_LEFT {
+    newHead.col--;
+  }
+
+  // Wrap around.
+  newHead.row = WrapCoord(newHead.row, state.rows);
+  newHead.col = WrapCoord(newHead.col, state.cols);
+
+  if CollidesWithSnake(state, newHead.row, newHead.col) {
+    GameOver(state);
+    return;
+  }
+
+  // Check if we got the apple.
+  if newHead.row == state.applePosition.row && newHead.col == state.applePosition.col {
+    state.snakeLength++;
+    PlaceApple(state);
+  }
+
+  // Shift the snake body.
+  for var i = state.snakeLength-1; i > 0; i-- {
+    state.snakePositions[i] = state.snakePositions[i-1];
+  }
+
+  // Update the head.
+  state.snakePositions[0] = newHead;
+}
+
+func PlaceApple(state: *State) {
+  while true {
+    var row = GetRandomValue(0, state.rows-1);
+    var col = GetRandomValue(0, state.cols-1);
+    if CollidesWithSnake(state, row, col) {
+      continue;
+    }
+    // Do not generate an apple on the same position twice.
+    if state.applePosition.row == row && state.applePosition.col == col {
+      continue;
+    }
+    state.applePosition.row = row;
+    state.applePosition.col = col;
+    break;
+  }
+}
+
+func CollidesWithSnake(state: *State, row: int, col: int): bool {
+  for var i = 0; i < state.snakeLength; i++ {
+    if state.snakePositions[i].row == row && state.snakePositions[i].col == col {
+      return true;
+    }
+  }
+  return false;
+}
+
+func GameOver(state: *State) {
+  SetGameState(state, 2); // STATE_GAME_OVER
+}
+
+// *** Drawing ***
+
+func DoDrawing(state: *State) {
+  ClearBackground(state.bgcolor);
+  DrawGrid(state);
+  DrawSnake(state);
+  DrawApple(state);
+}
+
+func DrawGrid(state: *State) {
+  for var i = 0; i < state.cols - 1; i++ {
+    var x = state.cellSize * (i+1);
+    DrawLine(x, 0, x, state.winHeight-1, state.fgcolor);
+  }
+  for var i = 0; i < state.rows - 1; i++ {
+    var y = state.cellSize * (i+1);
+    DrawLine(0, y, state.winWidth-1, y, state.fgcolor);
+  }
+}
+
+func DrawCell(state: *State, row: int, col: int, color: Color) {
+  var x = col * state.cellSize;
+  var y = row * state.cellSize;
+  DrawRectangle(x, y, state.cellSize-1, state.cellSize-1, color);
+}
+
+func DrawSnake(state: *State) {
+  for var i = 0; i < state.snakeLength; i++ {
+    DrawCell(state, state.snakePositions[i].row, state.snakePositions[i].col, state.snakeColor);
+  }
+}
+
+func DrawApple(state: *State) {
+  DrawCell(state, state.applePosition.row, state.applePosition.col, state.appleColor);
+}
+
+func WrapCoord(value: int, max: int): int {
+  if value < 0 {
+    return max-1;
+  } else if value >= max {
+    return 0;
+  }
+  return value;
+}

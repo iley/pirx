@@ -1,0 +1,39 @@
+struct Color {
+  r: int8;
+  g: int8;
+  b: int8;
+  a: int8;
+}
+
+extern func InitWindow(width: int, height: int, title: string);
+extern func SetWindowTitle(title: string);
+extern func SetTargetFPS(fps: int);
+extern func WindowShouldClose(): bool;
+extern func CloseWindow();
+extern func BeginDrawing();
+extern func EndDrawing();
+extern func ClearBackground(color: Color);
+
+extern func DrawLine(startPosX: int, startPosY: int, endPosX: int, endPosY: int, color: Color);
+extern func DrawRectangle(posX: int, posY: int, width: int, height: int, color: Color);
+
+extern func GetKeyPressed(): int;
+extern func IsKeyPressed(key: int): bool;
+
+extern func SetRandomSeed(seed: int);
+extern func GetRandomValue(min: int, max: int): int;
+
+func RGB(r: int8, g: int8, b: int8): Color {
+  var color: Color;
+  color.r = r;
+  color.g = g;
+  color.b = b;
+  color.a = -1i8;
+  return color;
+}
+
+val KEY_SPACE = 32;
+val KEY_UP = 265;
+val KEY_DOWN = 264;
+val KEY_LEFT = 263;
+val KEY_RIGHT = 262;

@@ -38,28 +38,21 @@ func GetFunctionTable(program *Program) []FuncProto {
 func getBuiltins() []FuncProto {
 	return []FuncProto{
 		{
-			Name:       "printf",
-			Args:       []FuncArg{{"fmt", String}},
-			ReturnType: Int,
-			Variadic:   true,
-			External:   true,
+			Name:     "printf",
+			Args:     []FuncArg{{"fmt", String}},
+			Variadic: true,
+			External: true,
 		},
 		{
-			Name:       "putchar",
-			Args:       []FuncArg{{"ch", Int}},
-			ReturnType: Int,
-			External:   true,
+			Name:     "putchar",
+			Args:     []FuncArg{{"ch", Int}},
+			External: true,
 		},
 		{
 			Name:         "dispose",
 			ExternalName: "Pirx_Dispose",
 			Args:         []FuncArg{{"p", Disposable}},
 			External:     true,
-		},
-		{
-			Name:         "append",
-			ExternalName: "Pirx_Slice_Append",
-			Args:         []FuncArg{{"list", AnyList}, {"elem", Any}},
 		},
 		{
 			// This is not really a function, but we need a definition to make type checker happy.

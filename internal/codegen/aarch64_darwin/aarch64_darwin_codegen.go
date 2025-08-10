@@ -308,8 +308,10 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 	// Don't forget about stack alignment.
 	offset = alignSP(offset)
 
-	// Store the result address in x19.
-	fmt.Fprintf(cc.output, "  add x19, sp, #%d\n", cc.locals[call.Result])
+	if call.Result != "" {
+		// Store the result address in x19.
+		fmt.Fprintf(cc.output, "  add x19, sp, #%d\n", cc.locals[call.Result])
+	}
 
 	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", offset)
 	fmt.Fprintf(cc.output, "  bl _%s\n", call.Function)
@@ -396,8 +398,10 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) erro
 		fmt.Fprintf(cc.output, "  add sp, sp, #%d\n", spShift)
 	}
 
-	// Store the result.
-	generateFunctionResultStore(cc, call.Size, call.Result)
+	if call.Result != "" {
+		// Store the result.
+		generateFunctionResultStore(cc, call.Size, call.Result)
+	}
 
 	return nil
 }

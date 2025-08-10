@@ -526,14 +526,16 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Args)))
 	}
 
-	// This is a workaround for void functions. For now we just make it look like they return a word.
-	// TODO: Handle void functions better. Omit the assignment. Perhaps introduce a null target.
-	size := ast.WORD_SIZE
+	var size int
 	if funcProto.ReturnType != nil {
 		size = g.types.GetSizeNoError(funcProto.ReturnType)
 	}
 
-	temp := g.allocTemp(size)
+	var temp string
+	if funcProto.ReturnType != nil {
+		temp = g.allocTemp(size)
+	}
+
 	if funcProto.External {
 		var externalCall ExternalCall
 		if funcProto.Name == "dispose" {
@@ -668,11 +670,9 @@ func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op,
 func (g *Generator) generateMain() IrFunction {
 	ops := []Op{
 		Call{
-			Result:   "$ret", // not actually used, but (currently) required.
 			Function: "Pirx_Init",
 			Args:     []Arg{},
 			ArgSizes: []int{},
-			Size:     ast.INT_SIZE,
 		},
 		Call{
 			Result:   "$ret",
@@ -709,7 +709,7 @@ func (g *Generator) generateInit(globalDeclarations []ast.VariableDeclaration) I
 		}
 	}
 
-	ops = append(ops, Return{Size: ast.INT_SIZE, Value: &Arg{LiteralInt: util.Int64Ptr(0)}})
+	ops = append(ops, Return{})
 
 	return IrFunction{
 		Name:     "Pirx_Init",

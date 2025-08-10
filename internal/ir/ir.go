@@ -194,7 +194,11 @@ func (c Call) String() string {
 	for i := 0; i < len(c.Args); i++ {
 		args = append(args, fmt.Sprintf("%s/%d", c.Args[i], c.ArgSizes[i]))
 	}
-	return fmt.Sprintf("Call%d(%s = %s(%s))", c.Size, c.Result, c.Function, strings.Join(args, ", "))
+	argsString := strings.Join(args, ", ")
+	if c.Result == "" {
+		return fmt.Sprintf("Call(%s(%s))", c.Function, argsString)
+	}
+	return fmt.Sprintf("Call%d(%s = %s(%s))", c.Size, c.Result, c.Function, argsString)
 }
 
 func (c Call) GetTarget() string {

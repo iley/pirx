@@ -11,7 +11,7 @@ func main(): int {
 	x = "foo";
   2 + "foo";
 
-  var s : string;
+  var s : cstring;
   s = x;
   s = random_number();
 

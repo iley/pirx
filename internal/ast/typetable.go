@@ -83,7 +83,7 @@ func declarePrimitiveTypes(types map[string]TypeDescriptor) {
 	types["int8"] = &PrimitiveTypeDescriptor{"int8", 1}
 	types["int64"] = &PrimitiveTypeDescriptor{"int64", 8}
 	types["bool"] = &PrimitiveTypeDescriptor{"bool", 4}
-	types["string"] = &PrimitiveTypeDescriptor{"string", 8}
+	types["cstring"] = &PrimitiveTypeDescriptor{"cstring", 8}
 }
 
 type TypeDescriptor interface {

@@ -138,6 +138,7 @@ func generateFunction(cc *CodegenContext, f ir.IrFunction) error {
 	// This does not include space for storing X29 and X30.
 	// SP must always be aligned.
 	frameSize := alignSP(offset)
+	fmt.Fprintf(cc.output, "  ; frame size: %d bytes\n", frameSize)
 
 	// Space on stack for the registers wa save (plus padding).
 	// * x29 is FP (frame pointer) by MacOS convention.

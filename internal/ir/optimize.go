@@ -12,7 +12,7 @@ func Optimize(program IrProgram) IrProgram {
 
 	for i, fn := range program.Functions {
 		ops := foldConstants(fn.Ops)
-		// ops = reorderAssignments(ops)
+		ops = reorderAssignments(ops)
 		ops = removeIneffectiveAssignments(ops)
 
 		optFn := IrFunction{
@@ -350,7 +350,7 @@ func canReorderOps(first, second Op) bool {
 		return false
 	}
 
-	if assign.Value.Variable == ""  || first.GetTarget() != assign.Value.Variable {
+	if assign.Value.Variable == "" || first.GetTarget() != assign.Value.Variable {
 		return false
 	}
 

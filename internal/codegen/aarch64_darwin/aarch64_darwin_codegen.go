@@ -234,18 +234,8 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) error {
 			generateMemoryCopyToReg(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])
 		}
 	} else if assign.Value.LiteralInt != nil {
-		// Assign integer constant to variable.
-		if ir.IsGlobal(assign.Target) {
-			// Load global's address into x1.
-			generateAddressLoad(cc, 1, ir.Arg{Variable: assign.Target})
-			// Load the value into x0.
-			generateRegisterLoad(cc, 0, assign.Size, assign.Value)
-			// x0 -> [x1]
-			generateRegisterStore(cc, 0, assign.Size, "x1", 0)
-		} else {
-			generateRegisterLoad(cc, 0, assign.Size, assign.Value)
-			generateStoreToLocal(cc, 0, assign.Size, assign.Target)
-		}
+		generateRegisterLoad(cc, 0, assign.Size, assign.Value)
+		generateStoreToVariable(cc, 0, assign.Size, assign.Target)
 	} else if assign.Value.Zero {
 		if ir.IsGlobal(assign.Target) {
 			// Do nothing.
@@ -311,7 +301,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) {
 
 	if call.Result != "" {
 		// Store the result address in x19.
-		fmt.Fprintf(cc.output, "  add x19, sp, #%d\n", cc.locals[call.Result])
+		generateAddressLoad(cc, 19, ir.Arg{Variable: call.Result})
 	}
 
 	fmt.Fprintf(cc.output, "  sub sp, sp, #%d\n", offset)
@@ -401,7 +391,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) erro
 
 	if call.Result != "" {
 		// Store the result.
-		generateFunctionResultStore(cc, call.Size, call.Result)
+		generateExternalResultStore(cc, call.Size, call.Result)
 	}
 
 	return nil
@@ -460,7 +450,7 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) error {
 
 	// Attention! This can be an implicit size cast!
 	// A typical example where this happens is "boolean = (int64 == int64)".
-	generateStoreToLocal(cc, 0, binop.Size, binop.Result)
+	generateStoreToVariable(cc, 0, binop.Size, binop.Result)
 	return nil
 }
 
@@ -470,15 +460,15 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) error {
 		generateRegisterLoad(cc, 0, op.Size, op.Value)
 		fmt.Fprintf(cc.output, "  cmp x0, #0\n")
 		fmt.Fprintf(cc.output, "  cset x0, eq\n")
-		generateStoreToLocal(cc, 0, op.Size, op.Result)
+		generateStoreToVariable(cc, 0, op.Size, op.Result)
 	case "-":
 		generateRegisterLoad(cc, 0, op.Size, op.Value)
 		reg := registerByIndex(0, op.Size)
 		fmt.Fprintf(cc.output, "  neg %s, %s\n", reg, reg)
-		generateStoreToLocal(cc, 0, op.Size, op.Result)
+		generateStoreToVariable(cc, 0, op.Size, op.Result)
 	case "&":
 		generateAddressLoad(cc, 0, op.Value)
-		generateStoreToLocal(cc, 0, op.Size, op.Result)
+		generateStoreToVariable(cc, 0, op.Size, op.Result)
 	case "*":
 		generateMemoryCopyFromRef(cc, op.Value, op.Size, op.Result)
 	default:
@@ -526,7 +516,7 @@ func generateExternalReturn(cc *CodegenContext, ret ir.ExternalReturn) {
 	emitB()
 }
 
-func generateFunctionResultStore(cc *CodegenContext, size int, target string) {
+func generateExternalResultStore(cc *CodegenContext, size int, target string) {
 	if size > 16 {
 		// TODO: Returns over 16 bytes are done via a caller-allocated buffer referenced by x8.
 		// Once that is supported on the call side, we can just remove the check here.
@@ -651,10 +641,18 @@ func generateAddressLoad(cc *CodegenContext, regIndex int, arg ir.Arg) {
 	}
 }
 
-// generateStoreToLocal generates code for storing a register into a local variable by the register index and size.
-// trashes X9.
-func generateStoreToLocal(cc *CodegenContext, regIndex, regSize int, target string) {
-	generateStoreToLocalWithOffset(cc, regIndex, regSize, target, 0)
+// TODO: Store set of currently used registers in the context.
+// Trashes X1 and X9.
+func generateStoreToVariable(cc *CodegenContext, regIndex, regSize int, target string) {
+	if ir.IsGlobal(target) {
+		if regIndex == 1 {
+			panic("cannot do generateStoreToVariable for x1")
+		}
+		generateAddressLoad(cc, 1, ir.Arg{Variable: target})
+		generateRegisterStore(cc, regIndex, regSize, "x1", 0)
+	} else {
+		generateStoreToLocalWithOffset(cc, regIndex, regSize, target, 0)
+	}
 }
 
 func generateStoreToLocalWithOffset(cc *CodegenContext, regIndex, regSize int, target string, offset int) {

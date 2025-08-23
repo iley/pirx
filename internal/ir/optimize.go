@@ -333,11 +333,13 @@ func removeIneffectiveAssignmentsPass(body []Op) []Op {
 func reorderAssignments(ops []Op) []Op {
 	res := slices.Clone(ops)
 
-	for i := 0; i < len(ops)-1; i++ {
-		if canReorderOps(ops[i], ops[i+1]) {
-			assign := ops[i+1].(Assign)
-			res[i] = ReplaceTarget(ops[i], assign.Target)
-			res[i+1] = Assign{Target: ops[i].GetTarget(), Value: Arg{Variable: assign.Target}, Size: assign.Size}
+	for i := 0; i < len(res)-1; i++ {
+		if canReorderOps(res[i], res[i+1]) {
+			prev := res[i]
+			assign := res[i+1].(Assign)
+
+			res[i] = ReplaceTarget(prev, assign.Target)
+			res[i+1] = Assign{Target: prev.GetTarget(), Value: Arg{Variable: assign.Target}, Size: assign.Size}
 		}
 	}
 
@@ -353,6 +355,13 @@ func canReorderOps(first, second Op) bool {
 	if assign.Value.Variable == "" || first.GetTarget() != assign.Value.Variable {
 		return false
 	}
+
+	if _, ok := first.(ExternalCall); ok && IsGlobal(assign.Target) {
+		// Return values of external calls cannot (currently) be stored in globals.
+		// This is a limitation of the aarch64 codegen.
+		return false
+	}
+
 
 	for _, arg := range first.GetArgs() {
 		if arg.Variable == assign.Target {

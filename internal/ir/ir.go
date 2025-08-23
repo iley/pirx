@@ -27,10 +27,6 @@ Here are the currently supported operations:
  * Anchor(Lable) - define a label for Jump/JumpUnless.
 */
 
-func IsGlobal(name string) bool {
-	return strings.HasPrefix(name, "@")
-}
-
 type IrProgram struct {
 	Functions []IrFunction
 }

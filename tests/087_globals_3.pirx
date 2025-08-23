@@ -1,0 +1,26 @@
+// Check that assigning directly to a global works in all scenarios.
+
+var global_int: int;
+
+func main(): int {
+  var x = 1;
+  var y = 2;
+
+  // binary op
+  global_int = x + y;
+  printf("%d\n", global_int);
+
+  // unary op
+  global_int = -x;
+  printf("%d\n", global_int);
+
+  // function
+  global_int = double(y);
+  printf("%d\n", global_int);
+
+  return 0;
+}
+
+func double(x: int): int {
+  return x * x;
+}

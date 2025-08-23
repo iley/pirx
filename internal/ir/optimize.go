@@ -362,7 +362,6 @@ func canReorderOps(first, second Op) bool {
 		return false
 	}
 
-
 	for _, arg := range first.GetArgs() {
 		if arg.Variable == assign.Target {
 			// The variable is used in the expression.

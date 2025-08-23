@@ -25,13 +25,4 @@ extern Pirx_Slice Pirx_Slice_Alloc(int elem_size, int size, int cap);
 
 extern void Pirx_Slice_Dispose(Pirx_Slice slice);
 
-extern Pirx_Slice Pirx_Slice_Append(Pirx_Slice slice, void *elem,
-                                    int elem_size);
-
-extern void Pirx_Slice_Get(Pirx_Slice slice, int elem_index, int elem_size,
-                           void *out);
-
-extern void Pirx_Slice_Set(Pirx_Slice slice, int elem_index, int elem_size,
-                           void *elem);
-
 #endif // _PIRX_STDLIB_BUILTIN_H

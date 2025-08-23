@@ -1,6 +1,9 @@
 package ir
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 func Optimize(program IrProgram) IrProgram {
 	optProgram := IrProgram{
@@ -9,6 +12,7 @@ func Optimize(program IrProgram) IrProgram {
 
 	for i, fn := range program.Functions {
 		ops := foldConstants(fn.Ops)
+		// ops = reorderAssignments(ops)
 		ops = removeIneffectiveAssignments(ops)
 
 		optFn := IrFunction{
@@ -312,6 +316,52 @@ func removeIneffectiveAssignmentsPass(body []Op) []Op {
 	}
 
 	return result
+}
+
+// This is the first part of the intermediary elimination optimization.
+// The idea is to replace pairs of operations like this:
+//
+// $1 = (operation A independent of x)
+// x = $1
+//
+// With this:
+//
+// x = (operation A)
+// $1 = x
+//
+// The idea is that ineffective assignment elimination will then get rid of "$1 = x" and we'll get rid of the intermediar and we'll get rid of the intermediary
+func reorderAssignments(ops []Op) []Op {
+	res := slices.Clone(ops)
+
+	for i := 0; i < len(ops)-1; i++ {
+		if canReorderOps(ops[i], ops[i+1]) {
+			assign := ops[i+1].(Assign)
+			res[i] = ReplaceTarget(ops[i], assign.Target)
+			res[i+1] = Assign{Target: ops[i].GetTarget(), Value: Arg{Variable: assign.Target}, Size: assign.Size}
+		}
+	}
+
+	return res
+}
+
+func canReorderOps(first, second Op) bool {
+	assign, ok := second.(Assign)
+	if !ok {
+		return false
+	}
+
+	if assign.Value.Variable == ""  || first.GetTarget() != assign.Value.Variable {
+		return false
+	}
+
+	for _, arg := range first.GetArgs() {
+		if arg.Variable == assign.Target {
+			// The variable is used in the expression.
+			return false
+		}
+	}
+
+	return true
 }
 
 func argIntValue(arg Arg) int64 {

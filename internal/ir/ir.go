@@ -89,28 +89,6 @@ func (a Assign) GetSize() int {
 	return a.Size
 }
 
-type AssignGlobal struct {
-	Target string
-	Value  Arg
-	Size   int
-}
-
-func (a AssignGlobal) String() string {
-	return fmt.Sprintf("Assign%d(%s, %s)", a.Size, a.Target, a.Value)
-}
-
-func (a AssignGlobal) GetTarget() string {
-	return a.Target
-}
-
-func (a AssignGlobal) GetArgs() []Arg {
-	return []Arg{a.Value}
-}
-
-func (a AssignGlobal) GetSize() int {
-	return a.Size
-}
-
 type AssignByAddr struct {
 	Target Arg
 	Value  Arg
@@ -378,4 +356,38 @@ func (a Arg) String() string {
 		return "0"
 	}
 	panic(fmt.Sprintf("invalid arg value: %#v", a))
+}
+
+func ReplaceTarget(op Op, newTarget string) Op {
+	if assign, ok := op.(Assign); ok {
+		res := assign
+		res.Target = newTarget
+		return res
+	}
+
+	if unary, ok := op.(UnaryOp); ok {
+		res := unary
+		res.Result = newTarget
+		return res
+	}
+
+	if binary, ok := op.(BinaryOp); ok {
+		res := binary
+		res.Result = newTarget
+		return res
+	}
+
+	if call, ok := op.(Call); ok {
+		res := call
+		res.Result = newTarget
+		return res
+	}
+
+	if extcall, ok := op.(ExternalCall); ok {
+		res := extcall
+		res.Result = newTarget
+		return res
+	}
+
+	panic(fmt.Errorf("cannot replace the target of op %v", op))
 }

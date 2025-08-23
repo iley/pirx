@@ -5,8 +5,8 @@ struct Color {
   a: int8;
 }
 
-extern func InitWindow(width: int, height: int, title: string);
-extern func SetWindowTitle(title: string);
+extern func InitWindow(width: int, height: int, title: cstring);
+extern func SetWindowTitle(title: cstring);
 extern func SetTargetFPS(fps: int);
 extern func WindowShouldClose(): bool;
 extern func CloseWindow();

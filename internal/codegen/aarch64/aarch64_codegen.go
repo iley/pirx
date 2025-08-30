@@ -3,7 +3,6 @@ package aarch64
 import (
 	_ "embed"
 	"fmt"
-	"io"
 	"maps"
 	"slices"
 	"strings"
@@ -29,7 +28,7 @@ type CodegenContext struct {
 	functionName string
 }
 
-func Generate(output io.Writer, irp ir.IrProgram) (asm.Program, error) {
+func Generate(irp ir.IrProgram) (asm.Program, error) {
 	asmProgram := asm.Program{}
 
 	// Map from string to a label in the data section.
@@ -131,7 +130,7 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 	// SP must always be aligned.
 	frameSize := alignSP(offset)
 	result.Lines = append(result.Lines,
-		asm.Comment(fmt.Sprintf("frame size: %d bytes\n", frameSize)))
+		asm.Comment(fmt.Sprintf("frame size: %d bytes", frameSize)))
 
 	// Space on stack for the registers wa save (plus padding).
 	// * x29 is FP (frame pointer) by MacOS convention.
@@ -172,7 +171,7 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 
 	for i, op := range irfn.Ops {
 		result.Lines = append(result.Lines,
-			asm.Comment(fmt.Sprintf("Op %d: %s\n", i, op.String())))
+			asm.Comment(fmt.Sprintf("Op %d: %s", i, op.String())))
 		lines, err := generateOp(cc, op)
 		if err != nil {
 			return result, err
@@ -181,7 +180,7 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 	}
 
 	result.Lines = append(result.Lines,
-		asm.Label(fmt.Sprintf(".L%s_exit:\n", irfn.Name)),
+		asm.Label(fmt.Sprintf(".L%s_exit", irfn.Name)),
 		asm.Op3("add", asm.SP, asm.SP, asm.Imm(cc.frameSize)),
 		asm.Op3("ldp", asm.X29, asm.X30, asm.SP.AsDeref()),
 		asm.Op3("add", asm.SP, asm.SP, asm.Imm(savedRegisters)),
@@ -215,7 +214,7 @@ func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
 		lines = append(lines, asm.Op1("beq", asm.Ref(fmt.Sprintf(".L%s_%s", cc.functionName, jumpUnless.Goto))))
 		return lines, nil
 	} else if anchor, ok := op.(ir.Anchor); ok {
-		return []asm.Line{asm.Label(fmt.Sprintf(".L%s_%s:", cc.functionName, anchor.Label))}, nil
+		return []asm.Line{asm.Label(fmt.Sprintf(".L%s_%s", cc.functionName, anchor.Label))}, nil
 	} else {
 		return nil, fmt.Errorf("unknown op type: %v", op)
 	}

@@ -25,6 +25,7 @@ type Line struct {
 	Comment string
 	Label   string
 	Op      string
+	Arity   int
 	Arg1    Arg
 	Arg2    Arg
 	Arg3    Arg
@@ -89,23 +90,23 @@ func LSL(shift int) Arg {
 }
 
 func Op0(op string) Line {
-	return Line{Op: op}
+	return Line{Op: op, Arity: 0}
 }
 
 func Op1(op string, arg Arg) Line {
-	return Line{Op: op, Arg1: arg}
+	return Line{Op: op, Arity: 1, Arg1: arg}
 }
 
 func Op2(op string, arg1, arg2 Arg) Line {
-	return Line{Op: op, Arg1: arg1, Arg2: arg2}
+	return Line{Op: op, Arity: 2, Arg1: arg1, Arg2: arg2}
 }
 
 func Op3(op string, arg1, arg2, arg3 Arg) Line {
-	return Line{Op: op, Arg1: arg1, Arg2: arg2, Arg3: arg3}
+	return Line{Op: op, Arity: 3, Arg1: arg1, Arg2: arg2, Arg3: arg3}
 }
 
 func Op4(op string, arg1, arg2, arg3, arg4 Arg) Line {
-	return Line{Op: op, Arg1: arg1, Arg2: arg2, Arg3: arg3, Arg4: arg4}
+	return Line{Op: op, Arity: 4, Arg1: arg1, Arg2: arg2, Arg3: arg3, Arg4: arg4}
 }
 
 func Comment(text string) Line {

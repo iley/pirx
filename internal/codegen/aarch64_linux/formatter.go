@@ -77,6 +77,9 @@ func argToString(arg asm.Arg) string {
 		result = fmt.Sprintf("lsl %d", arg.Lsl)
 	} else if arg.Label != "" {
 		result = arg.Label
+		if arg.PageOffset {
+			result = fmt.Sprintf(":lo12:%s", result)
+		}
 	} else if arg.Imm != nil {
 		result = fmt.Sprintf("%d", *arg.Imm)
 	} else {

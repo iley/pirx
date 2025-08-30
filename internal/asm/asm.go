@@ -33,12 +33,14 @@ type Line struct {
 }
 
 type Arg struct {
-	Reg    string
-	Offset int
-	Imm    *int
-	Label  string
-	Lsl    int
-	Deref  bool
+	Reg        string
+	Offset     int
+	Imm        *int
+	Label      string
+	Lsl        int
+	Deref      bool
+	Page       bool // Generate "label@PAGE" or equivalent
+	PageOffset bool // Generate "label@PAGEOFF" or requivalent
 }
 
 func (a Arg) WithOffset(offset int) Arg {
@@ -50,6 +52,18 @@ func (a Arg) WithOffset(offset int) Arg {
 func (a Arg) WithLSL(shift int) Arg {
 	result := a
 	result.Lsl = shift
+	return result
+}
+
+func (a Arg) WithPage() Arg {
+	result := a
+	result.Page = true
+	return result
+}
+
+func (a Arg) WithPageOff() Arg {
+	result := a
+	result.PageOffset = true
 	return result
 }
 

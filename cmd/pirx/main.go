@@ -277,7 +277,7 @@ func getCompilationConfig() (*CompilationConfig, error) {
 		return &CompilationConfig{
 			Assembler:      "as",
 			AssemblerFlags: []string{"-g"},
-			Linker:         "ld",
+			Linker:         "gcc",
 			LinkerFlags:    []string{},
 		}, nil
 	}

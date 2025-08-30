@@ -612,9 +612,11 @@ func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable stri
 	lines = append(lines, asm.Op2("adrp", asm.X9, asm.Ref(label+"@PAGE")))
 
 	if offset == 0 {
-		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label+"@PAGEOFF")))
+		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPage()))
 	} else {
-		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(fmt.Sprintf("%s@PAGEOFF + %d", label, offset))))
+		// TODO: We could do a single operatation here instead of two: add x9, x9, label@PAGEOFF + offset
+		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPageOff()),
+			asm.Op3("add", asm.X9, asm.X9, asm.Imm(offset)))
 	}
 
 	if regSize == 1 {
@@ -653,8 +655,8 @@ func generateLocalVariableLoadWithOffset(cc *CodegenContext, reg string, regSize
 func generateStringLiteralLoad(cc *CodegenContext, reg string, literal string) []asm.Line {
 	label := cc.stringLiterals[literal]
 	return []asm.Line{
-		asm.Op2("adrp", asm.Reg(reg), asm.Ref(label+"@PAGE")),
-		asm.Op3("add", asm.Reg(reg), asm.Reg(reg), asm.Ref(label+"@PAGEOFF")),
+		asm.Op2("adrp", asm.Reg(reg), asm.Ref(label).WithPage()),
+		asm.Op3("add", asm.Reg(reg), asm.Reg(reg), asm.Ref(label).WithPageOff()),
 	}
 }
 
@@ -697,8 +699,8 @@ func generateAddressLoad(cc *CodegenContext, regIndex int, arg ir.Arg) []asm.Lin
 
 	if ir.IsGlobal(arg.Variable) {
 		label := getGlobalLabel(arg.Variable)
-		lines = append(lines, asm.Op2("adrp", reg, asm.Ref(label+"@PAGE")))
-		lines = append(lines, asm.Op3("add", reg, reg, asm.Ref(label+"@PAGEOFF")))
+		lines = append(lines, asm.Op2("adrp", reg, asm.Ref(label).WithPage()))
+		lines = append(lines, asm.Op3("add", reg, reg, asm.Ref(label).WithPageOff()))
 	} else {
 		offset := int64(cc.locals[arg.Variable])
 		lines = append(lines, asm.Op3("add", reg, asm.SP, asm.Imm(int(offset))))

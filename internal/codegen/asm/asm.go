@@ -35,7 +35,7 @@ type Line struct {
 type Arg struct {
 	Reg    string
 	Offset int
-	Imm    int
+	Imm    *int
 	Label  string
 	Lsl    int
 	Deref  bool
@@ -70,7 +70,7 @@ type GlobalVariable struct {
 }
 
 func Imm(value int) Arg {
-	return Arg{Imm: value}
+	return Arg{Imm: &value}
 }
 
 func DerefWithOffset(arg Arg, offset int) Arg {

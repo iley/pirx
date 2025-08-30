@@ -73,9 +73,10 @@ func argToString(arg asm.Arg) string {
 		result = fmt.Sprintf("lsl #%d", arg.Lsl)
 	} else if arg.Label != "" {
 		result = arg.Label
+	} else if arg.Imm != nil {
+		result = fmt.Sprintf("#%d", *arg.Imm)
 	} else {
-		// Immediate value.
-		result = fmt.Sprintf("#%d", arg.Imm)
+		panic(fmt.Errorf("invalid arg %#v", arg))
 	}
 
 	return result

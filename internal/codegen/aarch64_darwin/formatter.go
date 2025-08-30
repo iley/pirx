@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/iley/pirx/internal/codegen/asm"
+	"github.com/iley/pirx/internal/asm"
 	"github.com/iley/pirx/internal/util"
 )
 

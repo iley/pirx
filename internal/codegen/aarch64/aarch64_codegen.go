@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/iley/pirx/internal/asm"
 	"github.com/iley/pirx/internal/ast"
-	"github.com/iley/pirx/internal/codegen/asm"
 	"github.com/iley/pirx/internal/codegen/common"
 	"github.com/iley/pirx/internal/ir"
 	"github.com/iley/pirx/internal/util"

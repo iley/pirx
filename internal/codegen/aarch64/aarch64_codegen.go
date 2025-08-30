@@ -612,7 +612,7 @@ func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable stri
 	lines = append(lines, asm.Op2("adrp", asm.X9, asm.Ref(label).WithPage()))
 
 	if offset == 0 {
-		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPage()))
+		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPageOff()))
 	} else {
 		// TODO: We could do a single operatation here instead of two: add x9, x9, label@PAGEOFF + offset
 		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPageOff()),

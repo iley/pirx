@@ -35,7 +35,7 @@ test_%: testrunner
 clean:
 	$(MAKE) -C ./stdlib clean
 	$(MAKE) -C ./examples clean
-	rm -f ./pirx ./pirxc
+	rm -f ./pirx ./pirxc ./testrunner
 
 examples:
 	$(MAKE) -C ./examples

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/iley/pirx/internal/codegen/aarch64_darwin"
+	"github.com/iley/pirx/internal/codegen/common"
 	"github.com/iley/pirx/internal/ir"
 )
 
@@ -22,10 +23,22 @@ func TargetFromName(name string) (Target, error) {
 	return 0, fmt.Errorf("unknown target: %s", name)
 }
 
-func Generate(output io.Writer, target Target, irp ir.IrProgram) error {
+func Generate(out io.Writer, target Target, irp ir.IrProgram) error {
+	var cg common.CodeGenerator
 	switch target {
 	case TargetAARCH64Darwin:
-		return aarch64_darwin.Generate(output, irp)
+		cg = &aarch64_darwin.CodeGenerator{}
+	default:
+		return fmt.Errorf("unknown target: %v", target)
 	}
-	return fmt.Errorf("unknown target: %v", target)
+
+	asmProgram, err := cg.Generate(irp)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Insert the optimization step here.
+
+	cg.Format(out, asmProgram)
+	return nil
 }

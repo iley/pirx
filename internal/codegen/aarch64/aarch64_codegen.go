@@ -363,7 +363,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 
 		switch argSize {
-		case 4, 8:
+		case 1, 4, 8:
 			lines = append(lines, generateRegisterLoad(cc, nextRegister, argSize, arg)...)
 		case 12:
 			lines = append(lines, generateRegisterLoadWithOffset(cc, nextRegister, 8, arg, 0)...)
@@ -609,7 +609,7 @@ func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable stri
 	var lines []asm.Line
 	label := getGlobalLabel(variable)
 
-	lines = append(lines, asm.Op2("adrp", asm.X9, asm.Ref(label+"@PAGE")))
+	lines = append(lines, asm.Op2("adrp", asm.X9, asm.Ref(label).WithPage()))
 
 	if offset == 0 {
 		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPage()))

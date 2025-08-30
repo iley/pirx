@@ -272,18 +272,11 @@ func getCompilationConfig() (*CompilationConfig, error) {
 				Linker:         "ld",
 				LinkerFlags:    []string{"-lSystem", "-syslibroot", getMacOsSdkPath(), "-arch", "arm64"},
 			}, nil
-		case "amd64":
-			return &CompilationConfig{
-				Assembler:      "as",
-				AssemblerFlags: []string{"-arch", "x86_64"},
-				Linker:         "ld",
-				LinkerFlags:    []string{"-lSystem", "-syslibroot", getMacOsSdkPath(), "-arch", "x86_64"},
-			}, nil
 		}
 	case "linux":
 		return &CompilationConfig{
 			Assembler:      "as",
-			AssemblerFlags: []string{},
+			AssemblerFlags: []string{"-g"},
 			Linker:         "ld",
 			LinkerFlags:    []string{},
 		}, nil
@@ -292,7 +285,7 @@ func getCompilationConfig() (*CompilationConfig, error) {
 	return nil, fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
-// getPirxRoot returns the PIRX root directory, either from PIRXROOT env var
+// getPirxRoot returns the Pirx root directory, either from PIRXROOT env var
 // or by determining it from the location of the pirx binary
 func getPirxRoot() (string, error) {
 	if root := os.Getenv("PIRXROOT"); root != "" {

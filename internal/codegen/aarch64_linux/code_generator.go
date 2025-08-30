@@ -1,4 +1,4 @@
-package aarch64_darwin
+package aarch64_linux
 
 import (
 	_ "embed"
@@ -13,8 +13,8 @@ type CodeGenerator struct{}
 
 func (cg *CodeGenerator) Generate(program ir.IrProgram) (asm.Program, error) {
 	features := aarch64.Features{
-		VarargsOnStack:       true,
-		FuncLabelsUnderscore: true,
+		VarargsOnStack:       false,
+		FuncLabelsUnderscore: false,
 	}
 	return aarch64.Generate(program, features)
 }

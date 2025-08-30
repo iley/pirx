@@ -19,7 +19,13 @@ const (
 	MAX_SP_OFFSET       = 504 // maximum offset from SP supproted in load/store instructions.
 )
 
+type Features struct {
+	VarargsOnStack       bool
+	FuncLabelsUnderscore bool
+}
+
 type CodegenContext struct {
+	features       Features
 	stringLiterals map[string]string
 
 	// Function-specific.
@@ -28,7 +34,7 @@ type CodegenContext struct {
 	functionName string
 }
 
-func Generate(irp ir.IrProgram) (asm.Program, error) {
+func Generate(irp ir.IrProgram, features Features) (asm.Program, error) {
 	asmProgram := asm.Program{}
 
 	// Map from string to a label in the data section.
@@ -40,6 +46,7 @@ func Generate(irp ir.IrProgram) (asm.Program, error) {
 	globalVariables := common.GatherGlobals(irp)
 
 	cc := &CodegenContext{
+		features:       features,
 		stringLiterals: stringLiterals,
 	}
 
@@ -307,9 +314,15 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 		lines = append(lines, generateAddressLoad(cc, 19, ir.Arg{Variable: call.Result})...)
 	}
 
-	lines = append(lines, asm.Op3("sub", asm.SP, asm.SP, asm.Imm(offset)))
-	lines = append(lines, asm.Op1("bl", asm.Ref("_"+call.Function)))
-	lines = append(lines, asm.Op3("add", asm.SP, asm.SP, asm.Imm(offset)))
+	label := call.Function
+	if cc.features.FuncLabelsUnderscore {
+		label = "_" + label
+	}
+
+	lines = append(
+		lines, asm.Op3("sub", asm.SP, asm.SP, asm.Imm(offset)),
+		asm.Op1("bl", asm.Ref(label)),
+		asm.Op3("add", asm.SP, asm.SP, asm.Imm(offset)))
 
 	// Restore x19.
 	x19Arg := asm.Arg{Reg: "sp", Offset: -savedX19Offset, Deref: true}
@@ -326,8 +339,15 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 	remainingArgs := call.Args
 	remainingArgSizes := call.ArgSizes
 
+	var nRegisterArgs int // how many args can go into registers
+	if cc.features.VarargsOnStack {
+		nRegisterArgs = call.NamedArgs
+	} else {
+		nRegisterArgs = len(call.Args)
+	}
+
 	nextRegister := 0 // X0
-	for range call.NamedArgs {
+	for range nRegisterArgs {
 		arg := remainingArgs[0]
 		argSize := remainingArgSizes[0]
 
@@ -388,8 +408,13 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		lines = append(lines, asm.Op3("sub", asm.SP, asm.SP, asm.Imm(spShift)))
 	}
 
+	label := call.Function
+	if cc.features.FuncLabelsUnderscore {
+		label = "_" + label
+	}
+
 	// Finally, call the function.
-	lines = append(lines, asm.Op1("bl", asm.Ref("_"+call.Function)))
+	lines = append(lines, asm.Op1("bl", asm.Ref(label)))
 
 	// Don't forget to clean up if we put have arguments on the stack.
 	if spShift > 0 {

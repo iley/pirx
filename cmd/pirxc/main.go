@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/iley/pirx/internal/codegen"
@@ -16,10 +17,21 @@ import (
 	"github.com/iley/pirx/internal/typechecker"
 )
 
+func getDefaultTarget() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "aarch64-darwin"
+	case "linux":
+		return "aarch64-linux"
+	default:
+		return "aarch64-linux"
+	}
+}
+
 func main() {
 	outputString := flag.String("o", "", "output file name")
 	noOptimize := flag.Bool("O0", false, "don't optimize the code")
-	targetString := flag.String("t", "aarch64-darwin", "target architecture")
+	targetString := flag.String("t", getDefaultTarget(), "target architecture")
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {

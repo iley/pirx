@@ -40,6 +40,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	optLevel := codegen.OptEnabled
+	if *noOptimize {
+		optLevel = codegen.OptDisabled
+	}
+
 	inputFileNames := flag.Args()
 	if len(inputFileNames) > 1 && *outputString == "" {
 		fmt.Fprintln(os.Stderr, "When more than one input file name is provided, you must specify an output file name via -o")
@@ -127,7 +132,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !*noOptimize {
+	if optLevel == codegen.OptEnabled {
 		programIr = ir.Optimize(programIr)
 	}
 
@@ -142,7 +147,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = codegen.Generate(output, target, programIr)
+	err = codegen.Generate(output, target, programIr, optLevel)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error generating machine code: %v\n", err)
 		os.Exit(1)

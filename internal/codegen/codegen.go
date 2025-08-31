@@ -17,6 +17,13 @@ const (
 	TargetAARCH64Linux  Target = iota
 )
 
+type OptimizationLevel int
+
+const (
+	OptDisabled OptimizationLevel = iota
+	OptEnabled  OptimizationLevel = iota
+)
+
 func TargetFromName(name string) (Target, error) {
 	switch name {
 	case "aarch64-darwin":
@@ -27,7 +34,7 @@ func TargetFromName(name string) (Target, error) {
 	return 0, fmt.Errorf("unknown target: %s", name)
 }
 
-func Generate(out io.Writer, target Target, irp ir.IrProgram) error {
+func Generate(out io.Writer, target Target, irp ir.IrProgram, optLevel OptimizationLevel) error {
 	var cg common.CodeGenerator
 	switch target {
 	case TargetAARCH64Darwin:
@@ -43,7 +50,7 @@ func Generate(out io.Writer, target Target, irp ir.IrProgram) error {
 		return err
 	}
 
-	// TODO: Insert the optimization step here.
+	// TODO: Add an option for dumping the generic ASM representation at this point.
 
 	cg.Format(out, asmProgram)
 	return nil

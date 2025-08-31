@@ -52,4 +52,13 @@ fmt:
 cloc:
 	cloc . --exclude-dir=vendor
 
-.PHONY: clean default examples test stdlib
+# Docker targets for testing the Linux backend from a MacOS host.
+docker-test:
+	docker build -t pirx-linux .
+	docker run --rm -it pirx-linux
+
+docker-shell:
+	docker build -t pirx-linux .
+	docker run --rm -it pirx-linux /bin/bash
+
+.PHONY: clean default examples test stdlib docker-test docker-shell

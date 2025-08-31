@@ -358,7 +358,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 
 		// Check if we ran out of registers.
-		if nextRegister+needRegisters >= FUNC_CALL_REGISTERS {
+		if nextRegister+needRegisters > FUNC_CALL_REGISTERS {
 			break
 		}
 

@@ -45,7 +45,7 @@ func main(): int {
   printf("point A: (%d, %d)\n", POINT_A.x, POINT_A.y);
   
   // Test pointers
-  printf("null pointer: %p\n", NULL_PTR);
+  printf("null pointer: %x\n", NULL_PTR);
   if (INT_PTR != NULL_PTR) {
     printf("int pointer: not null (value: %d)\n", *INT_PTR);
   } else {

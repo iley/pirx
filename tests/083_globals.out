@@ -6,7 +6,7 @@ bool true: 1
 bool false: 0
 origin: (0, 0)
 point A: (1, 2)
-null pointer: 0x0
+null pointer: 0
 int pointer: not null (value: 42)
 slice: [1, 2, 3]
 pi constant: 3

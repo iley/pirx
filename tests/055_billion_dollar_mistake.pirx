@@ -1,7 +1,7 @@
 func main(): int {
   var x: int;
   var p: *int = null;
-  printf("%p\n", p);
+  printf("%x\n", p);
 
   if p == null {
     printf("null is null\n");

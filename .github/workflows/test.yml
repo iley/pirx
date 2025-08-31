@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  test-macos-aarch64:
     runs-on: macos-15
     steps:
     - uses: actions/checkout@v4
@@ -19,3 +19,26 @@ jobs:
     
     - name: Run tests
       run: make citest
+
+  test-linux-aarch64:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+    
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+    
+    - name: Run tests on aarch64
+      run: |
+        docker run --rm --platform linux/arm64 \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          golang:1.24-alpine \
+          sh -c "apk add --no-cache make gcc musl-dev && make citest"

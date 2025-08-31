@@ -363,7 +363,17 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 
 		switch argSize {
-		case 1, 4, 8:
+		case 1:
+			reg32 := registerByIndex(nextRegister, 4)
+			reg64 := registerByIndex(nextRegister, 8)
+			lines = append(lines, generateRegisterLoad(cc, nextRegister, argSize, arg)...)
+			lines = append(lines, asm.Op2("sxtb", asm.Reg(reg64), asm.Reg(reg32)))
+		case 4:
+			reg32 := registerByIndex(nextRegister, 4)
+			reg64 := registerByIndex(nextRegister, 8)
+			lines = append(lines, generateRegisterLoad(cc, nextRegister, argSize, arg)...)
+			lines = append(lines, asm.Op2("sxtw", asm.Reg(reg64), asm.Reg(reg32)))
+		case 8:
 			lines = append(lines, generateRegisterLoad(cc, nextRegister, argSize, arg)...)
 		case 12:
 			lines = append(lines, generateRegisterLoadWithOffset(cc, nextRegister, 8, arg, 0)...)

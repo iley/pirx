@@ -51,6 +51,9 @@ func Generate(out io.Writer, target Target, irp ir.IrProgram, optLevel Optimizat
 	}
 
 	// TODO: Add an option for dumping the generic ASM representation at this point.
+	if optLevel == OptEnabled {
+		asmProgram = cg.Optimize(asmProgram)
+	}
 
 	cg.Format(out, asmProgram)
 	return nil

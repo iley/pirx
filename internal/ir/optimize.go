@@ -222,6 +222,41 @@ func performSizedIntegerArithmetic(operation string, leftVal, rightVal int64, si
 	}
 }
 
+func performFloatArithmetic(operation string, leftVal, rightVal float64) float64 {
+	switch operation {
+	case "+":
+		return leftVal + rightVal
+	case "-":
+		return leftVal - rightVal
+	case "*":
+		return leftVal * rightVal
+	case "/":
+		return leftVal / rightVal
+	default:
+		panic(fmt.Errorf("unsupported float operation: %s", operation))
+	}
+}
+
+func isFloatArg(arg Arg) bool {
+	return arg.LiteralFloat != nil
+}
+
+func performArithmetic(operation string, left, right Arg, operandSize int) Arg {
+	// Check if either operand is a float - if so, use float arithmetic
+	if isFloatArg(left) || isFloatArg(right) {
+		leftVal := argFloatValue(left)
+		rightVal := argFloatValue(right)
+		result := performFloatArithmetic(operation, leftVal, rightVal)
+		return Arg{LiteralFloat: &result}
+	} else {
+		// Use integer arithmetic
+		leftVal := argIntValue(left)
+		rightVal := argIntValue(right)
+		result := performSizedIntegerArithmetic(operation, leftVal, rightVal, operandSize)
+		return Arg{LiteralInt: &result}
+	}
+}
+
 func evalBinaryOp(oc *optimizationContext, operation string, left, right Arg, operandSize int) (Arg, bool) {
 	leftConst, leftOk := evalArg(oc, left)
 	if !leftOk {
@@ -236,8 +271,7 @@ func evalBinaryOp(oc *optimizationContext, operation string, left, right Arg, op
 	// We assume types are correct at this point.
 	switch operation {
 	case "+", "-", "*", "/":
-		result := performSizedIntegerArithmetic(operation, argIntValue(leftConst), argIntValue(rightConst), operandSize)
-		return Arg{LiteralInt: &result}, true
+		return performArithmetic(operation, leftConst, rightConst, operandSize), true
 	case "&&":
 		result := argBoolValue(leftConst) && argBoolValue(rightConst)
 		intResult := int64(0)
@@ -379,6 +413,15 @@ func argIntValue(arg Arg) int64 {
 		return *arg.LiteralInt
 	}
 	panic(fmt.Errorf("arg does not have an integer value: %#v", arg))
+}
+
+func argFloatValue(arg Arg) float64 {
+	if arg.Zero {
+		return 0.0
+	} else if arg.LiteralFloat != nil {
+		return *arg.LiteralFloat
+	}
+	panic(fmt.Errorf("arg does not have a float value: %#v", arg))
 }
 
 func argBoolValue(arg Arg) bool {

@@ -308,6 +308,12 @@ func (g *Generator) generateLiteralOps(literal *ast.Literal) ([]Op, Arg, int) {
 			intValue = 0
 		}
 		return []Op{}, Arg{LiteralInt: &intValue}, 4
+	} else if literal.Float32Value != nil {
+		floatValue := float64(*literal.Float32Value)
+		return []Op{}, Arg{LiteralFloat: &floatValue}, 8
+	} else if literal.Float64Value != nil {
+		floatValue := float64(*literal.Float64Value)
+		return []Op{}, Arg{LiteralFloat: &floatValue}, 8
 	} else if literal.NullValue {
 		value := int64(0)
 		return []Op{}, Arg{LiteralInt: &value}, ast.WORD_SIZE

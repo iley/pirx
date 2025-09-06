@@ -376,11 +376,11 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		case 8:
 			lines = append(lines, generateRegisterLoad(cc, nextRegister, argSize, arg)...)
 		case 12:
-			lines = append(lines, generateRegisterLoadWithOffset(cc, nextRegister, 8, arg, 0)...)
-			lines = append(lines, generateRegisterLoadWithOffset(cc, nextRegister+1, 4, arg, 8)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister, 8), 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister+1, 4), 4, arg, 8)...)
 		case 16:
-			lines = append(lines, generateRegisterLoadWithOffset(cc, nextRegister, 8, arg, 0)...)
-			lines = append(lines, generateRegisterLoadWithOffset(cc, nextRegister+1, 8, arg, 8)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister, 8), 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister+1, 8), 8, arg, 8)...)
 		default:
 			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
 		}
@@ -556,9 +556,9 @@ func generateExternalReturn(cc *CodegenContext, ret ir.ExternalReturn) ([]asm.Li
 		lines = append(lines, generateRegisterLoad(cc, 0, ret.Size, *ret.Value)...)
 	case 12, 16:
 		// Load first 8 bytes into x0...
-		lines = append(lines, generateRegisterLoadWithOffset(cc, 0, 8, *ret.Value, 0)...)
+		lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(0, 8), 8, *ret.Value, 0)...)
 		// And the rest into x1/w1.
-		lines = append(lines, generateRegisterLoadWithOffset(cc, 1, ret.Size-8, *ret.Value, 8)...)
+		lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(1, ret.Size-8), ret.Size-8, *ret.Value, 8)...)
 	default:
 		// TODO: Support sizes over 16 bytes via indirect return (caller allocates space and passess the address in x19).
 		return lines, fmt.Errorf("unsupported return value size: %d", ret.Size)
@@ -612,7 +612,7 @@ func generateExternalResultStore(cc *CodegenContext, size int, target string) []
 // generateRegisterLoad generates code for loading a value into a register by its index and size.
 // trashes X9.
 func generateRegisterLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) []asm.Line {
-	return generateRegisterLoadWithOffset(cc, regIndex, regSize, arg, 0)
+	return generateRegisterLoadWithOffset(cc, registerByIndex(regIndex, regSize), regSize, arg, 0)
 }
 
 func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable string, offset int) []asm.Line {
@@ -670,9 +670,7 @@ func generateStringLiteralLoad(cc *CodegenContext, reg string, literal string) [
 	}
 }
 
-func generateRegisterLoadWithOffset(cc *CodegenContext, regIndex, regSize int, arg ir.Arg, offset int) []asm.Line {
-	reg := registerByIndex(regIndex, regSize)
-
+func generateRegisterLoadWithOffset(cc *CodegenContext, reg string, regSize int, arg ir.Arg, offset int) []asm.Line {
 	if arg.Variable != "" {
 		if ir.IsGlobal(arg.Variable) {
 			return generateGlobalVariableLoadWithOffset(reg, regSize, arg.Variable, offset)
@@ -800,15 +798,15 @@ func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseRe
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, tempRegister, 8, source, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 8), 8, source, offset)...)
 			lines = append(lines, generateRegisterStore(tempRegister, 8, baseReg, baseOffset+offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, tempRegister, 4, source, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 4), 4, source, offset)...)
 			lines = append(lines, generateRegisterStore(tempRegister, 4, baseReg, baseOffset+offset)...)
 			offset += 4
 		} else {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, tempRegister, 1, source, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 1), 1, source, offset)...)
 			lines = append(lines, generateRegisterStore(tempRegister, 1, baseReg, baseOffset+offset)...)
 			offset += 1
 		}
@@ -824,15 +822,15 @@ func generateMemoryCopyToReference(cc *CodegenContext, source ir.Arg, size int, 
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, tempRegister, 8, source, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 8), 8, source, offset)...)
 			lines = append(lines, generateStoreByAddr(cc, tempRegister, 8, targetRef, offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, tempRegister, 4, source, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 4), 4, source, offset)...)
 			lines = append(lines, generateStoreByAddr(cc, tempRegister, 4, targetRef, offset)...)
 			offset += 4
 		} else {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, tempRegister, 1, source, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 1), 1, source, offset)...)
 			lines = append(lines, generateStoreByAddr(cc, tempRegister, 1, targetRef, offset)...)
 			offset += 1
 		}

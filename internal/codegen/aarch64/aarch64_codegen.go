@@ -304,7 +304,7 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 	// Save x19 to the stack because it currently holds this function's result address.
 	offset += ast.WORD_SIZE
 	savedX19Offset := offset
-	lines = append(lines, generateRegisterStore(19, ast.WORD_SIZE, "sp", -offset)...)
+	lines = append(lines, generateRegisterStore(registerByIndex(19, ast.WORD_SIZE), ast.WORD_SIZE, "sp", -offset)...)
 
 	// Don't forget about stack alignment.
 	offset = alignSP(offset)
@@ -409,7 +409,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 				// Sign extend 32-bit values to 64-bit
 				lines = append(lines, asm.Op2("sxtw", asm.Reg("x10"), asm.Reg("w10")))
 			}
-			lines = append(lines, generateRegisterStore(10, ast.WORD_SIZE, "sp", i*ast.WORD_SIZE-int(spShift))...)
+			lines = append(lines, generateRegisterStore(registerByIndex(10, ast.WORD_SIZE), ast.WORD_SIZE, "sp", i*ast.WORD_SIZE-int(spShift))...)
 		}
 	}
 
@@ -727,7 +727,7 @@ func generateStoreToVariable(cc *CodegenContext, regIndex, regSize int, target s
 			panic("cannot do generateStoreToVariable for x1")
 		}
 		lines = append(lines, generateAddressLoad(cc, 1, ir.Arg{Variable: target})...)
-		lines = append(lines, generateRegisterStore(regIndex, regSize, "x1", 0)...)
+		lines = append(lines, generateRegisterStore(registerByIndex(regIndex, regSize), regSize, "x1", 0)...)
 	} else {
 		lines = append(lines, generateStoreToLocalWithOffset(cc, regIndex, regSize, target, 0)...)
 	}
@@ -737,29 +737,29 @@ func generateStoreToVariable(cc *CodegenContext, regIndex, regSize int, target s
 
 func generateStoreToLocalWithOffset(cc *CodegenContext, regIndex, regSize int, target string, offset int) []asm.Line {
 	fullOffset := cc.locals[target] + offset
-	return generateRegisterStore(regIndex, regSize, "sp", fullOffset)
+	return generateRegisterStore(registerByIndex(regIndex, regSize), regSize, "sp", fullOffset)
 }
 
 // generateRegisterStore generates a store to memory location identified by base register and offset.
-func generateRegisterStore(regIndex, regSize int, baseReg string, offset int) []asm.Line {
+func generateRegisterStore(reg string, regSize int, baseReg string, offset int) []asm.Line {
 	var lines []asm.Line
-	reg := asm.Reg(registerByIndex(regIndex, regSize))
+	regArg := asm.Reg(reg)
 
 	if offset <= MAX_SP_OFFSET {
 		// Easy case: offset from base register.
 		baseArg := asm.Arg{Reg: baseReg, Offset: offset, Deref: true}
 		if regSize == 1 {
-			lines = append(lines, asm.Op2("strb", reg, baseArg))
+			lines = append(lines, asm.Op2("strb", regArg, baseArg))
 		} else {
-			lines = append(lines, asm.Op2("str", reg, baseArg))
+			lines = append(lines, asm.Op2("str", regArg, baseArg))
 		}
 	} else {
 		lines = append(lines, generateLiteralLoad("x9", 8, int64(offset))...)
 		lines = append(lines, asm.Op3("add", asm.X9, asm.Reg(baseReg), asm.X9))
 		if regSize == 1 {
-			lines = append(lines, asm.Op2("strb", reg, asm.X9.AsDeref()))
+			lines = append(lines, asm.Op2("strb", regArg, asm.X9.AsDeref()))
 		} else {
-			lines = append(lines, asm.Op2("str", reg, asm.X9.AsDeref()))
+			lines = append(lines, asm.Op2("str", regArg, asm.X9.AsDeref()))
 		}
 	}
 
@@ -799,15 +799,15 @@ func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseRe
 	for offset < size {
 		if size-offset >= 8 {
 			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 8), 8, source, offset)...)
-			lines = append(lines, generateRegisterStore(tempRegister, 8, baseReg, baseOffset+offset)...)
+			lines = append(lines, generateRegisterStore(registerByIndex(tempRegister, 8), 8, baseReg, baseOffset+offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
 			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 4), 4, source, offset)...)
-			lines = append(lines, generateRegisterStore(tempRegister, 4, baseReg, baseOffset+offset)...)
+			lines = append(lines, generateRegisterStore(registerByIndex(tempRegister, 4), 4, baseReg, baseOffset+offset)...)
 			offset += 4
 		} else {
 			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 1), 1, source, offset)...)
-			lines = append(lines, generateRegisterStore(tempRegister, 1, baseReg, baseOffset+offset)...)
+			lines = append(lines, generateRegisterStore(registerByIndex(tempRegister, 1), 1, baseReg, baseOffset+offset)...)
 			offset += 1
 		}
 	}

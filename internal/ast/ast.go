@@ -414,14 +414,16 @@ type Expression interface {
 }
 
 type Literal struct {
-	Loc         Location
-	StringValue *string
-	IntValue    *int32
-	Int8Value   *int8
-	Int64Value  *int64
-	BoolValue   *bool
-	NullValue   bool // true if this is a null literal
-	Type        Type
+	Loc          Location
+	StringValue  *string
+	IntValue     *int32
+	Int8Value    *int8
+	Int64Value   *int64
+	Float32Value *float32
+	Float64Value *float64
+	BoolValue    *bool
+	NullValue    bool // true if this is a null literal
+	Type         Type
 }
 
 func (l *Literal) GetLocation() Location {
@@ -443,6 +445,10 @@ func (l *Literal) String() string {
 		return fmt.Sprintf("%d", *l.Int8Value)
 	} else if l.Int64Value != nil {
 		return fmt.Sprintf("%d", *l.Int64Value)
+	} else if l.Float32Value != nil {
+		return fmt.Sprintf("%g", *l.Float32Value)
+	} else if l.Float64Value != nil {
+		return fmt.Sprintf("%g", *l.Float64Value)
 	} else if l.BoolValue != nil {
 		return fmt.Sprintf("%v", *l.BoolValue)
 	} else if l.NullValue {
@@ -462,6 +468,14 @@ func NewInt8Literal(value int8) *Literal {
 
 func NewInt64Literal(value int64) *Literal {
 	return &Literal{Int64Value: &value}
+}
+
+func NewFloat32Literal(value float32) *Literal {
+	return &Literal{Float32Value: &value}
+}
+
+func NewFloat64Literal(value float64) *Literal {
+	return &Literal{Float64Value: &value}
 }
 
 func NewStringLiteral(value string) *Literal {

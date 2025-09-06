@@ -14,6 +14,7 @@ const (
 	LEX_EOF TokenType = iota
 	LEX_IDENT
 	LEX_NUMBER
+	LEX_FLOAT
 	LEX_STRING
 	LEX_KEYWORD
 	LEX_OPERATOR
@@ -28,6 +29,8 @@ func (t TokenType) String() string {
 		return "IDENT"
 	case LEX_NUMBER:
 		return "NUMBER"
+	case LEX_FLOAT:
+		return "FLOAT"
 	case LEX_STRING:
 		return "STRING"
 	case LEX_KEYWORD:
@@ -508,9 +511,10 @@ func (l *Lexer) lexString(startLine, startCol int) (Lexeme, error) {
 	}
 }
 
-// lexNumber reads a number literal
+// lexNumber reads a number literal (integer or floating point)
 func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 	var num string
+	isFloat := false
 
 	// Read the first digit
 	r, _, err := l.readRune()
@@ -549,32 +553,58 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 			return Lexeme{}, err
 		}
 
-		// "l" suffix indicates an int64 literal
-		if r == 'l' {
+		// Check for decimal point
+		if r == '.' {
+			// This is a floating point number
 			num += string(r)
-			break
-		}
-
-		// "i8" suffix indicates an int8 literal
-		if r == 'i' {
-			nextR, _, err := l.readRune()
-			if err != nil {
-				if err == io.EOF {
-					// Just "i" at EOF, treat as end of number
+			isFloat = true
+			// Continue reading fractional part
+			for {
+				r, _, err := l.readRune()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					return Lexeme{}, err
+				}
+				if !unicode.IsDigit(r) {
 					l.unreadRune()
 					break
 				}
-				return Lexeme{}, err
+				num += string(r)
 			}
-			if nextR == '8' {
-				// It's an i8 suffix
-				num += "i8"
+			break
+		}
+
+		// For integer literals, check for type suffixes
+		if !isFloat {
+			// "l" suffix indicates an int64 literal
+			if r == 'l' {
+				num += string(r)
 				break
-			} else {
-				// Not an i8 suffix, put back both characters
-				l.unreadRune() // put back the second character
-				l.unreadRune() // put back the 'i'
-				break
+			}
+
+			// "i8" suffix indicates an int8 literal
+			if r == 'i' {
+				nextR, _, err := l.readRune()
+				if err != nil {
+					if err == io.EOF {
+						// Just "i" at EOF, treat as end of number
+						l.unreadRune()
+						break
+					}
+					return Lexeme{}, err
+				}
+				if nextR == '8' {
+					// It's an i8 suffix
+					num += "i8"
+					break
+				} else {
+					// Not an i8 suffix, put back both characters
+					l.unreadRune() // put back the second character
+					l.unreadRune() // put back the 'i'
+					break
+				}
 			}
 		}
 
@@ -586,6 +616,9 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 		num += string(r)
 	}
 
+	if isFloat {
+		return l.makeLexeme(LEX_FLOAT, num, startLine, startCol), nil
+	}
 	return l.makeLexeme(LEX_NUMBER, num, startLine, startCol), nil
 }
 

@@ -14,12 +14,14 @@ const (
 
 // Common base types - singleton instances
 var (
-	Int    = &BaseType{Name: "int"}
-	Int8   = &BaseType{Name: "int8"}
-	Int64  = &BaseType{Name: "int64"}
-	String = &BaseType{Name: "cstring"}
-	Bool   = &BaseType{Name: "bool"}
-	Void   = &BaseType{Name: "void"}
+	Int     = &BaseType{Name: "int"}
+	Int8    = &BaseType{Name: "int8"}
+	Int64   = &BaseType{Name: "int64"}
+	Float32 = &BaseType{Name: "float32"}
+	Float64 = &BaseType{Name: "float64"}
+	String  = &BaseType{Name: "cstring"}
+	Bool    = &BaseType{Name: "bool"}
+	Void    = &BaseType{Name: "void"}
 	// Not directly accessible to the user.
 	VoidPtr = &BaseType{Name: "voidptr"}
 	// Not directly accessible to the user.
@@ -58,6 +60,10 @@ func NewBaseType(name string) *BaseType {
 		return Int8
 	case "int64":
 		return Int64
+	case "float32":
+		return Float32
+	case "float64":
+		return Float64
 	case "cstring":
 		return String
 	case "bool":
@@ -124,6 +130,10 @@ func IsPointerType(typ Type) bool {
 
 func IsIntegerType(typ Type) bool {
 	return typ == Int || typ == Int8 || typ == Int64
+}
+
+func IsFloatingPointType(typ Type) bool {
+	return typ == Float32 || typ == Float64
 }
 
 func IsSliceType(typ Type) bool {

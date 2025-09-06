@@ -706,6 +706,11 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+	case lexer.LEX_FLOAT:
+		expr, err = p.parseFloatLiteral()
+		if err != nil {
+			return nil, err
+		}
 	case lexer.LEX_STRING:
 		expr, err = p.parseStringLiteral()
 		if err != nil {
@@ -948,6 +953,25 @@ func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 		literal = ast.NewIntLiteral(int32(val))
 	}
 
+	literal.Loc = litLoc
+	return literal, nil
+}
+
+func (p *Parser) parseFloatLiteral() (ast.Expression, error) {
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	litLoc := locationFromLexeme(lex)
+
+	// Parse the floating point value
+	val, err := strconv.ParseFloat(lex.Str, 64)
+	if err != nil {
+		return nil, fmt.Errorf("%s: could not parse floating point number: %w", lex.Loc, err)
+	}
+
+	// Default to float64, but we could extend this later to support float32 suffix
+	literal := ast.NewFloat64Literal(val)
 	literal.Loc = litLoc
 	return literal, nil
 }

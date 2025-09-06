@@ -83,6 +83,8 @@ func declarePrimitiveTypes(types map[string]TypeDescriptor) {
 	types["int8"] = &PrimitiveTypeDescriptor{"int8", 1}
 	types["int64"] = &PrimitiveTypeDescriptor{"int64", 8}
 	types["bool"] = &PrimitiveTypeDescriptor{"bool", 4}
+	types["float32"] = &PrimitiveTypeDescriptor{"float32", 4}
+	types["float64"] = &PrimitiveTypeDescriptor{"float64", 8}
 	types["cstring"] = &PrimitiveTypeDescriptor{"cstring", 8}
 }
 

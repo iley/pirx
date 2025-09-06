@@ -184,6 +184,10 @@ func (c *TypeChecker) checkLiteral(lit *ast.Literal) *ast.Literal {
 		t = ast.Int8
 	} else if lit.BoolValue != nil {
 		t = ast.Bool
+	} else if lit.Float32Value != nil {
+		t = ast.Float32
+	} else if lit.Float64Value != nil {
+		t = ast.Float64
 	} else if lit.NullValue {
 		t = ast.NullPtr
 	} else {
@@ -640,7 +644,7 @@ func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 
 	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" {
 		// These are (currently) supproted for integers only.
-		return left, ast.IsIntegerType(left)
+		return left, ast.IsNumericType(left)
 	}
 
 	if op == "<" || op == ">" || op == "<=" || op == ">=" {

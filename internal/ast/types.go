@@ -136,6 +136,10 @@ func IsFloatingPointType(typ Type) bool {
 	return typ == Float32 || typ == Float64
 }
 
+func IsNumericType(typ Type) bool {
+	return IsIntegerType(typ) || IsFloatingPointType(typ)
+}
+
 func IsSliceType(typ Type) bool {
 	_, ok := typ.(*SliceType)
 	return ok

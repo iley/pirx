@@ -1,0 +1,41 @@
+func main(): int {
+  // Test float64 operations
+  var a: float64;
+  var b: float64;
+  var result: float64;
+  
+  a = 2.5;
+  b = 1.5;
+  
+  // Addition
+  result = a + b;
+  printf("add: %.1f\n", result);
+  
+  // Subtraction
+  result = a - b;
+  printf("sub: %.1f\n", result);
+  
+  // Multiplication
+  result = a * b;
+  printf("mul: %.1f\n", result);
+  
+  // Division
+  result = a / b;
+  printf("div: %.1f\n", result);
+  
+  // Test with literals
+  result = 0.1 + 0.2;
+  printf("literals: %.1f\n", result);
+  
+  // Test more operations
+  result = 10.0 - 3.5;
+  printf("sub2: %.1f\n", result);
+  
+  result = 1.5 * 2.0;
+  printf("mul2: %.1f\n", result);
+  
+  result = 7.5 / 2.5;
+  printf("div2: %.1f\n", result);
+  
+  return 0;
+}

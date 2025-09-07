@@ -28,6 +28,7 @@ type Features struct {
 type CodegenContext struct {
 	features       Features
 	stringLiterals map[string]string
+	floatLiterals  map[float64]string
 
 	// Function-specific.
 	locals       map[string]int // name -> size
@@ -44,11 +45,18 @@ func Generate(irp ir.IrProgram, features Features) (asm.Program, error) {
 		stringLiterals[s] = fmt.Sprintf(".Lstr%d", i)
 	}
 
+	// Map from float to a label in the data section.
+	floatLiterals := make(map[float64]string)
+	for i, f := range common.GatherFloats(irp) {
+		floatLiterals[f] = fmt.Sprintf(".Lflt%d", i)
+	}
+
 	globalVariables := common.GatherGlobals(irp)
 
 	cc := &CodegenContext{
 		features:       features,
 		stringLiterals: stringLiterals,
+		floatLiterals:  floatLiterals,
 	}
 
 	for _, f := range irp.Functions {
@@ -60,6 +68,7 @@ func Generate(irp ir.IrProgram, features Features) (asm.Program, error) {
 	}
 
 	asmProgram.StringLiterals = generateStringLiterals(stringLiterals)
+	asmProgram.FloatLiterals = generateFloatLiterals(floatLiterals)
 	asmProgram.GlobalVariables = generateGlobalVariables(globalVariables)
 
 	return asmProgram, nil
@@ -69,6 +78,14 @@ func generateStringLiterals(literals map[string]string) []asm.StringLiteral {
 	var result []asm.StringLiteral
 	for str, label := range literals {
 		result = append(result, asm.StringLiteral{Label: label, Text: str})
+	}
+	return result
+}
+
+func generateFloatLiterals(literals map[float64]string) []asm.FloatLiteral {
+	var result []asm.FloatLiteral
+	for val, label := range literals {
+		result = append(result, asm.FloatLiteral{Label: label, Value: val})
 	}
 	return result
 }
@@ -242,6 +259,9 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 	} else if assign.Value.LiteralInt != nil {
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
 		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Target)...)
+	} else if assign.Value.LiteralFloat != nil {
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Target)...)
 	} else if assign.Value.Zero {
 		if ir.IsGlobal(assign.Target) {
 			// Do nothing.
@@ -277,6 +297,10 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) ([]asm
 		return generateMemoryCopyToReference(cc, assign.Value, assign.Size, assign.Target), nil
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
+		lines = append(lines, generateStoreByAddr(cc, registerByIndex(0, assign.Size), assign.Target, 0)...)
+	} else if assign.Value.LiteralFloat != nil {
+		// Assign float constant to variable.
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
 		lines = append(lines, generateStoreByAddr(cc, registerByIndex(0, assign.Size), assign.Target, 0)...)
 	} else if assign.Value.Zero {
@@ -444,8 +468,21 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error) {
 	var lines []asm.Line
 
-	lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, binop.OperandSize), binop.OperandSize, binop.Left)...)
-	lines = append(lines, generateRegisterLoad(cc, registerByIndex(1, binop.OperandSize), binop.OperandSize, binop.Right)...)
+	// Check if this is a floating point operation
+	isFloatOp := len(binop.Operation) >= 2 && binop.Operation[len(binop.Operation)-1:] == "."
+
+	if isFloatOp {
+		// For floating point operations, load into FP registers via general-purpose registers
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, binop.OperandSize), binop.OperandSize, binop.Left)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(1, binop.OperandSize), binop.OperandSize, binop.Right)...)
+
+		// Move from general-purpose registers to floating point registers
+		lines = append(lines, asm.Op2("fmov", asm.Reg("d0"), asm.Reg(registerByIndex(0, binop.OperandSize))))
+		lines = append(lines, asm.Op2("fmov", asm.Reg("d1"), asm.Reg(registerByIndex(1, binop.OperandSize))))
+	} else {
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, binop.OperandSize), binop.OperandSize, binop.Left)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(1, binop.OperandSize), binop.OperandSize, binop.Right)...)
+	}
 
 	r0 := asm.Reg(registerByIndex(0, binop.OperandSize))
 	r1 := asm.Reg(registerByIndex(1, binop.OperandSize))
@@ -454,12 +491,24 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 	switch binop.Operation {
 	case "+":
 		lines = append(lines, asm.Op3("add", r0, r0, r1))
+	case "+.":
+		lines = append(lines, asm.Op3("fadd", asm.Reg("d0"), asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("fmov", r0, asm.Reg("d0"))) // Move result back to general-purpose register
 	case "-":
 		lines = append(lines, asm.Op3("sub", r0, r0, r1))
+	case "-.":
+		lines = append(lines, asm.Op3("fsub", asm.Reg("d0"), asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("fmov", r0, asm.Reg("d0")))
 	case "*":
 		lines = append(lines, asm.Op3("mul", r0, r0, r1))
+	case "*.":
+		lines = append(lines, asm.Op3("fmul", asm.Reg("d0"), asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("fmov", r0, asm.Reg("d0")))
 	case "/":
 		lines = append(lines, asm.Op3("sdiv", r0, r0, r1))
+	case "/.":
+		lines = append(lines, asm.Op3("fdiv", asm.Reg("d0"), asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("fmov", r0, asm.Reg("d0")))
 	case "%":
 		lines = append(lines, asm.Op3("sdiv", r2, r0, r1))
 		// msub r0, r2, r1, r0  (r0 = r0 - (r2 * r1))
@@ -688,6 +737,11 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, reg string, regSize int,
 			panic("cannot load a literal int64 with offset")
 		}
 		return generateLiteralLoad(reg, regSize, *arg.LiteralInt)
+	} else if arg.LiteralFloat != nil {
+		if offset != 0 {
+			panic("cannot load a literal float64 with offset")
+		}
+		return generateFloatLiteralLoad(cc, reg, regSize, *arg.LiteralFloat)
 	} else if arg.LiteralString != nil {
 		if offset != 0 {
 			panic("cannot load a literal string with offset")
@@ -874,6 +928,25 @@ func generateLiteralLoad(reg string, regSize int, val int64) []asm.Line {
 		if (val>>48)&0xffff != 0 {
 			lines = append(lines, asm.Op3("movk", asm.Reg(reg), asm.Imm(int((val>>48)&0xffff)), asm.LSL(48)))
 		}
+	}
+
+	return lines
+}
+
+func generateFloatLiteralLoad(cc *CodegenContext, reg string, regSize int, literal float64) []asm.Line {
+	label := cc.floatLiterals[literal]
+	var lines []asm.Line
+
+	// Load the address of the float literal into x9 (temporary register)
+	lines = append(lines, asm.Op2("adrp", asm.Reg("x9"), asm.Ref(label).WithPage()))
+	lines = append(lines, asm.Op3("add", asm.Reg("x9"), asm.Reg("x9"), asm.Ref(label).WithPageOff()))
+
+	// Load the actual float value from memory
+	switch regSize {
+	case 8, 4:
+		lines = append(lines, asm.Op2("ldr", asm.Reg(reg), asm.Reg("x9").AsDeref()))
+	default:
+		panic(fmt.Errorf("unsupported register size for float literal: %d", regSize))
 	}
 
 	return lines

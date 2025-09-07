@@ -22,6 +22,21 @@ func GatherStrings(p ir.IrProgram) []string {
 	return slices.Collect(maps.Keys(uniqueStrings))
 }
 
+func GatherFloats(p ir.IrProgram) []float64 {
+	uniqueFloats := map[float64]struct{}{}
+	for _, f := range p.Functions {
+		for _, op := range f.Ops {
+			args := op.GetArgs()
+			for _, arg := range args {
+				if arg.LiteralFloat != nil {
+					uniqueFloats[*arg.LiteralFloat] = struct{}{}
+				}
+			}
+		}
+	}
+	return slices.Collect(maps.Keys(uniqueFloats))
+}
+
 type NameAndSize struct {
 	Name string
 	Size int

@@ -14,6 +14,7 @@ func formatProgram(out io.Writer, p asm.Program) {
 	}
 
 	formatStringLiterals(out, p.StringLiterals)
+	formatFloatLiterals(out, p.FloatLiterals)
 	formatGlobalVariables(out, p.GlobalVariables)
 }
 
@@ -96,6 +97,19 @@ func formatStringLiterals(out io.Writer, stringLiterals []asm.StringLiteral) {
 	fmt.Fprintf(out, "\n// String literals.\n")
 	for _, sl := range stringLiterals {
 		fmt.Fprintf(out, "%s: .string \"%s\"\n", sl.Label, util.EscapeString(sl.Text))
+	}
+}
+
+func formatFloatLiterals(out io.Writer, floatLiterals []asm.FloatLiteral) {
+	if len(floatLiterals) == 0 {
+		return
+	}
+
+	fmt.Fprintf(out, ".section  __TEXT,__const\n")
+	fmt.Fprintf(out, ".p2align 3\n")
+	fmt.Fprintf(out, "\n// Float literals.\n")
+	for _, fl := range floatLiterals {
+		fmt.Fprintf(out, "%s: .double %g\n", fl.Label, fl.Value)
 	}
 }
 

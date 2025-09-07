@@ -13,6 +13,7 @@ var (
 type Program struct {
 	Functions       []Function
 	StringLiterals  []StringLiteral
+	FloatLiterals   []FloatLiteral
 	GlobalVariables []GlobalVariable
 }
 
@@ -76,6 +77,11 @@ func (a Arg) AsDeref() Arg {
 type StringLiteral struct {
 	Label string
 	Text  string
+}
+
+type FloatLiteral struct {
+	Label string
+	Value float64
 }
 
 type GlobalVariable struct {

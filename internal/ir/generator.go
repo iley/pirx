@@ -213,6 +213,10 @@ func (g *Generator) generateBinaryOperationOps(binOp *ast.BinaryOperation) ([]Op
 	ops := append(leftOps, rightOps...)
 	temp := g.allocTemp(leftSize)
 	resultSize := binaryOperationSize(binOp.Operator, leftSize)
+	operation := binOp.Operator
+	if ast.IsFloatingPointType(binOp.Type) {
+		operation += "."
+	}
 	ops = append(ops, BinaryOp{
 		Result:      temp,
 		Left:        leftArg,

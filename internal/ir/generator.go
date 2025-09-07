@@ -221,7 +221,7 @@ func (g *Generator) generateBinaryOperationOps(binOp *ast.BinaryOperation) ([]Op
 		Result:      temp,
 		Left:        leftArg,
 		Right:       rightArg,
-		Operation:   binOp.Operator,
+		Operation:   operation,
 		Size:        resultSize,
 		OperandSize: leftSize,
 	})

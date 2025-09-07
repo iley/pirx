@@ -216,7 +216,7 @@ func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
 		return []asm.Line{asm.Op1("b", asm.Ref(fmt.Sprintf(".L%s_%s", cc.functionName, jump.Goto)))}, nil
 	} else if jumpUnless, ok := op.(ir.JumpUnless); ok {
 		var lines []asm.Line
-		lines = append(lines, generateRegisterLoad(cc, 0, jumpUnless.Size, jumpUnless.Condition)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, jumpUnless.Size), jumpUnless.Size, jumpUnless.Condition)...)
 		lines = append(lines, asm.Op2("cmp", asm.X0, asm.Imm(0)))
 		lines = append(lines, asm.Op1("beq", asm.Ref(fmt.Sprintf(".L%s_%s", cc.functionName, jumpUnless.Goto))))
 		return lines, nil
@@ -233,30 +233,30 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 	if assign.Value.Variable != "" {
 		if ir.IsGlobal(assign.Target) {
 			// Load global's address into x1.
-			lines = append(lines, generateAddressLoad(cc, 1, ir.Arg{Variable: assign.Target})...)
+			lines = append(lines, generateAddressLoad(cc, "x1", ir.Arg{Variable: assign.Target})...)
 			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "x1", 0)...)
 		} else {
 			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "sp", cc.locals[assign.Target])...)
 		}
 	} else if assign.Value.LiteralInt != nil {
-		lines = append(lines, generateRegisterLoad(cc, 0, assign.Size, assign.Value)...)
-		lines = append(lines, generateStoreToVariable(cc, 0, assign.Size, assign.Target)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Size, assign.Target)...)
 	} else if assign.Value.Zero {
 		if ir.IsGlobal(assign.Target) {
 			// Do nothing.
 			// This is a hack based on the fact that assignment of Arg{Zero: true} only happens in initialization, and globals are zero-initialized by the linker anyway.
 		} else {
-			lines = append(lines, generateRegisterLoad(cc, 0, 8, assign.Value)...)
+			lines = append(lines, generateRegisterLoad(cc, "x0", 8, assign.Value)...)
 			offset := 0
 			for offset < assign.Size {
 				if assign.Size-offset >= 8 {
-					lines = append(lines, generateStoreToLocalWithOffset(cc, 0, 8, assign.Target, offset)...)
+					lines = append(lines, generateStoreToLocalWithOffset(cc, "x0", 8, assign.Target, offset)...)
 					offset += 8
 				} else if assign.Size-offset >= 4 {
-					lines = append(lines, generateStoreToLocalWithOffset(cc, 0, 4, assign.Target, offset)...)
+					lines = append(lines, generateStoreToLocalWithOffset(cc, "w0", 4, assign.Target, offset)...)
 					offset += 4
 				} else {
-					lines = append(lines, generateStoreToLocalWithOffset(cc, 0, 1, assign.Target, offset)...)
+					lines = append(lines, generateStoreToLocalWithOffset(cc, "w0", 1, assign.Target, offset)...)
 					offset += 1
 				}
 			}
@@ -276,8 +276,8 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) ([]asm
 		return generateMemoryCopyToReference(cc, assign.Value, assign.Size, assign.Target), nil
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
-		lines = append(lines, generateRegisterLoad(cc, 0, assign.Size, assign.Value)...)
-		lines = append(lines, generateStoreByAddr(cc, 0, assign.Size, assign.Target, 0)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
+		lines = append(lines, generateStoreByAddr(cc, registerByIndex(0, assign.Size), assign.Size, assign.Target, 0)...)
 	} else if assign.Value.Zero {
 		return lines, fmt.Errorf("TODO: zero assignment by address not supported yet")
 	} else {
@@ -304,14 +304,14 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 	// Save x19 to the stack because it currently holds this function's result address.
 	offset += ast.WORD_SIZE
 	savedX19Offset := offset
-	lines = append(lines, generateRegisterStore(registerByIndex(19, ast.WORD_SIZE), ast.WORD_SIZE, "sp", -offset)...)
+	lines = append(lines, generateRegisterStore("x19", ast.WORD_SIZE, "sp", -offset)...)
 
 	// Don't forget about stack alignment.
 	offset = alignSP(offset)
 
 	if call.Result != "" {
 		// Store the result address in x19.
-		lines = append(lines, generateAddressLoad(cc, 19, ir.Arg{Variable: call.Result})...)
+		lines = append(lines, generateAddressLoad(cc, "x19", ir.Arg{Variable: call.Result})...)
 	}
 
 	label := call.Function
@@ -366,15 +366,15 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		case 1:
 			reg32 := registerByIndex(nextRegister, 4)
 			reg64 := registerByIndex(nextRegister, 8)
-			lines = append(lines, generateRegisterLoad(cc, nextRegister, argSize, arg)...)
+			lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextRegister, argSize), argSize, arg)...)
 			lines = append(lines, asm.Op2("sxtb", asm.Reg(reg64), asm.Reg(reg32)))
 		case 4:
 			reg32 := registerByIndex(nextRegister, 4)
 			reg64 := registerByIndex(nextRegister, 8)
-			lines = append(lines, generateRegisterLoad(cc, nextRegister, argSize, arg)...)
+			lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextRegister, argSize), argSize, arg)...)
 			lines = append(lines, asm.Op2("sxtw", asm.Reg(reg64), asm.Reg(reg32)))
 		case 8:
-			lines = append(lines, generateRegisterLoad(cc, nextRegister, argSize, arg)...)
+			lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextRegister, argSize), argSize, arg)...)
 		case 12:
 			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister, 8), 8, arg, 0)...)
 			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister+1, 4), 4, arg, 8)...)
@@ -403,13 +403,13 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		// Then generate the stack pushes.
 		for i, arg := range remainingArgs {
 			argSize := call.ArgSizes[i+call.NamedArgs]
-			lines = append(lines, generateRegisterLoad(cc, 10, argSize, arg)...)
+			lines = append(lines, generateRegisterLoad(cc, registerByIndex(10, argSize), argSize, arg)...)
 			// We extend all arguments to 64 bit.
 			if argSize == 4 {
 				// Sign extend 32-bit values to 64-bit
 				lines = append(lines, asm.Op2("sxtw", asm.Reg("x10"), asm.Reg("w10")))
 			}
-			lines = append(lines, generateRegisterStore(registerByIndex(10, ast.WORD_SIZE), ast.WORD_SIZE, "sp", i*ast.WORD_SIZE-int(spShift))...)
+			lines = append(lines, generateRegisterStore("x10", ast.WORD_SIZE, "sp", i*ast.WORD_SIZE-int(spShift))...)
 		}
 	}
 
@@ -443,8 +443,8 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error) {
 	var lines []asm.Line
 
-	lines = append(lines, generateRegisterLoad(cc, 0, binop.OperandSize, binop.Left)...)
-	lines = append(lines, generateRegisterLoad(cc, 1, binop.OperandSize, binop.Right)...)
+	lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, binop.OperandSize), binop.OperandSize, binop.Left)...)
+	lines = append(lines, generateRegisterLoad(cc, registerByIndex(1, binop.OperandSize), binop.OperandSize, binop.Right)...)
 
 	r0 := asm.Reg(registerByIndex(0, binop.OperandSize))
 	r1 := asm.Reg(registerByIndex(1, binop.OperandSize))
@@ -495,7 +495,7 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 
 	// Attention! This can be an implicit size cast!
 	// A typical example where this happens is "boolean = (int64 == int64)".
-	lines = append(lines, generateStoreToVariable(cc, 0, binop.Size, binop.Result)...)
+	lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Size, binop.Result)...)
 	return lines, nil
 }
 
@@ -504,18 +504,18 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) ([]asm.Line, error) {
 
 	switch op.Operation {
 	case "!":
-		lines = append(lines, generateRegisterLoad(cc, 0, op.Size, op.Value)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
 		lines = append(lines, asm.Op2("cmp", asm.X0, asm.Imm(0)))
 		lines = append(lines, asm.Op2("cset", asm.X0, asm.Ref("eq")))
-		lines = append(lines, generateStoreToVariable(cc, 0, op.Size, op.Result)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Size, op.Result)...)
 	case "-":
-		lines = append(lines, generateRegisterLoad(cc, 0, op.Size, op.Value)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
 		reg := asm.Reg(registerByIndex(0, op.Size))
 		lines = append(lines, asm.Op2("neg", reg, reg))
-		lines = append(lines, generateStoreToVariable(cc, 0, op.Size, op.Result)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Size, op.Result)...)
 	case "&":
-		lines = append(lines, generateAddressLoad(cc, 0, op.Value)...)
-		lines = append(lines, generateStoreToVariable(cc, 0, op.Size, op.Result)...)
+		lines = append(lines, generateAddressLoad(cc, "x0", op.Value)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Size, op.Result)...)
 	case "*":
 		lines = append(lines, generateMemoryCopyFromRef(cc, op.Value, op.Size, op.Result)...)
 	default:
@@ -550,13 +550,13 @@ func generateExternalReturn(cc *CodegenContext, ret ir.ExternalReturn) ([]asm.Li
 
 	switch ret.Size {
 	case 4:
-		lines = append(lines, generateRegisterLoad(cc, 0, ret.Size, *ret.Value)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, ret.Size), ret.Size, *ret.Value)...)
 		lines = append(lines, asm.Op2("sxtw", asm.X0, asm.W0))
 	case 8:
-		lines = append(lines, generateRegisterLoad(cc, 0, ret.Size, *ret.Value)...)
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, ret.Size), ret.Size, *ret.Value)...)
 	case 12, 16:
 		// Load first 8 bytes into x0...
-		lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(0, 8), 8, *ret.Value, 0)...)
+		lines = append(lines, generateRegisterLoadWithOffset(cc, "x0", 8, *ret.Value, 0)...)
 		// And the rest into x1/w1.
 		lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(1, ret.Size-8), ret.Size-8, *ret.Value, 8)...)
 	default:
@@ -587,10 +587,10 @@ func generateExternalResultStore(cc *CodegenContext, size int, target string) []
 		}
 
 		if size-offset >= 8 {
-			lines = append(lines, generateStoreToLocalWithOffset(cc, retReg, 8, target, offset)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(retReg, 8), 8, target, offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
-			lines = append(lines, generateStoreToLocalWithOffset(cc, retReg, 4, target, offset)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(retReg, 4), 4, target, offset)...)
 			offset += 4
 			// Skip the shfit if we're either at the end or at register boundary.
 			if size > offset && offset != 8 {
@@ -598,7 +598,7 @@ func generateExternalResultStore(cc *CodegenContext, size int, target string) []
 			}
 		} else {
 			// Copy one byte at a time as we don't support half-word access currently.
-			lines = append(lines, generateStoreToLocalWithOffset(cc, retReg, 1, target, offset)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(retReg, 1), 1, target, offset)...)
 			offset += 1
 			if size > offset {
 				lines = append(lines, asm.Op3("lsr", asm.Reg(fmt.Sprintf("x%d", retReg)), asm.Reg(fmt.Sprintf("x%d", retReg)), asm.Imm(8)))
@@ -609,10 +609,10 @@ func generateExternalResultStore(cc *CodegenContext, size int, target string) []
 	return lines
 }
 
-// generateRegisterLoad generates code for loading a value into a register by its index and size.
+// generateRegisterLoad generates code for loading a value into a register by its name and size.
 // trashes X9.
-func generateRegisterLoad(cc *CodegenContext, regIndex, regSize int, arg ir.Arg) []asm.Line {
-	return generateRegisterLoadWithOffset(cc, registerByIndex(regIndex, regSize), regSize, arg, 0)
+func generateRegisterLoad(cc *CodegenContext, reg string, regSize int, arg ir.Arg) []asm.Line {
+	return generateRegisterLoadWithOffset(cc, reg, regSize, arg, 0)
 }
 
 func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable string, offset int) []asm.Line {
@@ -697,21 +697,21 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, reg string, regSize int,
 	}
 }
 
-func generateAddressLoad(cc *CodegenContext, regIndex int, arg ir.Arg) []asm.Line {
+func generateAddressLoad(cc *CodegenContext, reg string, arg ir.Arg) []asm.Line {
 	if arg.Variable == "" {
 		panic(fmt.Errorf("can only load address of variables, got %s", arg))
 	}
 
 	var lines []asm.Line
-	reg := asm.Reg(registerByIndex(regIndex, ast.WORD_SIZE))
+	regArg := asm.Reg(reg)
 
 	if ir.IsGlobal(arg.Variable) {
 		label := getGlobalLabel(arg.Variable)
-		lines = append(lines, asm.Op2("adrp", reg, asm.Ref(label).WithPage()))
-		lines = append(lines, asm.Op3("add", reg, reg, asm.Ref(label).WithPageOff()))
+		lines = append(lines, asm.Op2("adrp", regArg, asm.Ref(label).WithPage()))
+		lines = append(lines, asm.Op3("add", regArg, regArg, asm.Ref(label).WithPageOff()))
 	} else {
 		offset := int64(cc.locals[arg.Variable])
-		lines = append(lines, asm.Op3("add", reg, asm.SP, asm.Imm(int(offset))))
+		lines = append(lines, asm.Op3("add", regArg, asm.SP, asm.Imm(int(offset))))
 	}
 
 	return lines
@@ -719,25 +719,25 @@ func generateAddressLoad(cc *CodegenContext, regIndex int, arg ir.Arg) []asm.Lin
 
 // TODO: Store set of currently used registers in the context.
 // Trashes X1 and X9.
-func generateStoreToVariable(cc *CodegenContext, regIndex, regSize int, target string) []asm.Line {
+func generateStoreToVariable(cc *CodegenContext, reg string, regSize int, target string) []asm.Line {
 	var lines []asm.Line
 
 	if ir.IsGlobal(target) {
-		if regIndex == 1 {
+		if reg == "x1" {
 			panic("cannot do generateStoreToVariable for x1")
 		}
-		lines = append(lines, generateAddressLoad(cc, 1, ir.Arg{Variable: target})...)
-		lines = append(lines, generateRegisterStore(registerByIndex(regIndex, regSize), regSize, "x1", 0)...)
+		lines = append(lines, generateAddressLoad(cc, "x1", ir.Arg{Variable: target})...)
+		lines = append(lines, generateRegisterStore(reg, regSize, "x1", 0)...)
 	} else {
-		lines = append(lines, generateStoreToLocalWithOffset(cc, regIndex, regSize, target, 0)...)
+		lines = append(lines, generateStoreToLocalWithOffset(cc, reg, regSize, target, 0)...)
 	}
 
 	return lines
 }
 
-func generateStoreToLocalWithOffset(cc *CodegenContext, regIndex, regSize int, target string, offset int) []asm.Line {
+func generateStoreToLocalWithOffset(cc *CodegenContext, reg string, regSize int, target string, offset int) []asm.Line {
 	fullOffset := cc.locals[target] + offset
-	return generateRegisterStore(registerByIndex(regIndex, regSize), regSize, "sp", fullOffset)
+	return generateRegisterStore(reg, regSize, "sp", fullOffset)
 }
 
 // generateRegisterStore generates a store to memory location identified by base register and offset.
@@ -768,13 +768,13 @@ func generateRegisterStore(reg string, regSize int, baseReg string, offset int) 
 
 // generateStoreByAddr generates code for storing a register through a pointer.
 // Loads the pointer address into a register and stores the value through it.
-func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Arg, offset int) []asm.Line {
+func generateStoreByAddr(cc *CodegenContext, reg string, regSize int, target ir.Arg, offset int) []asm.Line {
 	var lines []asm.Line
 
 	// Load the destination address.
-	lines = append(lines, generateRegisterLoad(cc, 1, ast.WORD_SIZE, target)...)
-	addrReg := asm.Reg(registerByIndex(1, ast.WORD_SIZE))
-	srcReg := asm.Reg(registerByIndex(regIndex, regSize))
+	lines = append(lines, generateRegisterLoad(cc, "x1", ast.WORD_SIZE, target)...)
+	addrReg := asm.Reg("x1")
+	srcReg := asm.Reg(reg)
 
 	// Add offset to the address.
 	if offset != 0 {
@@ -794,20 +794,19 @@ func generateStoreByAddr(cc *CodegenContext, regIndex, regSize int, target ir.Ar
 // Trashes x0.
 func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseReg string, baseOffset int) []asm.Line {
 	var lines []asm.Line
-	tempRegister := 0
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 8), 8, source, offset)...)
-			lines = append(lines, generateRegisterStore(registerByIndex(tempRegister, 8), 8, baseReg, baseOffset+offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, "x0", 8, source, offset)...)
+			lines = append(lines, generateRegisterStore("x0", 8, baseReg, baseOffset+offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 4), 4, source, offset)...)
-			lines = append(lines, generateRegisterStore(registerByIndex(tempRegister, 4), 4, baseReg, baseOffset+offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, "w0", 4, source, offset)...)
+			lines = append(lines, generateRegisterStore("w0", 4, baseReg, baseOffset+offset)...)
 			offset += 4
 		} else {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 1), 1, source, offset)...)
-			lines = append(lines, generateRegisterStore(registerByIndex(tempRegister, 1), 1, baseReg, baseOffset+offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, "w0", 1, source, offset)...)
+			lines = append(lines, generateRegisterStore("w0", 1, baseReg, baseOffset+offset)...)
 			offset += 1
 		}
 	}
@@ -818,20 +817,19 @@ func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseRe
 // Trashes x0.
 func generateMemoryCopyToReference(cc *CodegenContext, source ir.Arg, size int, targetRef ir.Arg) []asm.Line {
 	lines := []asm.Line{}
-	tempRegister := 0
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 8), 8, source, offset)...)
-			lines = append(lines, generateStoreByAddr(cc, tempRegister, 8, targetRef, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, "x0", 8, source, offset)...)
+			lines = append(lines, generateStoreByAddr(cc, "x0", 8, targetRef, offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 4), 4, source, offset)...)
-			lines = append(lines, generateStoreByAddr(cc, tempRegister, 4, targetRef, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, "w0", 4, source, offset)...)
+			lines = append(lines, generateStoreByAddr(cc, "w0", 4, targetRef, offset)...)
 			offset += 4
 		} else {
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(tempRegister, 1), 1, source, offset)...)
-			lines = append(lines, generateStoreByAddr(cc, tempRegister, 1, targetRef, offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, "w0", 1, source, offset)...)
+			lines = append(lines, generateStoreByAddr(cc, "w0", 1, targetRef, offset)...)
 			offset += 1
 		}
 	}
@@ -845,21 +843,21 @@ func generateMemoryCopyFromRef(cc *CodegenContext, sourceRef ir.Arg, size int, t
 
 	// Load the source address to x1.
 	sourceAddrReg := 1
-	lines = append(lines, generateRegisterLoad(cc, sourceAddrReg, ast.WORD_SIZE, sourceRef)...)
+	lines = append(lines, generateRegisterLoad(cc, registerByIndex(sourceAddrReg, ast.WORD_SIZE), ast.WORD_SIZE, sourceRef)...)
 
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
 			lines = append(lines, asm.Op2("ldr", asm.X0, asm.DerefWithOffset(asm.X1, offset)))
-			lines = append(lines, generateStoreToLocalWithOffset(cc, 0, 8, target, offset)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, "x0", 8, target, offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
 			lines = append(lines, asm.Op2("ldr", asm.W0, asm.DerefWithOffset(asm.X1, offset)))
-			lines = append(lines, generateStoreToLocalWithOffset(cc, 0, 4, target, offset)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, "w0", 4, target, offset)...)
 			offset += 4
 		} else {
 			lines = append(lines, asm.Op2("ldrb", asm.W0, asm.DerefWithOffset(asm.X1, offset)))
-			lines = append(lines, generateStoreToLocalWithOffset(cc, 0, 1, target, offset)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, "w0", 1, target, offset)...)
 			offset += 1
 		}
 	}

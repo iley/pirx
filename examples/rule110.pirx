@@ -1,0 +1,68 @@
+val field_size = 100;
+
+func main(): int {
+  val pattern = MakePattern();
+  val fields = MakeFields();
+  var current_field = 0;
+  val steps = field_size-2;
+
+  SeedField(fields[current_field]);
+  for val i = 0; i < steps; i++ {
+    val next_field = 1 - current_field;
+    UpdateField(pattern, fields[current_field], fields[next_field]);
+    PrintField(fields[current_field]);
+    current_field = next_field;
+  }
+
+  DisposeFields(fields);
+  dispose(pattern);
+  return 0;
+}
+
+func MakePattern(): []int {
+  var pattern = new([]int, 8);
+  pattern[0] = 0;
+  pattern[1] = 1;
+  pattern[2] = 1;
+  pattern[3] = 1;
+  pattern[4] = 0;
+  pattern[5] = 1;
+  pattern[6] = 1;
+  pattern[7] = 0;
+  return pattern;
+}
+
+func MakeFields(): [][]int {
+  val fields = new([][]int, 2);
+  fields[0] = new([]int, field_size);
+  fields[1] = new([]int, field_size);
+  return fields;
+}
+
+func DisposeFields(fields: [][]int) {
+  dispose(fields[0]);
+  dispose(fields[1]);
+  dispose(fields);
+}
+
+func SeedField(field: []int) {
+  field[field_size-2] = 1;
+}
+
+func UpdateField(pattern: []int, current: []int, next: []int) {
+  for var i = 1; i < field_size-1; i++ {
+    val index = current[i-1] * 4 + current[i] * 2 + current[i+1];
+    next[i] = pattern[index];
+  }
+}
+
+func PrintField(field: []int) {
+  for var i = 1; i < field_size-1; i++ {
+    if (field[i] != 0) {
+      printf("*");
+    } else {
+      printf(" ");
+    }
+  }
+  printf("\n");
+}

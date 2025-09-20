@@ -86,5 +86,41 @@ func getBuiltins() []FuncProto {
 			ReturnType:   Int,
 			External:     true,
 		},
+		{
+			Name:       "int",
+			Args:       []FuncArg{{"value", Numeric}},
+			ReturnType: Int,
+			External:   true,
+		},
+		{
+			Name:       "Pirx_Int_From_Int",
+			Args:       []FuncArg{{"value", Int}},
+			ReturnType: Int,
+			External:   true,
+		},
+		{
+			Name:       "Pirx_Int_From_Int8",
+			Args:       []FuncArg{{"value", Int8}},
+			ReturnType: Int,
+			External:   true,
+		},
+		{
+			Name:       "Pirx_Int_From_Int64",
+			Args:       []FuncArg{{"value", Int64}},
+			ReturnType: Int,
+			External:   true,
+		},
+		{
+			Name:       "Pirx_Int_From_Float32",
+			Args:       []FuncArg{{"value", Float32}},
+			ReturnType: Int,
+			External:   true,
+		},
+		{
+			Name:       "Pirx_Int_From_Float64",
+			Args:       []FuncArg{{"value", Float64}},
+			ReturnType: Int,
+			External:   true,
+		},
 	}
 }

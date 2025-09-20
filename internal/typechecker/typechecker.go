@@ -280,6 +280,10 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 			if !ast.IsSlicePointerType(actualArgType) {
 				c.errorf("%s argument of %s must be a pointer to a slice, got %s", call.Loc, call.FunctionName, actualArgType)
 			}
+		} else if expectedArgType == ast.Numeric {
+			if !ast.IsNumericType(actualArgType) {
+				c.errorf("%s argument of %s must be of a numeric type, got %s", call.Loc, call.FunctionName, actualArgType)
+			}
 		} else if !actualArgType.Equals(expectedArgType) {
 			c.errorf("%s: argument #%d of function %s has wrong type: expected %s but got %s",
 				call.Loc, i+1, call.FunctionName, expectedArgType, actualArgType)

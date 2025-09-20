@@ -417,10 +417,8 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 	var spShift int
 
-	// Check whether this is a variadic call.
+	// Everything else goes on the stack.
 	if len(remainingArgs) > 0 {
-		// Darwin deviates from the standard ARM64 ABI for variadic functions.
-		// Arguments go on the stack.
 		// First, move SP to allocate space for the args. Don't forget to align SP.
 		// TODO: Walk the arguments and add their sizes up (including padding).
 		spShift = alignSP(ast.WORD_SIZE * (len(remainingArgs)))
@@ -597,6 +595,8 @@ func generateExternalReturn(cc *CodegenContext, ret ir.ExternalReturn) ([]asm.Li
 		lines = append(lines, exitBranch)
 		return lines, nil
 	}
+
+	// TODO: Support floats in non-variadic calls.
 
 	switch ret.Size {
 	case 4:
@@ -963,6 +963,18 @@ func registerByIndex(index, size int) string {
 		panic(fmt.Errorf("invalid register size %d", size))
 	}
 }
+
+/*
+func fPRegisterByIndex(index, size int) string {
+	if size == 4 {
+		return fmt.Sprintf("s%d", index)
+	}
+	if size == 8 {
+		return fmt.Sprintf("d%d", index)
+	}
+	panic(fmt.Errorf("invalid floating point register size: %d", size))
+}
+*/
 
 func registerSizeFromName(reg string) int {
 	if len(reg) == 0 {

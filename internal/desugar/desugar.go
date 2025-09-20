@@ -198,14 +198,17 @@ func desugarExpression(dc *desugarContext, originalExpr ast.Expression) ast.Expr
 }
 
 func desugarFunctionCall(dc *desugarContext, call *ast.FunctionCall) ast.Expression {
-	if call.FunctionName == "sizeof" {
-		return desugarSizeof(dc, call)
-	}
 	// Recursively desugar function call arguments
 	result := *call
 	result.Args = make([]ast.Expression, len(call.Args))
 	for i, arg := range call.Args {
 		result.Args[i] = desugarExpression(dc, arg)
+	}
+	switch call.FunctionName {
+	case "sizeof":
+		return desugarSizeof(dc, &result)
+	case "int":
+		return desugarIntCast(&result)
 	}
 	return &result
 }
@@ -225,4 +228,23 @@ func desugarSizeof(dc *desugarContext, call *ast.FunctionCall) ast.Expression {
 		IntValue: util.Int32Ptr(argSize),
 		Type:     ast.Int,
 	}
+}
+
+var intCasts = map[string]string{
+	"int":     "Pirx_Int_From_Int",
+	"int8":    "Pirx_Int_From_Int8",
+	"int64":   "Pirx_Int_From_Int64",
+	"float32": "Pirx_Int_From_Float32",
+	"float64": "Pirx_Int_From_Float64",
+}
+
+func desugarIntCast(call *ast.FunctionCall) *ast.FunctionCall {
+	argType := call.Args[0].GetType()
+	resolvedFuncName, ok := intCasts[argType.String()]
+	if !ok {
+		panic(fmt.Errorf("could not resolve cast from %s to int", argType))
+	}
+	result := *call
+	result.FunctionName = resolvedFuncName
+	return &result
 }

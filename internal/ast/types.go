@@ -38,6 +38,8 @@ var (
 	AnySlice = &BaseType{Name: "anyslice"}
 	// Not directly accessible to the user.
 	AnySlicePtr = &BaseType{Name: "anysliceptr"}
+	// Not directly accessible to the user.
+	Numeric = &BaseType{Name: "numeric"}
 )
 
 // Type represents a Pirx type
@@ -154,7 +156,7 @@ func IsSlicePointerType(typ Type) bool {
 	return false
 }
 
-var pseudoTypes = []Type{Void, VoidPtr, NullPtr, Undefined, Disposable, Any, AnySlice, AnySlicePtr}
+var pseudoTypes = []Type{Void, VoidPtr, NullPtr, Undefined, Disposable, Any, AnySlice, AnySlicePtr, Numeric}
 
 func IsConcreteType(typ Type) bool {
 	return !slices.Contains(pseudoTypes, typ)

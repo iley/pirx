@@ -1,2 +1,7 @@
+ -- resize --
 1 2
+ -- getptr --
 Hello
+ -- size and cap --
+size = 8 cap = 8
+size = 9 cap = 16

@@ -30,3 +30,7 @@ void Pirx_Slice_Resize(Pirx_Slice *slice_ptr, int size) {
 }
 
 void *Pirx_Slice_Ptr(Pirx_Slice slice) { return slice.data; }
+
+int Pirx_Slice_Size(Pirx_Slice slice) { return slice.size; }
+
+int Pirx_Slice_Cap(Pirx_Slice slice) { return slice.cap; }

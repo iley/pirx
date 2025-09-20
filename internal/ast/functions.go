@@ -72,5 +72,19 @@ func getBuiltins() []FuncProto {
 			ReturnType:   VoidPtr, // Actual type inferred during typechecking.
 			External:     true,
 		},
+		{
+			Name:         "getsize",
+			ExternalName: "Pirx_Slice_Size",
+			Args:         []FuncArg{{"slice", AnySlice}},
+			ReturnType:   Int,
+			External:     true,
+		},
+		{
+			Name:         "getcap",
+			ExternalName: "Pirx_Slice_Cap",
+			Args:         []FuncArg{{"slice", AnySlice}},
+			ReturnType:   Int,
+			External:     true,
+		},
 	}
 }

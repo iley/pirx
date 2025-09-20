@@ -1,4 +1,5 @@
 func TestResize() {
+  printf(" -- resize --\n");
   var s = new([]int, 1);
   s[0] = 1;
   resize(&s, 2);
@@ -7,6 +8,7 @@ func TestResize() {
 }
 
 func TestGetPtr() {
+  printf(" -- getptr --\n");
   var s = new([]int8, 6);
   s[0] = 72i8;  // H
   s[1] = 101i8; // e
@@ -19,9 +21,17 @@ func TestGetPtr() {
   printf("%s\n", getptr(s));
 }
 
+func TestSizeAndCap() {
+  printf(" -- size and cap --\n");
+  var s = new([]int, 8);
+  printf("size = %d cap = %d\n", getsize(s), getcap(s));
+  resize(&s, 9);
+  printf("size = %d cap = %d\n", getsize(s), getcap(s));
+}
+
 func main(): int {
   TestResize();
   TestGetPtr();
-
+  TestSizeAndCap();
   return 0;
 }

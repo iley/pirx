@@ -59,5 +59,11 @@ func getBuiltins() []FuncProto {
 			Name: "sizeof",
 			Args: []FuncArg{{"expr", Any}},
 		},
+		{
+			Name:         "resize",
+			ExternalName: "Pirx_Slice_Resize",
+			Args:         []FuncArg{{"slice", AnySlicePtr}, {"newsize", Int}},
+			External:     true,
+		},
 	}
 }

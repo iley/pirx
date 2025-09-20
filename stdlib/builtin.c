@@ -17,3 +17,14 @@ Pirx_Slice Pirx_Slice_Alloc(int elem_size, int size, int cap) {
 }
 
 void Pirx_Slice_Dispose(Pirx_Slice slice) { Pirx_Dispose(slice.data); }
+
+void Pirx_Slice_Resize(Pirx_Slice *slice_ptr, int size) {
+  int new_cap = slice_ptr->cap;
+  while (new_cap < size) {
+    new_cap *= 2;
+  }
+
+  slice_ptr->data = realloc(slice_ptr->data, new_cap);
+  slice_ptr->size = size;
+  slice_ptr->cap = new_cap;
+}

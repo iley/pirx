@@ -268,13 +268,17 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 			}
 		} else if expectedArgType == ast.Disposable {
 			if !ast.IsPointerType(actualArgType) && !ast.IsSliceType(actualArgType) {
-				c.errorf("%s: argument of dispose must be either a pointer or a slice, got %s", call.Loc, actualArgType)
+				c.errorf("%s: argument of %s must be either a pointer or a slice, got %s", call.Loc, call.FunctionName, actualArgType)
 			}
 		} else if expectedArgType == ast.Any {
 			// Accept any type.
-		} else if expectedArgType == ast.AnyList {
+		} else if expectedArgType == ast.AnySlice {
 			if !ast.IsSliceType(actualArgType) {
 				c.errorf("%s: expected a list type, got %s", call.Loc, actualArgType)
+			}
+		} else if expectedArgType == ast.AnySlicePtr {
+			if !ast.IsSlicePointerType(actualArgType) {
+				c.errorf("%s argument of %s must be a pointer to a slice, got %s", call.Loc, call.FunctionName, actualArgType)
 			}
 		} else if !actualArgType.Equals(expectedArgType) {
 			c.errorf("%s: argument #%d of function %s has wrong type: expected %s but got %s",

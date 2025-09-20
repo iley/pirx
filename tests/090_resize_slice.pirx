@@ -1,0 +1,8 @@
+func main(): int {
+  var s = new([]int, 1);
+  s[0] = 1;
+  resize(&s, 2);
+  s[1] = 2;
+  printf("%d %d\n", s[0], s[1]);
+  return 0;
+}

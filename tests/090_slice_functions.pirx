@@ -1,0 +1,27 @@
+func TestResize() {
+  var s = new([]int, 1);
+  s[0] = 1;
+  resize(&s, 2);
+  s[1] = 2;
+  printf("%d %d\n", s[0], s[1]);
+}
+
+func TestGetPtr() {
+  var s = new([]int8, 6);
+  s[0] = 72i8;  // H
+  s[1] = 101i8; // e
+  s[2] = 108i8; // l
+  s[3] = 108i8; // l
+  s[4] = 111i8; // o
+  s[5] = 0i8;
+
+  var ptr: *int8 = getptr(s);
+  printf("%s\n", getptr(s));
+}
+
+func main(): int {
+  TestResize();
+  TestGetPtr();
+
+  return 0;
+}

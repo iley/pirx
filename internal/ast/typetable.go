@@ -33,7 +33,7 @@ func (tt *TypeTable) GetType(name string) TypeDescriptor {
 func (tt *TypeTable) GetSize(typ Type) (int, error) {
 	if _, ok := typ.(*PointerType); ok {
 		// TODO: Validate the type we're pointing to.
-		return 8, nil
+		return WORD_SIZE, nil
 	} else if _, ok := typ.(*SliceType); ok {
 		// TODO: Validate the element type.
 		return 16, nil

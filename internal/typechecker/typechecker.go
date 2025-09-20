@@ -286,12 +286,21 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 		}
 	}
 
+	// TODO: Consider moving such type hacks into a separate function.
+	returnType := proto.ReturnType
+	if call.FunctionName == "getptr" && len(checkedArgs) >= 1 {
+		firstArgType := checkedArgs[0].GetType()
+		if sliceType, ok := firstArgType.(*ast.SliceType); ok {
+			returnType = &ast.PointerType{ElementType: sliceType.ElementType}
+		}
+	}
+
 	return &ast.FunctionCall{
 		Loc:          call.Loc,
 		FunctionName: call.FunctionName,
 		Args:         checkedArgs,
 		Variadic:     call.Variadic,
-		Type:         proto.ReturnType,
+		Type:         returnType,
 	}
 }
 

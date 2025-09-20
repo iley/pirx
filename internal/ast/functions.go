@@ -65,5 +65,12 @@ func getBuiltins() []FuncProto {
 			Args:         []FuncArg{{"slice", AnySlicePtr}, {"newsize", Int}},
 			External:     true,
 		},
+		{
+			Name:         "getptr",
+			ExternalName: "Pirx_Slice_Ptr",
+			Args:         []FuncArg{{"slice", AnySlice}},
+			ReturnType:   VoidPtr, // Actual type inferred during typechecking.
+			External:     true,
+		},
 	}
 }

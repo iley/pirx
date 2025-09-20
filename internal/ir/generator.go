@@ -538,7 +538,8 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 
 	var size int
 	if funcProto.ReturnType != nil {
-		size = g.types.GetSizeNoError(funcProto.ReturnType)
+		// Not that we're not using funcProto.ReturnType here because for some functions the return type is inferred during type checking.
+		size = g.types.GetSizeNoError(call.GetType())
 	}
 
 	var temp string

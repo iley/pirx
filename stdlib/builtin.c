@@ -28,3 +28,5 @@ void Pirx_Slice_Resize(Pirx_Slice *slice_ptr, int size) {
   slice_ptr->size = size;
   slice_ptr->cap = new_cap;
 }
+
+void *Pirx_Slice_Ptr(Pirx_Slice slice) { return slice.data; }

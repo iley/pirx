@@ -16,6 +16,7 @@ const (
 	LEX_NUMBER
 	LEX_FLOAT
 	LEX_STRING
+	LEX_CHAR
 	LEX_KEYWORD
 	LEX_OPERATOR
 	LEX_PUNCTUATION
@@ -33,6 +34,8 @@ func (t TokenType) String() string {
 		return "FLOAT"
 	case LEX_STRING:
 		return "STRING"
+	case LEX_CHAR:
+		return "CHAR"
 	case LEX_KEYWORD:
 		return "KEYWORD"
 	case LEX_OPERATOR:
@@ -249,6 +252,9 @@ func (l *Lexer) Next() (Lexeme, error) {
 	case r == '"':
 		// String literal
 		return l.lexString(startLine, startCol)
+	case r == '\'':
+		// Character literal
+		return l.lexChar(startLine, startCol)
 	case unicode.IsDigit(r):
 		// Number
 		l.unreadRune()
@@ -509,6 +515,73 @@ func (l *Lexer) lexString(startLine, startCol int) (Lexeme, error) {
 
 		str += string(r)
 	}
+}
+
+// lexChar reads a character literal
+func (l *Lexer) lexChar(startLine, startCol int) (Lexeme, error) {
+	// Read the character
+	r, _, err := l.readRune()
+	if err != nil {
+		if err == io.EOF {
+			return Lexeme{}, io.ErrUnexpectedEOF
+		}
+		return Lexeme{}, err
+	}
+
+	var charValue rune
+
+	if r == '\'' {
+		return Lexeme{}, fmt.Errorf("%s: empty character literal", l.loc(startLine, startCol))
+	}
+
+	if r == '\\' {
+		// Handle escape sequences
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				return Lexeme{}, io.ErrUnexpectedEOF
+			}
+			return Lexeme{}, err
+		}
+
+		// Process escape sequence
+		switch nextR {
+		case 'n':
+			charValue = '\n'
+		case 't':
+			charValue = '\t'
+		case 'r':
+			charValue = '\r'
+		case '\\':
+			charValue = '\\'
+		case '\'':
+			charValue = '\''
+		case '"':
+			charValue = '"'
+		case '0':
+			charValue = '\000'
+		default:
+			return Lexeme{}, fmt.Errorf("%s: invalid escape sequence '\\%c' in character literal", l.loc(startLine, startCol), nextR)
+		}
+	} else {
+		charValue = r
+	}
+
+	// Expect closing single quote
+	r, _, err = l.readRune()
+	if err != nil {
+		if err == io.EOF {
+			return Lexeme{}, io.ErrUnexpectedEOF
+		}
+		return Lexeme{}, err
+	}
+
+	if r != '\'' {
+		return Lexeme{}, fmt.Errorf("%s: expected closing single quote in character literal, got %c", l.loc(startLine, startCol), r)
+	}
+
+	// Store the character value as a string containing the rune value
+	return l.makeLexeme(LEX_CHAR, string(charValue), startLine, startCol), nil
 }
 
 // lexNumber reads a number literal (integer or floating point)

@@ -10,12 +10,12 @@ func TestResize() {
 func TestGetPtr() {
   printf(" -- getptr --\n");
   var s = new([]int8, 6);
-  s[0] = 72i8;  // H
-  s[1] = 101i8; // e
-  s[2] = 108i8; // l
-  s[3] = 108i8; // l
-  s[4] = 111i8; // o
-  s[5] = 0i8;
+  s[0] = 'H';
+  s[1] = 'e';
+  s[2] = 'l';
+  s[3] = 'l';
+  s[4] = 'o';
+  s[5] = '\0';
 
   var ptr: *int8 = getptr(s);
   printf("%s\n", getptr(s));

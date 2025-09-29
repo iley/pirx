@@ -716,6 +716,11 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+	case lexer.LEX_CHAR:
+		expr, err = p.parseCharLiteral()
+		if err != nil {
+			return nil, err
+		}
 	case lexer.LEX_OPERATOR:
 		if lex.Str == "!" || lex.Str == "-" || lex.Str == "*" {
 			return p.parseUnaryExpression()
@@ -983,6 +988,26 @@ func (p *Parser) parseStringLiteral() (ast.Expression, error) {
 	}
 	litLoc := locationFromLexeme(lex)
 	return &ast.Literal{Loc: litLoc, StringValue: &lex.Str}, nil
+}
+
+func (p *Parser) parseCharLiteral() (ast.Expression, error) {
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	litLoc := locationFromLexeme(lex)
+
+	// The lexer stores the character value as a string
+	if len(lex.Str) == 0 {
+		return nil, fmt.Errorf("%s: empty character literal", lex.Loc)
+	}
+
+	// Get the rune value (first character of the string)
+	charValue := int8([]rune(lex.Str)[0])
+
+	literal := ast.NewInt8Literal(charValue)
+	literal.Loc = litLoc
+	return literal, nil
 }
 
 func (p *Parser) parseParenthesizedExpression() (ast.Expression, error) {

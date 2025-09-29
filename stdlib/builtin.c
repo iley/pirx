@@ -3,22 +3,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void *Pirx_Alloc(int32_t size) { return calloc(size, 1); }
+void *PirxAlloc(int32_t size) { return calloc(size, 1); }
 
-void Pirx_Dispose(void *ptr) { free(ptr); }
+void PirxDispose(void *ptr) { free(ptr); }
 
-Pirx_Slice Pirx_Slice_Alloc(int32_t elem_size, int32_t size, int32_t cap) {
-  Pirx_Slice slice = {
-      .data = Pirx_Alloc(elem_size * cap),
+PirxSlice PirxSliceAlloc(int32_t elem_size, int32_t size, int32_t cap) {
+  PirxSlice slice = {
+      .data = PirxAlloc(elem_size * cap),
       .size = size,
       .cap = cap,
   };
   return slice;
 }
 
-void Pirx_Slice_Dispose(Pirx_Slice slice) { Pirx_Dispose(slice.data); }
+void PirxSliceDispose(PirxSlice slice) { PirxDispose(slice.data); }
 
-void Pirx_Slice_Resize(Pirx_Slice *slice_ptr, int32_t size) {
+void PirxSliceResize(PirxSlice *slice_ptr, int32_t size) {
   int32_t new_cap = slice_ptr->cap;
   while (new_cap < size) {
     new_cap *= 2;
@@ -29,18 +29,18 @@ void Pirx_Slice_Resize(Pirx_Slice *slice_ptr, int32_t size) {
   slice_ptr->cap = new_cap;
 }
 
-void *Pirx_Slice_Ptr(Pirx_Slice slice) { return slice.data; }
+void *PirxSlicePtr(PirxSlice slice) { return slice.data; }
 
-int32_t Pirx_Slice_Size(Pirx_Slice slice) { return slice.size; }
+int32_t PirxSliceSize(PirxSlice slice) { return slice.size; }
 
-int32_t Pirx_Slice_Cap(Pirx_Slice slice) { return slice.cap; }
+int32_t PirxSliceCap(PirxSlice slice) { return slice.cap; }
 
-int32_t Pirx_Int_From_Int(int32_t value) { return value; }
+int32_t PirxIntFromInt(int32_t value) { return value; }
 
-int32_t Pirx_Int_From_Int8(int8_t value) { return (int32_t)value; }
+int32_t PirxIntFromInt8(int8_t value) { return (int32_t)value; }
 
-int32_t Pirx_Int_From_Int64(int64_t value) { return (int32_t)value; }
+int32_t PirxIntFromInt64(int64_t value) { return (int32_t)value; }
 
-int32_t Pirx_Int_From_Float32(float value) { return (int32_t)value; }
+int32_t PirxIntFromFloat32(float value) { return (int32_t)value; }
 
-int32_t Pirx_Int_From_Float64(double value) { return (int32_t)value; }
+int32_t PirxIntFromFloat64(double value) { return (int32_t)value; }

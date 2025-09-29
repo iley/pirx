@@ -266,7 +266,7 @@ func (g *Generator) generateNewExpressionOps(ne *ast.NewExpression) ([]Op, Arg, 
 		res := g.allocTemp(ast.SLICE_SIZE)
 		allocCall := ExternalCall{
 			Result:   res,
-			Function: "Pirx_Slice_Alloc",
+			Function: "PirxSliceAlloc",
 			// TODO: Support independent capacity argument.
 			Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, sizeArg, sizeArg},
 			ArgSizes:  []int{ast.INT_SIZE, ast.INT_SIZE, ast.INT_SIZE},
@@ -282,7 +282,7 @@ func (g *Generator) generateNewExpressionOps(ne *ast.NewExpression) ([]Op, Arg, 
 		// TODO: Maybe make a helper function for generating such function calls?
 		allocCall := ExternalCall{
 			Result:    res,
-			Function:  "Pirx_Alloc",
+			Function:  "PirxAlloc",
 			Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(allocSize))}},
 			ArgSizes:  []int{ast.WORD_SIZE},
 			NamedArgs: 1,
@@ -491,7 +491,7 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 	if ast.IsPointerType(call.Args[0].GetType()) {
 		return ExternalCall{
 			Result:    resultVar,
-			Function:  "Pirx_Dispose",
+			Function:  "PirxDispose",
 			Args:      []Arg{arg},
 			ArgSizes:  []int{ast.WORD_SIZE},
 			NamedArgs: 1,
@@ -500,7 +500,7 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 	} else if ast.IsSliceType(call.Args[0].GetType()) {
 		return ExternalCall{
 			Result:    resultVar,
-			Function:  "Pirx_Slice_Dispose",
+			Function:  "PirxSliceDispose",
 			Args:      []Arg{arg},
 			ArgSizes:  []int{ast.SLICE_SIZE},
 			NamedArgs: 1,

@@ -1,0 +1,71 @@
+func BubbleSort(arr: []int) {
+  var modified: bool;
+  while true {
+    modified = false;
+    for var i = 0; i < getsize(arr) - 1; i++ {
+      if arr[i] > arr[i+1] {
+        var t = arr[i];
+        arr[i] = arr[i+1];
+        arr[i+1] = t;
+        modified = true;
+      }
+    }
+    if !modified {
+      break;
+    }
+  }
+}
+
+func Part1(): int {
+  val a = InputArray1();
+  val b = InputArray2();
+
+  BubbleSort(a);
+  BubbleSort(b);
+
+  var diffsum = 0;
+  for var i = 0; i < N; i++ {
+    var diff = a[i] - b[i];
+    if diff < 0 {
+      diff = -diff;
+    }
+    // diffsum += diff; // why this doesn't compile?
+    diffsum = diffsum + diff;
+  }
+
+  dispose(a);
+  dispose(b);
+  return diffsum;
+}
+
+func Part2(): int {
+  val a = InputArray1();
+  val b = InputArray2();
+
+  var total: int;
+  for var i = 0; i < getsize(a); i++ {
+    var value = a[i];
+    var score = Count(value, b) * value;
+    total = total + score;
+  }
+
+  dispose(a);
+  dispose(b);
+  return total;
+}
+
+func Count(value: int, slice: []int): int {
+  var count = 0;
+  for var i = 0; i < getsize(slice); i++ {
+    if slice[i] == value {
+      count++;
+    }
+  }
+  return count;
+}
+
+func main(): int {
+  printf("part 1: %d\n", Part1());
+  printf("part 2: %d\n", Part2());
+  return 0;
+}

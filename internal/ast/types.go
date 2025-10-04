@@ -19,7 +19,7 @@ var (
 	Int64   = &BaseType{Name: "int64"}
 	Float32 = &BaseType{Name: "float32"}
 	Float64 = &BaseType{Name: "float64"}
-	String  = &BaseType{Name: "cstring"}
+	CString = &BaseType{Name: "cstring"}
 	Bool    = &BaseType{Name: "bool"}
 	Void    = &BaseType{Name: "void"}
 	// Not directly accessible to the user.
@@ -69,7 +69,7 @@ func NewBaseType(name string) *BaseType {
 	case "float64":
 		return Float64
 	case "cstring":
-		return String
+		return CString
 	case "bool":
 		return Bool
 	case "void":

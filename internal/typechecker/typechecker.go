@@ -175,7 +175,7 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Expression {
 func (c *TypeChecker) checkLiteral(lit *ast.Literal) *ast.Literal {
 	var t ast.Type
 	if lit.StringValue != nil {
-		t = ast.String
+		t = ast.CString
 	} else if lit.IntValue != nil {
 		t = ast.Int
 	} else if lit.Int64Value != nil {

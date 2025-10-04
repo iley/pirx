@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void *PirxAlloc(int32_t size) { return calloc(size, 1); }
 
@@ -44,3 +45,9 @@ int32_t PirxIntFromInt64(int64_t value) { return (int32_t)value; }
 int32_t PirxIntFromFloat32(float value) { return (int32_t)value; }
 
 int32_t PirxIntFromFloat64(double value) { return (int32_t)value; }
+
+PirxSlice PirxStr(const char *str) {
+  int len = strlen(str);
+  PirxSlice slice = {.data = (void *)str, .size = len, .cap = len};
+  return slice;
+}

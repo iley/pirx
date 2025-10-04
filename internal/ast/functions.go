@@ -39,7 +39,7 @@ func getBuiltins() []FuncProto {
 	return []FuncProto{
 		{
 			Name:     "printf",
-			Args:     []FuncArg{{"fmt", String}},
+			Args:     []FuncArg{{"fmt", CString}},
 			Variadic: true,
 			External: true,
 		},

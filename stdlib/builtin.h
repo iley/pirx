@@ -35,4 +35,6 @@ extern int32_t PirxIntFromInt64(int64_t value);
 extern int32_t PirxIntFromFloat32(float value);
 extern int32_t PirxIntFromFloat64(double value);
 
+extern PirxSlice PirxStr(const char *str);
+
 #endif // _PIRX_STDLIB_BUILTIN_H

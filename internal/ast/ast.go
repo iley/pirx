@@ -491,10 +491,11 @@ func NewNullLiteral() *Literal {
 }
 
 type Assignment struct {
-	Loc    Location
-	Target Expression
-	Value  Expression
-	Type   Type
+	Loc      Location
+	Target   Expression
+	Value    Expression
+	Type     Type
+	Operator string // "=", "+=", or "-="
 }
 
 func (a *Assignment) GetLocation() Location {
@@ -508,7 +509,11 @@ func (a *Assignment) GetType() Type {
 func (a *Assignment) isExpression() {}
 
 func (a *Assignment) String() string {
-	return fmt.Sprintf("(= %s %s)", a.Target.String(), a.Value.String())
+	op := a.Operator
+	if op == "" {
+		op = "="
+	}
+	return fmt.Sprintf("(%s %s %s)", op, a.Target.String(), a.Value.String())
 }
 
 type VariableReference struct {

@@ -609,9 +609,9 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 
 		// For left-associative operators, use precedence + 1
 		// For right-associative operators, use precedence
-		// Assignment is right-associative, so use same precedence
+		// Assignment and compound assignment are right-associative, so use same precedence
 		nextMinPrecedence := precedence + 1
-		if operator == "=" {
+		if operator == "=" || operator == "+=" || operator == "-=" {
 			nextMinPrecedence = precedence
 		}
 
@@ -620,15 +620,16 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 			return nil, err
 		}
 
-		if operator == "=" {
+		if operator == "=" || operator == "+=" || operator == "-=" {
 			// Validate that left side is a valid assignment target
 			if !p.isValidAssignmentTarget(left) {
 				return nil, fmt.Errorf("%s: invalid assignment target: %s", left.GetLocation(), left.String())
 			}
 			left = &ast.Assignment{
-				Loc:    operatorLoc,
-				Target: left,
-				Value:  right,
+				Loc:      operatorLoc,
+				Target:   left,
+				Value:    right,
+				Operator: operator,
 			}
 		} else {
 			left = &ast.BinaryOperation{
@@ -646,12 +647,12 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 func isBinaryOperator(op string) bool {
 	return op == "+" || op == "-" || op == "*" || op == "/" || op == "%" ||
 		op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=" ||
-		op == "&&" || op == "||" || op == "="
+		op == "&&" || op == "||" || op == "=" || op == "+=" || op == "-="
 }
 
 func getOperatorPrecedence(op string) int {
 	switch op {
-	case "=":
+	case "=", "+=", "-=":
 		return 1
 	case "||":
 		return 2

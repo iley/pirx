@@ -8,6 +8,7 @@ val DIR_RIGHT = 2;
 val DIR_DOWN = 3;
 val DIR_LEFT = 4;
 
+// TODO: Fix colors.
 val BGCOLOR = RGB(50i8, 50i8, 50i8);
 val FGCOLOR = RGB(-50i8, -50i8, -50i8);
 val SNAKE_COLOR = RGB(0i8, -80i8, 0i8);

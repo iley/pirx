@@ -160,10 +160,7 @@ func desugarExpression(dc *desugarContext, originalExpr ast.Expression) ast.Expr
 		}
 		return expr
 	case *ast.Assignment:
-		result := *expr
-		result.Target = desugarExpression(dc, expr.Target)
-		result.Value = desugarExpression(dc, expr.Value)
-		return &result
+		return desugarAssignment(dc, expr)
 	case *ast.VariableReference:
 		return expr
 	case *ast.FunctionCall:
@@ -282,4 +279,46 @@ func desugarRangeExpression(dc *desugarContext, expr *ast.RangeExpression) ast.E
 		},
 		Type: expr.Type,
 	}
+}
+
+func desugarAssignment(dc *desugarContext, expr *ast.Assignment) ast.Expression {
+	target := desugarExpression(dc, expr.Target)
+	value := desugarExpression(dc, expr.Value)
+	switch expr.Operator {
+	case "=":
+		return &ast.Assignment{
+			Loc:      expr.Loc,
+			Target:   target,
+			Value:    value,
+			Operator: "=",
+			Type:     expr.Type,
+		}
+	case "+=":
+		return &ast.Assignment{
+			Loc:    expr.Loc,
+			Target: target,
+			Value: &ast.BinaryOperation{
+				Loc:      expr.Loc,
+				Operator: "+",
+				Left:     target,
+				Right:    value,
+				Type:     expr.Type,
+			},
+			Operator: "=",
+		}
+	case "-=":
+		return &ast.Assignment{
+			Loc:    expr.Loc,
+			Target: target,
+			Value: &ast.BinaryOperation{
+				Loc:      expr.Loc,
+				Operator: "-",
+				Left:     target,
+				Right:    value,
+				Type:     expr.Type,
+			},
+			Operator: "=",
+		}
+	}
+	panic(fmt.Errorf("unsupported assignment operator %s", expr.Operator))
 }

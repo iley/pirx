@@ -1,0 +1,26 @@
+func main(): int {
+  var x = 10;
+  printf("x = %d\n", x);
+
+  x += 5;
+  printf("x += 5 -> %d\n", x);
+
+  x -= 3;
+  printf("x -= 3 -> %d\n", x);
+
+  // Test with array indexing
+  var arr = new([]int, 3);
+  arr[0] = 100;
+  arr[1] = 200;
+  arr[2] = 300;
+
+  printf("arr[1] = %d\n", arr[1]);
+  arr[1] += 50;
+  printf("arr[1] += 50 -> %d\n", arr[1]);
+  arr[1] -= 25;
+  printf("arr[1] -= 25 -> %d\n", arr[1]);
+
+  dispose(arr);
+
+  return 0;
+}

@@ -29,8 +29,7 @@ func Part1(): int {
     if diff < 0 {
       diff = -diff;
     }
-    diffsum += diff; // why this doesn't compile?
-    // diffsum = diffsum + diff;
+    diffsum += diff;
   }
 
   dispose(a);

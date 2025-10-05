@@ -41,7 +41,7 @@ func getBuiltins() []FuncProto {
 			Name:       "PirxString",
 			Args:       []FuncArg{{"value", &PointerType{Int8}}},
 			External:   true,
-			ReturnType: &SliceType{Int8},
+			ReturnType: String,
 		},
 		{
 			Name:         "cstr",

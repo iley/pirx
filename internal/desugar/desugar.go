@@ -255,11 +255,19 @@ func desugarIntCast(call *ast.FunctionCall) *ast.FunctionCall {
 }
 
 func desugarStringLiteral(expr *ast.Literal) ast.Expression {
+	strLen := int32(len(*expr.StringValue))
 	return &ast.FunctionCall{
 		Loc:          expr.Loc,
 		FunctionName: "PirxString",
-		Args:         []ast.Expression{expr},
-		Type:         ast.String,
+		Args: []ast.Expression{
+			&ast.Literal{
+				Loc:      expr.Loc,
+				IntValue: &strLen,
+				Type:     ast.Int,
+			},
+			expr,
+		},
+		Type: ast.String,
 	}
 }
 

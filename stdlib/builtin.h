@@ -36,8 +36,7 @@ extern int32_t PirxIntFromInt64(int64_t value);
 extern int32_t PirxIntFromFloat32(float value);
 extern int32_t PirxIntFromFloat64(double value);
 
-// TODO: Pass the string length in. We know it at compile time.
-extern PirxSlice PirxString(const char *str);
+extern PirxSlice PirxString(int32_t len, const char *str);
 extern void PirxPrintf(PirxSlice fmt, ...);
 extern char *PirxCStr(PirxSlice str);
 

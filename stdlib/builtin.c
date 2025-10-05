@@ -58,8 +58,7 @@ int32_t PirxIntFromFloat32(float value) { return (int32_t)value; }
 
 int32_t PirxIntFromFloat64(double value) { return (int32_t)value; }
 
-PirxSlice PirxString(const char *str) {
-  int len = strlen(str);
+PirxSlice PirxString(int32_t len, const char *str) {
   PirxSlice slice = {
       .data = (void *)str,
       .size = len,

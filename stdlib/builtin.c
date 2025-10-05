@@ -39,6 +39,15 @@ int32_t PirxSliceSize(PirxSlice slice) { return slice.size; }
 
 int32_t PirxSliceCap(PirxSlice slice) { return slice.cap; }
 
+PirxSlice PirxSliceRange(int32_t elem_size, PirxSlice slice, int32_t start, int32_t end) {
+  PirxSlice result = {
+      .data = (char *)slice.data + (elem_size * start),
+      .size = end - start,
+      .cap = slice.cap - start,
+  };
+  return result;
+}
+
 int32_t PirxIntFromInt(int32_t value) { return value; }
 
 int32_t PirxIntFromInt8(int8_t value) { return (int32_t)value; }

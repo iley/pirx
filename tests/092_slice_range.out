@@ -1,0 +1,5 @@
+size = 3
+values = 20 30 40
+r2 size = 2
+r2 values = 10 20
+substr size = 5

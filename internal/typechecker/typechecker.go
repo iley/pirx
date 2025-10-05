@@ -273,7 +273,7 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 		} else if expectedArgType == ast.Any {
 			// Accept any type.
 		} else if expectedArgType == ast.AnySlice {
-			if !ast.IsSliceType(actualArgType) {
+			if !ast.IsSliceType(actualArgType) && actualArgType != ast.String {
 				c.errorf("%s: expected a list type, got %s", call.Loc, actualArgType)
 			}
 		} else if expectedArgType == ast.AnySlicePtr {
@@ -296,6 +296,14 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 		firstArgType := checkedArgs[0].GetType()
 		if sliceType, ok := firstArgType.(*ast.SliceType); ok {
 			returnType = &ast.PointerType{ElementType: sliceType.ElementType}
+		}
+	}
+	if call.FunctionName == "range" && len(checkedArgs) >= 1 {
+		firstArgType := checkedArgs[0].GetType()
+		if sliceType, ok := firstArgType.(*ast.SliceType); ok {
+			returnType = sliceType
+		} else if firstArgType == ast.String {
+			returnType = ast.String
 		}
 	}
 

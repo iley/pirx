@@ -101,6 +101,13 @@ func getBuiltins() []FuncProto {
 			External:     true,
 		},
 		{
+			Name:         "range",
+			ExternalName: "PirxSliceRange",
+			Args:         []FuncArg{{"slice", AnySlice}, {"start", Int}, {"end", Int}},
+			ReturnType:   AnySlice,
+			External:     true,
+		},
+		{
 			Name:       "int",
 			Args:       []FuncArg{{"value", Numeric}},
 			ReturnType: Int,

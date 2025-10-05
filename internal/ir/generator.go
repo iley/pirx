@@ -511,6 +511,26 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 	}
 }
 
+func (g *Generator) generateRangeCall(call *ast.FunctionCall, resultVar string, args []Arg, sizes []int, size int) ExternalCall {
+	var elementSize int
+	if sliceType, ok := call.Args[0].GetType().(*ast.SliceType); ok {
+		elementSize = g.types.GetSizeNoError(sliceType.ElementType)
+	} else if call.Args[0].GetType() == ast.String {
+		elementSize = g.types.GetSizeNoError(ast.Int8)
+	} else {
+		panic(fmt.Errorf("%s: invalid argument type for range(): %s", call.Loc, call.Args[0].GetType()))
+	}
+
+	return ExternalCall{
+		Result:    resultVar,
+		Function:  "PirxSliceRange",
+		Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, args[0], args[1], args[2]},
+		ArgSizes:  []int{ast.INT_SIZE, ast.SLICE_SIZE, ast.INT_SIZE, ast.INT_SIZE},
+		NamedArgs: 4,
+		Size:      size,
+	}
+}
+
 // generateFunctionCallOps generates ops for a function.
 // Returns a slice of ops, an Arg representing the return value, and the size of the return type in bytes.
 func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, int) {
@@ -549,9 +569,12 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 
 	if funcProto.External {
 		var externalCall ExternalCall
-		if funcProto.Name == "dispose" {
+		switch funcProto.Name {
+		case "dispose":
 			externalCall = g.generateDisposeCall(call, temp, args[0])
-		} else {
+		case "range":
+			externalCall = g.generateRangeCall(call, temp, args, sizes, size)
+		default:
 			externalCall = g.generateExternalCall(funcProto, temp, args, sizes, size)
 		}
 		ops = append(ops, externalCall)

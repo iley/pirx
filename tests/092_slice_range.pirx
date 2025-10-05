@@ -1,0 +1,22 @@
+func main(): int {
+  var s = new([]int, 5);
+  s[0] = 10;
+  s[1] = 20;
+  s[2] = 30;
+  s[3] = 40;
+  s[4] = 50;
+
+  var r = range(s, 1, 4);
+  printf("size = %d\n", getsize(r));
+  printf("values = %d %d %d\n", r[0], r[1], r[2]);
+
+  var r2 = range(s, 0, 2);
+  printf("r2 size = %d\n", getsize(r2));
+  printf("r2 values = %d %d\n", r2[0], r2[1]);
+
+  var str = "Hello, World!";
+  var substr = range(str, 7, 12);
+  printf("substr size = %d\n", getsize(substr));
+
+  return 0;
+}

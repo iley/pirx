@@ -27,6 +27,7 @@ extern void PirxSliceResize(PirxSlice *slice_ptr, int32_t size);
 extern void *PirxSlicePtr(PirxSlice slice);
 extern int32_t PirxSliceSize(PirxSlice slice);
 extern int32_t PirxSliceCap(PirxSlice slice);
+extern PirxSlice PirxSliceRange(int32_t elem_size, PirxSlice slice, int32_t start, int32_t end);
 
 // Type conversion functions.
 extern int32_t PirxIntFromInt(int32_t value);
@@ -35,6 +36,7 @@ extern int32_t PirxIntFromInt64(int64_t value);
 extern int32_t PirxIntFromFloat32(float value);
 extern int32_t PirxIntFromFloat64(double value);
 
+// TODO: Pass the string length in. We know it at compile time.
 extern PirxSlice PirxString(const char *str);
 extern void PirxPrintf(PirxSlice fmt, ...);
 extern char *PirxCStr(PirxSlice str);

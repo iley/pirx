@@ -186,6 +186,8 @@ func desugarExpression(dc *desugarContext, originalExpr ast.Expression) ast.Expr
 		result.Array = desugarExpression(dc, expr.Array)
 		result.Index = desugarExpression(dc, expr.Index)
 		return &result
+	case *ast.RangeExpression:
+		return desugarRangeExpression(dc, expr)
 	case *ast.NewExpression:
 		result := *expr
 		if expr.Count != nil {
@@ -258,5 +260,18 @@ func desugarStringLiteral(expr *ast.Literal) ast.Expression {
 		FunctionName: "PirxString",
 		Args:         []ast.Expression{expr},
 		Type:         ast.String,
+	}
+}
+
+func desugarRangeExpression(dc *desugarContext, expr *ast.RangeExpression) ast.Expression {
+	return &ast.FunctionCall{
+		Loc:          expr.Loc,
+		FunctionName: "range",
+		Args: []ast.Expression{
+			desugarExpression(dc, expr.Array),
+			desugarExpression(dc, expr.Start),
+			desugarExpression(dc, expr.End),
+		},
+		Type: expr.Type,
 	}
 }

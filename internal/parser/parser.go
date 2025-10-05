@@ -778,25 +778,62 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 			}
 			bracketLoc := locationFromLexeme(bracketLex)
 
-			// parse index expression
-			indexExpr, err := p.parseExpression()
+			// parse start expression
+			startExpr, err := p.parseExpression()
 			if err != nil {
 				return nil, err
 			}
 
-			// expect ']'
-			closeLex, err := p.consume()
+			// check for colon (range syntax)
+			nextLex, err := p.peek()
 			if err != nil {
 				return nil, err
 			}
-			if !closeLex.IsPunctuation("]") {
-				return nil, fmt.Errorf("%s: expected ']' after index expression, got %v", closeLex.Loc, closeLex)
-			}
 
-			expr = &ast.IndexExpression{
-				Loc:   bracketLoc,
-				Array: expr,
-				Index: indexExpr,
+			if nextLex.IsPunctuation(":") {
+				// consume ':'
+				_, err := p.consume()
+				if err != nil {
+					return nil, err
+				}
+
+				// parse end expression
+				endExpr, err := p.parseExpression()
+				if err != nil {
+					return nil, err
+				}
+
+				// expect ']'
+				closeLex, err := p.consume()
+				if err != nil {
+					return nil, err
+				}
+				if !closeLex.IsPunctuation("]") {
+					return nil, fmt.Errorf("%s: expected ']' after range expression, got %v", closeLex.Loc, closeLex)
+				}
+
+				expr = &ast.RangeExpression{
+					Loc:   bracketLoc,
+					Array: expr,
+					Start: startExpr,
+					End:   endExpr,
+				}
+			} else {
+				// regular index expression
+				// expect ']'
+				closeLex, err := p.consume()
+				if err != nil {
+					return nil, err
+				}
+				if !closeLex.IsPunctuation("]") {
+					return nil, fmt.Errorf("%s: expected ']' after index expression, got %v", closeLex.Loc, closeLex)
+				}
+
+				expr = &ast.IndexExpression{
+					Loc:   bracketLoc,
+					Array: expr,
+					Index: startExpr,
+				}
 			}
 		} else if lex.IsOperator("++") {
 			// consume '++'

@@ -645,6 +645,28 @@ func (i *IndexExpression) String() string {
 	return fmt.Sprintf("([] %s %s)", i.Array.String(), i.Index.String())
 }
 
+type RangeExpression struct {
+	Loc   Location
+	Array Expression
+	Start Expression
+	End   Expression
+	Type  Type
+}
+
+func (r *RangeExpression) GetLocation() Location {
+	return r.Loc
+}
+
+func (r *RangeExpression) GetType() Type {
+	return r.Type
+}
+
+func (r *RangeExpression) isExpression() {}
+
+func (r *RangeExpression) String() string {
+	return fmt.Sprintf("([:] %s %s %s)", r.Array.String(), r.Start.String(), r.End.String())
+}
+
 type NewExpression struct {
 	Loc      Location
 	TypeExpr Type

@@ -164,6 +164,8 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Expression {
 		return c.checkFieldAccess(fa)
 	} else if indexExpr, ok := expr.(*ast.IndexExpression); ok {
 		return c.checkIndexExpression(indexExpr)
+	} else if rangeExpr, ok := expr.(*ast.RangeExpression); ok {
+		return c.checkRangeExpression(rangeExpr)
 	} else if newEx, ok := expr.(*ast.NewExpression); ok {
 		return c.checkNewExpression(newEx)
 	} else if po, ok := expr.(*ast.PostfixOperator); ok {
@@ -630,6 +632,42 @@ func (c *TypeChecker) checkIndexExpression(indexExpr *ast.IndexExpression) *ast.
 	result.Array = arrayExpr
 	result.Index = indexExprChecked
 	result.Type = sliceType.ElementType
+	return &result
+}
+
+func (c *TypeChecker) checkRangeExpression(rangeExpr *ast.RangeExpression) *ast.RangeExpression {
+	arrayExpr := c.checkExpression(rangeExpr.Array)
+	startExpr := c.checkExpression(rangeExpr.Start)
+	endExpr := c.checkExpression(rangeExpr.End)
+
+	arrayType := arrayExpr.GetType()
+	startType := startExpr.GetType()
+	endType := endExpr.GetType()
+
+	// Check that start and end are integer types
+	if !ast.IsIntegerType(startType) {
+		c.errorf("%s: range start must be an integer type, got %s", rangeExpr.Loc, startType)
+	}
+	if !ast.IsIntegerType(endType) {
+		c.errorf("%s: range end must be an integer type, got %s", rangeExpr.Loc, endType)
+	}
+
+	// Check that array is a slice type or string
+	var resultType ast.Type
+	if sliceType, ok := arrayType.(*ast.SliceType); ok {
+		resultType = sliceType
+	} else if arrayType == ast.String {
+		resultType = ast.String
+	} else {
+		c.errorf("%s: range requires a slice or string type, got %s", rangeExpr.Loc, arrayType)
+		resultType = ast.Undefined
+	}
+
+	result := *rangeExpr
+	result.Array = arrayExpr
+	result.Start = startExpr
+	result.End = endExpr
+	result.Type = resultType
 	return &result
 }
 

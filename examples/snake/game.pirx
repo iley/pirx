@@ -45,7 +45,7 @@ func main(): int {
 
   Init(&state);
 
-  InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Pirx Snake - Press any key to start");
+  InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, cstr("Pirx Snake - Press any key to start"));
   SetTargetFPS(8);
 
   while !WindowShouldClose() {
@@ -117,13 +117,13 @@ func DoUpdate(state: *State) {
 func SetGameState(state: *State, gameState: int) {
   state.gameState = gameState;
   if state.gameState == STATE_NOT_STARTED {
-    SetWindowTitle("Pirx Snake - Press any key to start");
+    SetWindowTitle(cstr("Pirx Snake - Press any key to start"));
   } else if state.gameState == STATE_RUNNING {
-    SetWindowTitle("Pirx Snake");
+    SetWindowTitle(cstr("Pirx Snake"));
   } else if state.gameState == STATE_GAME_OVER {
-    SetWindowTitle("Pirx Snake - Game Over!");
+    SetWindowTitle(cstr("Pirx Snake - Game Over!"));
   } else if state.gameState == STATE_PAUSE {
-    SetWindowTitle("Pirx Snake - Pause");
+    SetWindowTitle(cstr("Pirx Snake - Pause"));
   }
 }
 

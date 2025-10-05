@@ -155,6 +155,9 @@ func desugarForStatement(dc *desugarContext, forStmt *ast.ForStatement) ast.Stat
 func desugarExpression(dc *desugarContext, originalExpr ast.Expression) ast.Expression {
 	switch expr := originalExpr.(type) {
 	case *ast.Literal:
+		if expr.StringValue != nil {
+			return desugarStringLiteral(expr)
+		}
 		return expr
 	case *ast.Assignment:
 		result := *expr
@@ -247,4 +250,13 @@ func desugarIntCast(call *ast.FunctionCall) *ast.FunctionCall {
 	result := *call
 	result.FunctionName = resolvedFuncName
 	return &result
+}
+
+func desugarStringLiteral(expr *ast.Literal) ast.Expression {
+	return &ast.FunctionCall{
+		Loc:          expr.Loc,
+		FunctionName: "PirxString",
+		Args:         []ast.Expression{expr},
+		Type:         ast.String,
+	}
 }

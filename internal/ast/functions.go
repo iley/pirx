@@ -38,10 +38,24 @@ func GetFunctionTable(program *Program) []FuncProto {
 func getBuiltins() []FuncProto {
 	return []FuncProto{
 		{
-			Name:     "printf",
-			Args:     []FuncArg{{"fmt", CString}},
-			Variadic: true,
-			External: true,
+			Name:       "PirxString",
+			Args:       []FuncArg{{"value", &PointerType{Int8}}},
+			External:   true,
+			ReturnType: &SliceType{Int8},
+		},
+		{
+			Name:         "cstr",
+			ExternalName: "PirxCStr",
+			Args:         []FuncArg{{"str", String}},
+			External:     true,
+			ReturnType:   &PointerType{Int8},
+		},
+		{
+			Name:         "printf",
+			Args:         []FuncArg{{"fmt", String}},
+			ExternalName: "PirxPrintf",
+			Variadic:     true,
+			External:     true,
 		},
 		{
 			Name:     "putchar",

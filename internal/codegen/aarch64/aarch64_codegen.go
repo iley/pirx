@@ -248,6 +248,7 @@ func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
 func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error) {
 	var lines []asm.Line
 
+	// TODO: Do we need to handle LiteralString here?
 	if assign.Value.Variable != "" {
 		if ir.IsGlobal(assign.Target) {
 			// Load global's address into x1.

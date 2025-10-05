@@ -1,8 +1,11 @@
 #include "builtin.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define PIRX_PRINTF_BUFFER_SIZE 1024
 
 void *PirxAlloc(int32_t size) { return calloc(size, 1); }
 
@@ -46,8 +49,37 @@ int32_t PirxIntFromFloat32(float value) { return (int32_t)value; }
 
 int32_t PirxIntFromFloat64(double value) { return (int32_t)value; }
 
-PirxSlice PirxStr(const char *str) {
+PirxSlice PirxString(const char *str) {
   int len = strlen(str);
-  PirxSlice slice = {.data = (void *)str, .size = len, .cap = len};
+  PirxSlice slice = {
+      .data = (void *)str,
+      .size = len,
+      .cap = len + 1,
+  };
   return slice;
 }
+
+void PirxPrintf(PirxSlice fmt, ...) {
+  static char static_buffer[PIRX_PRINTF_BUFFER_SIZE];
+  char *buffer;
+
+  if (fmt.size + 1 <= PIRX_PRINTF_BUFFER_SIZE) {
+    buffer = static_buffer;
+  } else {
+    buffer = (char *)malloc(fmt.size + 1);
+  }
+
+  strncpy(buffer, fmt.data, fmt.size);
+  buffer[fmt.size] = '\0';
+
+  va_list args;
+  va_start(args, fmt);
+  vprintf(buffer, args);
+  va_end(args);
+
+  if (buffer != static_buffer) {
+    free(buffer);
+  }
+}
+
+char *PirxCStr(PirxSlice str) { return (char *)str.data; }

@@ -22,13 +22,13 @@ PirxSlice PirxSliceAlloc(int32_t elem_size, int32_t size, int32_t cap) {
 
 void PirxSliceDispose(PirxSlice slice) { PirxDispose(slice.data); }
 
-void PirxSliceResize(PirxSlice *slice_ptr, int32_t size) {
+void PirxSliceResize(int32_t elem_size, PirxSlice *slice_ptr, int32_t size) {
   int32_t new_cap = slice_ptr->cap;
   while (new_cap < size) {
     new_cap *= 2;
   }
 
-  slice_ptr->data = realloc(slice_ptr->data, new_cap);
+  slice_ptr->data = realloc(slice_ptr->data, elem_size * new_cap);
   slice_ptr->size = size;
   slice_ptr->cap = new_cap;
 }

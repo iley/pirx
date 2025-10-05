@@ -531,6 +531,28 @@ func (g *Generator) generateRangeCall(call *ast.FunctionCall, resultVar string, 
 	}
 }
 
+func (g *Generator) generateResizeCall(call *ast.FunctionCall, resultVar string, args []Arg, sizes []int, size int) ExternalCall {
+	// First argument is a pointer to a slice
+	slicePtrType, ok := call.Args[0].GetType().(*ast.PointerType)
+	if !ok {
+		panic(fmt.Errorf("%s: resize() expects a pointer to a slice as first argument, got %s", call.Loc, call.Args[0].GetType()))
+	}
+	sliceType, ok := slicePtrType.ElementType.(*ast.SliceType)
+	if !ok {
+		panic(fmt.Errorf("%s: resize() expects a pointer to a slice as first argument, got pointer to %s", call.Loc, slicePtrType.ElementType))
+	}
+	elementSize := g.types.GetSizeNoError(sliceType.ElementType)
+
+	return ExternalCall{
+		Result:    resultVar,
+		Function:  "PirxSliceResize",
+		Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, args[0], args[1]},
+		ArgSizes:  []int{ast.INT_SIZE, ast.WORD_SIZE, ast.INT_SIZE},
+		NamedArgs: 3,
+		Size:      size,
+	}
+}
+
 // generateFunctionCallOps generates ops for a function.
 // Returns a slice of ops, an Arg representing the return value, and the size of the return type in bytes.
 func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, int) {
@@ -574,6 +596,8 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 			externalCall = g.generateDisposeCall(call, temp, args[0])
 		case "range":
 			externalCall = g.generateRangeCall(call, temp, args, sizes, size)
+		case "resize":
+			externalCall = g.generateResizeCall(call, temp, args, sizes, size)
 		default:
 			externalCall = g.generateExternalCall(funcProto, temp, args, sizes, size)
 		}

@@ -23,7 +23,7 @@ typedef struct {
 
 extern PirxSlice PirxSliceAlloc(int32_t elem_size, int32_t size, int32_t cap);
 extern void PirxSliceDispose(PirxSlice slice);
-extern void PirxSliceResize(PirxSlice *slice_ptr, int32_t size);
+extern void PirxSliceResize(int32_t elem_size, PirxSlice *slice_ptr, int32_t size);
 extern void *PirxSlicePtr(PirxSlice slice);
 extern int32_t PirxSliceSize(PirxSlice slice);
 extern int32_t PirxSliceCap(PirxSlice slice);

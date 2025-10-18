@@ -521,7 +521,6 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 		}
 		return retStmt, nil
 	}
-	// TODO: Validate that break is only used inside a loop (likely a separate AST pass).
 	if lex.IsKeyword("break") {
 		breakLex, err := p.consume() // consume the "break" keyword
 		if err != nil {
@@ -529,7 +528,6 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 		}
 		return &ast.BreakStatement{Loc: locationFromLexeme(breakLex)}, nil
 	}
-	// TODO: Validate that continue is only used inside a loop (likely a separate AST pass).
 	if lex.IsKeyword("continue") {
 		continueLex, err := p.consume() // consume the "continue" keyword
 		if err != nil {

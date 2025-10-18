@@ -305,7 +305,7 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) ([]asm
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
 		lines = append(lines, generateStoreByAddr(cc, registerByIndex(0, assign.Size), assign.Target, 0)...)
 	} else if assign.Value.Zero {
-		return lines, fmt.Errorf("TODO: zero assignment by address not supported yet")
+		return lines, fmt.Errorf("zero assignment by address not supported")
 	} else {
 		return lines, fmt.Errorf("invalid rvalue in assignment: %v", assign.Value)
 	}

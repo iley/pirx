@@ -269,10 +269,22 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 
 	var lines []asm.Line
 
-	// TODO: Push arguments onto stack
+	// Copy arguments to stack at negative offsets from rsp
+	// Store them in order, each at the next offset
+	offset := 0
+	for i, arg := range call.Args {
+		argSize := call.ArgSizes[i]
+		offset += argSize
+		lines = append(lines, generateMemoryCopyToReg(cc, arg, argSize, "rsp", -offset)...)
+	}
 
 	// Save rbx to the stack because it currently holds this function's result address.
-	// TODO: handle this properly when we have arguments
+	offset += ast.WORD_SIZE
+	savedRbxOffset := offset
+	lines = append(lines, generateRegisterStore("rbx", "rsp", -offset)...)
+
+	// Don't forget about stack alignment.
+	offset = alignSP(offset)
 
 	if call.Result != "" {
 		// Store the result address in rbx.
@@ -284,9 +296,15 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 		label = "_" + label
 	}
 
-	lines = append(lines, asm.Op1("call", asm.Ref(label)))
+	// Adjust rsp, call, then restore rsp
+	lines = append(lines,
+		asm.Op2("subq", asm.Imm(offset), asm.Reg("rsp")),
+		asm.Op1("call", asm.Ref(label)),
+		asm.Op2("addq", asm.Imm(offset), asm.Reg("rsp")))
 
-	// TODO: Restore rbx if we saved it
+	// Restore rbx
+	rbxArg := asm.Arg{Reg: "rsp", Offset: -savedRbxOffset, Deref: true}
+	lines = append(lines, asm.Op2("movq", rbxArg, asm.Reg("rbx")))
 
 	return lines
 }

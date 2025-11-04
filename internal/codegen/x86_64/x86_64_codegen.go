@@ -528,9 +528,33 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		// Load the argument
 		switch argSize {
 		case 1:
-			// Load 1-byte value (no special handling yet for sign extension)
-			reg := argRegisters[nextRegister]
-			lines = append(lines, generateRegisterLoad(cc, reg, argSize, arg)...)
+			// Load 1-byte value and zero-extend to 64 bits
+			reg8 := ""
+			reg32 := ""
+			reg64 := argRegisters[nextRegister]
+			switch reg64 {
+			case "rdi":
+				reg8 = "dil"
+				reg32 = "edi"
+			case "rsi":
+				reg8 = "sil"
+				reg32 = "esi"
+			case "rdx":
+				reg8 = "dl"
+				reg32 = "edx"
+			case "rcx":
+				reg8 = "cl"
+				reg32 = "ecx"
+			case "r8":
+				reg8 = "r8b"
+				reg32 = "r8d"
+			case "r9":
+				reg8 = "r9b"
+				reg32 = "r9d"
+			}
+			lines = append(lines, generateRegisterLoad(cc, reg8, argSize, arg)...)
+			// Sign-extend 8-bit to 32-bit using movsbl (upper 32 bits cleared automatically)
+			lines = append(lines, asm.Op2("movsbl", asm.Reg(reg8), asm.Reg(reg32)))
 		case 4:
 			// Load 4-byte value and sign-extend to 64 bits
 			reg32 := ""

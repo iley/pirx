@@ -228,6 +228,14 @@ func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
 		return generateReturn(cc, ret), nil
 	} else if ret, ok := op.(ir.ExternalReturn); ok {
 		return generateExternalReturn(cc, ret)
+	} else if jump, ok := op.(ir.Jump); ok {
+		return []asm.Line{asm.Op1("jmp", asm.Ref(fmt.Sprintf(".L%s_%s", cc.functionName, jump.Goto)))}, nil
+	} else if jumpUnless, ok := op.(ir.JumpUnless); ok {
+		var lines []asm.Line
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, jumpUnless.Size), jumpUnless.Size, jumpUnless.Condition)...)
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(jumpUnless.Size), asm.Imm(0), asm.Reg(registerByIndex(0, jumpUnless.Size))))
+		lines = append(lines, asm.Op1("je", asm.Ref(fmt.Sprintf(".L%s_%s", cc.functionName, jumpUnless.Goto))))
+		return lines, nil
 	} else if anchor, ok := op.(ir.Anchor); ok {
 		return []asm.Line{asm.Label(fmt.Sprintf(".L%s_%s", cc.functionName, anchor.Label))}, nil
 	} else {

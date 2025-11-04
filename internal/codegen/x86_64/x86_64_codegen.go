@@ -380,11 +380,49 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 	// Store result if needed
 	if call.Result != "" {
-		// Result is in rax/eax
-		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, call.Size), call.Result)...)
+		lines = append(lines, generateExternalResultStore(cc, call.Size, call.Result)...)
 	}
 
 	return lines, nil
+}
+
+func generateExternalResultStore(cc *CodegenContext, size int, target string) []asm.Line {
+	if size > 16 {
+		panic("returning values larger than 16 bytes from external functions is not currently supported")
+	}
+
+	var lines []asm.Line
+	offset := 0
+	for offset < size {
+		// On x86_64, return value can be split between RAX and RDX
+		var retReg int
+		if offset < 8 {
+			retReg = 0 // rax
+		} else {
+			retReg = 3 // rdx
+		}
+
+		if size-offset >= 8 {
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(retReg, 8), target, offset)...)
+			offset += 8
+		} else if size-offset >= 4 {
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(retReg, 4), target, offset)...)
+			offset += 4
+			// Shift to get next 4 bytes if we're not at the end or register boundary
+			if size > offset && offset != 8 {
+				lines = append(lines, asm.Op2("shrq", asm.Imm(32), asm.Reg(registerByIndex(retReg, 8))))
+			}
+		} else {
+			// Copy one byte at a time
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(retReg, 1), target, offset)...)
+			offset += 1
+			if size > offset {
+				lines = append(lines, asm.Op2("shrq", asm.Imm(8), asm.Reg(registerByIndex(retReg, 8))))
+			}
+		}
+	}
+
+	return lines
 }
 
 func generateReturn(cc *CodegenContext, ret ir.Return) []asm.Line {
@@ -437,6 +475,14 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, reg string, regSize int,
 			panic("cannot load a literal int64 with offset")
 		}
 		return generateLiteralLoad(reg, regSize, *arg.LiteralInt)
+	} else if arg.LiteralString != nil {
+		if offset != 0 {
+			panic("cannot load a literal string with offset")
+		}
+		if regSize != ast.WORD_SIZE {
+			panic(fmt.Errorf("cannot load a string literal into register of size %d", regSize))
+		}
+		return generateStringLiteralLoad(cc, reg, *arg.LiteralString)
 	} else if arg.Zero {
 		return []asm.Line{asm.Op2("movq", asm.Imm(0), asm.Reg(reg))}
 	} else {
@@ -456,6 +502,15 @@ func generateLiteralLoad(reg string, regSize int, val int64) []asm.Line {
 		lines = append(lines, asm.Op2("movq", asm.Imm(int(val)), asm.Reg(reg)))
 	}
 	return lines
+}
+
+func generateStringLiteralLoad(cc *CodegenContext, reg string, literal string) []asm.Line {
+	label := cc.stringLiterals[literal]
+	// Use LEA with RIP-relative addressing to load string address
+	labelArg := asm.Arg{Label: label, Reg: "rip"}
+	return []asm.Line{
+		asm.Op2("leaq", labelArg, asm.Reg(reg)),
+	}
 }
 
 func generateLocalVariableLoadWithOffset(cc *CodegenContext, reg string, regSize int, variable string, offset int) []asm.Line {

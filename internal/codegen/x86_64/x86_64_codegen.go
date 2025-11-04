@@ -216,6 +216,8 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
 	if assign, ok := op.(ir.Assign); ok {
 		return generateAssignment(cc, assign)
+	} else if assign, ok := op.(ir.AssignByAddr); ok {
+		return generateAssignmentByAddr(cc, assign)
 	} else if binop, ok := op.(ir.BinaryOp); ok {
 		return generateBinaryOp(cc, binop)
 	} else if unop, ok := op.(ir.UnaryOp); ok {
@@ -277,6 +279,31 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 		}
 	} else {
 		return lines, fmt.Errorf("unsupported assignment type: %v", assign)
+	}
+
+	return lines, nil
+}
+
+func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) ([]asm.Line, error) {
+	var lines []asm.Line
+
+	// Load the value into a register
+	lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
+
+	// Load the target address into rcx
+	lines = append(lines, generateRegisterLoad(cc, "rcx", ast.WORD_SIZE, assign.Target)...)
+
+	// Store the value to the address in rcx
+	targetArg := asm.Arg{Reg: "rcx", Deref: true}
+	switch assign.Size {
+	case 1:
+		lines = append(lines, asm.Op2("movb", asm.Reg("al"), targetArg))
+	case 4:
+		lines = append(lines, asm.Op2("movl", asm.Reg("eax"), targetArg))
+	case 8:
+		lines = append(lines, asm.Op2("movq", asm.Reg("rax"), targetArg))
+	default:
+		return lines, fmt.Errorf("unsupported AssignByAddr size: %d", assign.Size)
 	}
 
 	return lines, nil

@@ -333,42 +333,58 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]asm.Line, error) {
 	// Implement System V AMD64 ABI for external calls
 	// First 6 integer/pointer arguments go in: rdi, rsi, rdx, rcx, r8, r9
-	// Return value in rax
+	// Large arguments (>8 bytes) can be split across multiple registers
+	// Return value in rax (or rax:rdx for values up to 16 bytes)
 
 	var lines []asm.Line
-
-	// Load arguments into registers
-	// For now, only support up to 6 register arguments
 	argRegisters := []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+	nextRegister := 0
 
 	for i, arg := range call.Args {
-		if i >= len(argRegisters) {
-			return lines, fmt.Errorf("more than 6 arguments not yet supported")
-		}
-
 		argSize := call.ArgSizes[i]
-		reg := argRegisters[i]
 
-		// Adjust register name for size
-		if argSize == 4 {
-			// Use 32-bit register variant
-			switch reg {
-			case "rdi":
-				reg = "edi"
-			case "rsi":
-				reg = "esi"
-			case "rdx":
-				reg = "edx"
-			case "rcx":
-				reg = "ecx"
-			case "r8":
-				reg = "r8d"
-			case "r9":
-				reg = "r9d"
-			}
+		// Calculate how many registers we need
+		needRegisters := 1
+		if argSize > 8 {
+			needRegisters = 2
 		}
 
-		lines = append(lines, generateRegisterLoad(cc, reg, argSize, arg)...)
+		// Check if we have enough registers
+		if nextRegister+needRegisters > len(argRegisters) {
+			return lines, fmt.Errorf("too many register arguments (register %d needed, only %d available)", nextRegister+needRegisters, len(argRegisters))
+		}
+
+		// Load the argument
+		switch argSize {
+		case 1, 4, 8:
+			reg := argRegisters[nextRegister]
+			// Adjust register name for size
+			if argSize == 4 {
+				switch reg {
+				case "rdi":
+					reg = "edi"
+				case "rsi":
+					reg = "esi"
+				case "rdx":
+					reg = "edx"
+				case "rcx":
+					reg = "ecx"
+				case "r8":
+					reg = "r8d"
+				case "r9":
+					reg = "r9d"
+				}
+			}
+			lines = append(lines, generateRegisterLoad(cc, reg, argSize, arg)...)
+		case 16:
+			// Split across two 8-byte registers
+			lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextRegister], 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextRegister+1], 8, arg, 8)...)
+		default:
+			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
+		}
+
+		nextRegister += needRegisters
 	}
 
 	label := call.Function

@@ -218,6 +218,8 @@ func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
 		return generateAssignment(cc, assign)
 	} else if binop, ok := op.(ir.BinaryOp); ok {
 		return generateBinaryOp(cc, binop)
+	} else if unop, ok := op.(ir.UnaryOp); ok {
+		return generateUnaryOp(cc, unop)
 	} else if call, ok := op.(ir.Call); ok {
 		return generateFunctionCall(cc, call), nil
 	} else if call, ok := op.(ir.ExternalCall); ok {
@@ -335,12 +337,58 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
 		lines = append(lines, asm.Op1("setge", asm.Reg("al")))
 		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+	case "&&":
+		// Logical AND: result is 1 if both operands are non-zero
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Imm(0), asm.Reg(r0)))
+		lines = append(lines, asm.Op1("setne", asm.Reg("al")))
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Imm(0), asm.Reg(r1)))
+		lines = append(lines, asm.Op1("setne", asm.Reg("cl")))
+		lines = append(lines, asm.Op2("andb", asm.Reg("cl"), asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+	case "||":
+		// Logical OR: result is 1 if either operand is non-zero
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Imm(0), asm.Reg(r0)))
+		lines = append(lines, asm.Op1("setne", asm.Reg("al")))
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Imm(0), asm.Reg(r1)))
+		lines = append(lines, asm.Op1("setne", asm.Reg("cl")))
+		lines = append(lines, asm.Op2("orb", asm.Reg("cl"), asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
 	default:
 		return lines, fmt.Errorf("unsupported binary operation: %v", binop.Operation)
 	}
 
 	// Store result to target variable (result is in register 0)
 	lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+
+	return lines, nil
+}
+
+func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) ([]asm.Line, error) {
+	var lines []asm.Line
+
+	switch op.Operation {
+	case "!":
+		// Logical NOT: result is 1 if operand is 0, 0 if operand is non-zero
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(op.Size), asm.Imm(0), asm.Reg(registerByIndex(0, op.Size))))
+		lines = append(lines, asm.Op1("sete", asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+	case "-":
+		// Negation
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
+		lines = append(lines, asm.Op1("neg"+sizeToSuffix(op.Size), asm.Reg(registerByIndex(0, op.Size))))
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+	case "&":
+		// Address-of
+		lines = append(lines, generateAddressLoad(cc, registerByIndex(0, op.Size), op.Value)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+	case "*":
+		// Dereference
+		lines = append(lines, generateMemoryCopyFromRef(cc, op.Value, op.Size, op.Result)...)
+	default:
+		return lines, fmt.Errorf("unsupported unary operation: %s", op.Operation)
+	}
 
 	return lines, nil
 }
@@ -771,6 +819,39 @@ func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseRe
 			offset += 1
 		}
 	}
+	return lines
+}
+
+func generateMemoryCopyFromRef(cc *CodegenContext, sourceRef ir.Arg, size int, target string) []asm.Line {
+	var lines []asm.Line
+
+	// Load the source address into rcx
+	lines = append(lines, generateRegisterLoad(cc, "rcx", ast.WORD_SIZE, sourceRef)...)
+
+	// Copy from the address in rcx to target
+	offset := 0
+	for offset < size {
+		if size-offset >= 8 {
+			// Load 8 bytes from [rcx+offset] into rax
+			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
+			lines = append(lines, asm.Op2("movq", srcArg, asm.Reg("rax")))
+			lines = append(lines, generateStoreToLocalWithOffset(cc, "rax", target, offset)...)
+			offset += 8
+		} else if size-offset >= 4 {
+			// Load 4 bytes from [rcx+offset] into eax
+			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
+			lines = append(lines, asm.Op2("movl", srcArg, asm.Reg("eax")))
+			lines = append(lines, generateStoreToLocalWithOffset(cc, "eax", target, offset)...)
+			offset += 4
+		} else {
+			// Load 1 byte from [rcx+offset] into al
+			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
+			lines = append(lines, asm.Op2("movb", srcArg, asm.Reg("al")))
+			lines = append(lines, generateStoreToLocalWithOffset(cc, "al", target, offset)...)
+			offset += 1
+		}
+	}
+
 	return lines
 }
 

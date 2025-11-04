@@ -216,6 +216,8 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
 	if assign, ok := op.(ir.Assign); ok {
 		return generateAssignment(cc, assign)
+	} else if binop, ok := op.(ir.BinaryOp); ok {
+		return generateBinaryOp(cc, binop)
 	} else if call, ok := op.(ir.Call); ok {
 		return generateFunctionCall(cc, call), nil
 	} else if call, ok := op.(ir.ExternalCall); ok {
@@ -268,6 +270,92 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 	}
 
 	return lines, nil
+}
+
+func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error) {
+	var lines []asm.Line
+
+	// Load operands into registers
+	// Use rax and rcx (not rbx, since rbx holds the return value pointer in Pirx calling convention)
+	lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, binop.OperandSize), binop.OperandSize, binop.Left)...)
+	lines = append(lines, generateRegisterLoad(cc, registerByIndex(2, binop.OperandSize), binop.OperandSize, binop.Right)...)
+
+	r0 := registerByIndex(0, binop.OperandSize)
+	r1 := registerByIndex(2, binop.OperandSize) // Use register 2 (rcx) instead of 1 (rbx)
+
+	switch binop.Operation {
+	case "+":
+		// addl %ebx, %eax (eax = eax + ebx)
+		lines = append(lines, asm.Op2("add"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+	case "-":
+		// subl %ebx, %eax (eax = eax - ebx)
+		lines = append(lines, asm.Op2("sub"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+	case "*":
+		// imull %ebx, %eax (eax = eax * ebx)
+		lines = append(lines, asm.Op2("imul"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+	case "/":
+		// For division: need to sign-extend eax into edx:eax, then idivl
+		if binop.OperandSize == 4 {
+			lines = append(lines, asm.Op0("cltd")) // sign-extend eax into edx:eax
+		} else if binop.OperandSize == 8 {
+			lines = append(lines, asm.Op0("cqo")) // sign-extend rax into rdx:rax
+		}
+		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
+	case "%":
+		// Same as division, but result is in edx
+		if binop.OperandSize == 4 {
+			lines = append(lines, asm.Op0("cltd"))
+		} else if binop.OperandSize == 8 {
+			lines = append(lines, asm.Op0("cqo"))
+		}
+		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
+		// Move remainder from edx to eax
+		lines = append(lines, asm.Op2("mov"+sizeToSuffix(binop.OperandSize), asm.Reg(registerByIndex(3, binop.OperandSize)), asm.Reg(r0)))
+	case "==":
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+		lines = append(lines, asm.Op1("sete", asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+	case "!=":
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+		lines = append(lines, asm.Op1("setne", asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+	case "<":
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+		lines = append(lines, asm.Op1("setl", asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+	case ">":
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+		lines = append(lines, asm.Op1("setg", asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+	case "<=":
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+		lines = append(lines, asm.Op1("setle", asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+	case ">=":
+		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+		lines = append(lines, asm.Op1("setge", asm.Reg("al")))
+		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+	default:
+		return lines, fmt.Errorf("unsupported binary operation: %v", binop.Operation)
+	}
+
+	// Store result to target variable (result is in register 0)
+	lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+
+	return lines, nil
+}
+
+func sizeToSuffix(size int) string {
+	switch size {
+	case 1:
+		return "b"
+	case 4:
+		return "l"
+	case 8:
+		return "q"
+	default:
+		panic(fmt.Errorf("unsupported size for suffix: %d", size))
+	}
 }
 
 func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {

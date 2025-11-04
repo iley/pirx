@@ -234,8 +234,17 @@ func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
 func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error) {
 	var lines []asm.Line
 
-	// For now, just handle simple literal int assignments
-	if assign.Value.LiteralInt != nil {
+	if assign.Value.Variable != "" {
+		// Variable to variable assignment
+		if ir.IsGlobal(assign.Target) {
+			// Load global's address into rax
+			lines = append(lines, generateAddressLoad(cc, "rax", ir.Arg{Variable: assign.Target})...)
+			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "rax", 0)...)
+		} else {
+			// Copy from source variable to target variable on stack
+			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "rbp", cc.locals[assign.Target])...)
+		}
+	} else if assign.Value.LiteralInt != nil {
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
 		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Target)...)
 	} else if assign.Value.Zero {

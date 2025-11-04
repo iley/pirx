@@ -241,6 +241,24 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration, gl
 	return &result
 }
 
+func resolveSpecialFunctionReturnType(functionName string, protoReturnType ast.Type, args []ast.Expression) ast.Type {
+	if functionName == "getptr" && len(args) >= 1 {
+		firstArgType := args[0].GetType()
+		if sliceType, ok := firstArgType.(*ast.SliceType); ok {
+			return &ast.PointerType{ElementType: sliceType.ElementType}
+		}
+	}
+	if functionName == "range" && len(args) >= 1 {
+		firstArgType := args[0].GetType()
+		if sliceType, ok := firstArgType.(*ast.SliceType); ok {
+			return sliceType
+		} else if firstArgType == ast.String {
+			return ast.String
+		}
+	}
+	return protoReturnType
+}
+
 func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCall {
 	proto, declared := c.declaredFuncs[call.FunctionName]
 	if !declared {
@@ -292,22 +310,7 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 		}
 	}
 
-	// TODO: Consider moving such type hacks into a separate function.
-	returnType := proto.ReturnType
-	if call.FunctionName == "getptr" && len(checkedArgs) >= 1 {
-		firstArgType := checkedArgs[0].GetType()
-		if sliceType, ok := firstArgType.(*ast.SliceType); ok {
-			returnType = &ast.PointerType{ElementType: sliceType.ElementType}
-		}
-	}
-	if call.FunctionName == "range" && len(checkedArgs) >= 1 {
-		firstArgType := checkedArgs[0].GetType()
-		if sliceType, ok := firstArgType.(*ast.SliceType); ok {
-			returnType = sliceType
-		} else if firstArgType == ast.String {
-			returnType = ast.String
-		}
-	}
+	returnType := resolveSpecialFunctionReturnType(call.FunctionName, proto.ReturnType, checkedArgs)
 
 	return &ast.FunctionCall{
 		Loc:          call.Loc,

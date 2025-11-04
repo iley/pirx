@@ -22,9 +22,9 @@ func getDefaultTarget() string {
 	case "darwin":
 		return "aarch64-darwin"
 	case "linux":
-		return "aarch64-linux"
+		return "x86_64-linux"
 	default:
-		return "aarch64-linux"
+		return "x86_64-linux"
 	}
 }
 

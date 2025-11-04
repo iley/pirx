@@ -269,22 +269,34 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 
 	var lines []asm.Line
 
-	// Copy arguments to stack at negative offsets from rsp
-	// Store them in order, each at the next offset
-	offset := 0
+	// Calculate total space needed for args and saved rbx
+	argsSize := 0
+	for _, argSize := range call.ArgSizes {
+		argsSize += argSize
+	}
+	totalSize := argsSize + ast.WORD_SIZE // args + saved rbx
+	totalSize = alignSP(totalSize)
+
+	// Args need to end up at rbp+16 onwards in the callee.
+	// Layout after subq $totalSize:
+	//   [rsp+0 to rsp+(argsSize-1)]      = arguments
+	//   [rsp+argsSize to rsp+(totalSize-1)] = saved rbx
+	//
+	// Before subq, we store:
+	//   args at -totalSize onwards (growing upward in memory)
+	//   rbx at -(totalSize - argsSize)
+
+	// Store arguments starting from -totalSize
+	argOffset := totalSize
 	for i, arg := range call.Args {
 		argSize := call.ArgSizes[i]
-		offset += argSize
-		lines = append(lines, generateMemoryCopyToReg(cc, arg, argSize, "rsp", -offset)...)
+		lines = append(lines, generateMemoryCopyToReg(cc, arg, argSize, "rsp", -argOffset)...)
+		argOffset -= argSize
 	}
 
-	// Save rbx to the stack because it currently holds this function's result address.
-	offset += ast.WORD_SIZE
-	savedRbxOffset := offset
-	lines = append(lines, generateRegisterStore("rbx", "rsp", -offset)...)
-
-	// Don't forget about stack alignment.
-	offset = alignSP(offset)
+	// Save rbx after the arguments
+	rbxSaveOffset := -(totalSize - argsSize)
+	lines = append(lines, generateRegisterStore("rbx", "rsp", rbxSaveOffset)...)
 
 	if call.Result != "" {
 		// Store the result address in rbx.
@@ -298,12 +310,12 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 
 	// Adjust rsp, call, then restore rsp
 	lines = append(lines,
-		asm.Op2("subq", asm.Imm(offset), asm.Reg("rsp")),
+		asm.Op2("subq", asm.Imm(totalSize), asm.Reg("rsp")),
 		asm.Op1("call", asm.Ref(label)),
-		asm.Op2("addq", asm.Imm(offset), asm.Reg("rsp")))
+		asm.Op2("addq", asm.Imm(totalSize), asm.Reg("rsp")))
 
-	// Restore rbx
-	rbxArg := asm.Arg{Reg: "rsp", Offset: -savedRbxOffset, Deref: true}
+	// Restore rbx (using same offset as save)
+	rbxArg := asm.Arg{Reg: "rsp", Offset: rbxSaveOffset, Deref: true}
 	lines = append(lines, asm.Op2("movq", rbxArg, asm.Reg("rbx")))
 
 	return lines

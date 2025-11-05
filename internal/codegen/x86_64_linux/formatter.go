@@ -62,7 +62,10 @@ func argToString(arg asm.Arg) string {
 
 	// Handle label with register (RIP-relative addressing)
 	if arg.Label != "" && arg.Reg != "" {
-		if arg.Deref {
+		if arg.Offset != 0 {
+			// label+offset(%rip)
+			result = fmt.Sprintf("%s+%d(%%%s)", arg.Label, arg.Offset, arg.Reg)
+		} else if arg.Deref {
 			result = fmt.Sprintf("%s(%%%s)", arg.Label, arg.Reg)
 		} else {
 			// For lea instruction: label(%rip)
@@ -135,9 +138,12 @@ func formatGlobalVariables(out io.Writer, globals []asm.GlobalVariable) {
 	fmt.Fprintf(out, ".bss\n")
 
 	for _, g := range globals {
+		// On x86_64 Linux, .align directive expects the actual alignment value (in bytes)
+		// which is 2^p where p = MinPowerOfTwo(g.Size)
 		p2align := util.MinPowerOfTwo(g.Size)
+		alignment := 1 << p2align // 2^p
 		fmt.Fprintf(out, ".type %s, @object\n", g.Label)
-		fmt.Fprintf(out, ".align %d\n", p2align)
+		fmt.Fprintf(out, ".align %d\n", alignment)
 		fmt.Fprintf(out, "%s:\n", g.Label)
 		fmt.Fprintf(out, ".zero %d\n", g.Size)
 	}

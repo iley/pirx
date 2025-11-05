@@ -251,9 +251,9 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 	if assign.Value.Variable != "" {
 		// Variable to variable assignment
 		if ir.IsGlobal(assign.Target) {
-			// Load global's address into rax
-			lines = append(lines, generateAddressLoad(cc, "rax", ir.Arg{Variable: assign.Target})...)
-			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "rax", 0)...)
+			// Load global's address into rcx (not rax, as rax is used by generateMemoryCopyToReg)
+			lines = append(lines, generateAddressLoad(cc, "rcx", ir.Arg{Variable: assign.Target})...)
+			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "rcx", 0)...)
 		} else {
 			// Copy from source variable to target variable on stack
 			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "rbp", cc.locals[assign.Target])...)
@@ -261,21 +261,54 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 	} else if assign.Value.LiteralInt != nil {
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
 		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Target)...)
+	} else if assign.Value.LiteralFloat != nil {
+		// Load float literal into xmm0 register
+		lines = append(lines, generateFloatLiteralLoad(cc, "xmm0", assign.Size, *assign.Value.LiteralFloat)...)
+		// Store from xmm0 to target variable
+		lines = append(lines, generateStoreFloatToVariable(cc, "xmm0", assign.Size, assign.Target)...)
 	} else if assign.Value.Zero {
 		// Zero assignment
 		lines = append(lines, generateRegisterLoad(cc, "rax", 8, assign.Value)...)
 		offset := 0
 		for offset < assign.Size {
+			var reg string
+			var stepSize int
 			if assign.Size-offset >= 8 {
-				lines = append(lines, generateStoreToLocalWithOffset(cc, "rax", assign.Target, offset)...)
-				offset += 8
+				reg = "rax"
+				stepSize = 8
 			} else if assign.Size-offset >= 4 {
-				lines = append(lines, generateStoreToLocalWithOffset(cc, "eax", assign.Target, offset)...)
-				offset += 4
+				reg = "eax"
+				stepSize = 4
 			} else {
-				lines = append(lines, generateStoreToLocalWithOffset(cc, "al", assign.Target, offset)...)
-				offset += 1
+				reg = "al"
+				stepSize = 1
 			}
+
+			if ir.IsGlobal(assign.Target) {
+				if offset == 0 {
+					// For first chunk with no offset, use direct store
+					lines = append(lines, generateStoreToVariable(cc, reg, assign.Target)...)
+				} else {
+					// For chunks with offset, need to compute address
+					label := getGlobalLabel(assign.Target)
+					lines = append(lines, asm.Op2("leaq", asm.Arg{Label: label, Reg: "rip"}, asm.Reg("rcx")))
+					if offset != 0 {
+						lines = append(lines, asm.Op2("addq", asm.Imm(offset), asm.Reg("rcx")))
+					}
+					targetArg := asm.Arg{Reg: "rcx", Deref: true}
+					switch stepSize {
+					case 1:
+						lines = append(lines, asm.Op2("movb", asm.Reg(reg), targetArg))
+					case 4:
+						lines = append(lines, asm.Op2("movl", asm.Reg(reg), targetArg))
+					case 8:
+						lines = append(lines, asm.Op2("movq", asm.Reg(reg), targetArg))
+					}
+				}
+			} else {
+				lines = append(lines, generateStoreToLocalWithOffset(cc, reg, assign.Target, offset)...)
+			}
+			offset += stepSize
 		}
 	} else {
 		return lines, fmt.Errorf("unsupported assignment type: %v", assign)
@@ -287,23 +320,64 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) ([]asm.Line, error) {
 	var lines []asm.Line
 
-	// Load the value into a register
-	lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
+	// Handle multi-word assignments by copying in chunks
+	if assign.Size > 8 {
+		// Load the target address into rcx
+		lines = append(lines, generateRegisterLoad(cc, "rcx", ast.WORD_SIZE, assign.Target)...)
 
-	// Load the target address into rcx
-	lines = append(lines, generateRegisterLoad(cc, "rcx", ast.WORD_SIZE, assign.Target)...)
+		// Copy the value in chunks
+		offset := 0
+		for offset < assign.Size {
+			var reg string
+			var stepSize int
 
-	// Store the value to the address in rcx
-	targetArg := asm.Arg{Reg: "rcx", Deref: true}
-	switch assign.Size {
-	case 1:
-		lines = append(lines, asm.Op2("movb", asm.Reg("al"), targetArg))
-	case 4:
-		lines = append(lines, asm.Op2("movl", asm.Reg("eax"), targetArg))
-	case 8:
-		lines = append(lines, asm.Op2("movq", asm.Reg("rax"), targetArg))
-	default:
-		return lines, fmt.Errorf("unsupported AssignByAddr size: %d", assign.Size)
+			if assign.Size-offset >= 8 {
+				reg = "rax"
+				stepSize = 8
+			} else if assign.Size-offset >= 4 {
+				reg = "eax"
+				stepSize = 4
+			} else {
+				reg = "al"
+				stepSize = 1
+			}
+
+			// Load chunk from source
+			lines = append(lines, generateRegisterLoadWithOffset(cc, reg, stepSize, assign.Value, offset)...)
+
+			// Store chunk to target address
+			targetArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
+			switch stepSize {
+			case 1:
+				lines = append(lines, asm.Op2("movb", asm.Reg(reg), targetArg))
+			case 4:
+				lines = append(lines, asm.Op2("movl", asm.Reg(reg), targetArg))
+			case 8:
+				lines = append(lines, asm.Op2("movq", asm.Reg(reg), targetArg))
+			}
+
+			offset += stepSize
+		}
+	} else {
+		// For sizes <= 8, use the simple approach
+		// Load the value into a register
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
+
+		// Load the target address into rcx
+		lines = append(lines, generateRegisterLoad(cc, "rcx", ast.WORD_SIZE, assign.Target)...)
+
+		// Store the value to the address in rcx
+		targetArg := asm.Arg{Reg: "rcx", Deref: true}
+		switch assign.Size {
+		case 1:
+			lines = append(lines, asm.Op2("movb", asm.Reg("al"), targetArg))
+		case 4:
+			lines = append(lines, asm.Op2("movl", asm.Reg("eax"), targetArg))
+		case 8:
+			lines = append(lines, asm.Op2("movq", asm.Reg("rax"), targetArg))
+		default:
+			return lines, fmt.Errorf("unsupported AssignByAddr size: %d", assign.Size)
+		}
 	}
 
 	return lines, nil
@@ -312,6 +386,37 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) ([]asm
 func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error) {
 	var lines []asm.Line
 
+	// Check if this is a floating point operation (operations ending with ".")
+	isFloatOp := len(binop.Operation) >= 2 && binop.Operation[len(binop.Operation)-1:] == "."
+
+	if isFloatOp {
+		// For floating point operations, use XMM registers
+		// Load left operand into xmm0
+		lines = append(lines, generateFloatLoad(cc, "xmm0", binop.OperandSize, binop.Left)...)
+		// Load right operand into xmm1
+		lines = append(lines, generateFloatLoad(cc, "xmm1", binop.OperandSize, binop.Right)...)
+
+		// Perform the operation
+		switch binop.Operation {
+		case "+.":
+			lines = append(lines, asm.Op2("addsd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+		case "-.":
+			lines = append(lines, asm.Op2("subsd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+		case "*.":
+			lines = append(lines, asm.Op2("mulsd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+		case "/.":
+			lines = append(lines, asm.Op2("divsd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+		default:
+			return lines, fmt.Errorf("unsupported float binary operation: %v", binop.Operation)
+		}
+
+		// Store result from xmm0 to target variable
+		lines = append(lines, generateStoreFloatToVariable(cc, "xmm0", binop.Size, binop.Result)...)
+
+		return lines, nil
+	}
+
+	// Integer operations
 	// Load operands into registers
 	// Use rax and rcx (not rbx, since rbx holds the return value pointer in Pirx calling convention)
 	lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, binop.OperandSize), binop.OperandSize, binop.Left)...)
@@ -332,17 +437,19 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 		lines = append(lines, asm.Op2("imul"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
 	case "/":
 		// For division: need to sign-extend eax into edx:eax, then idivl
-		if binop.OperandSize == 4 {
+		switch binop.OperandSize {
+		case 4:
 			lines = append(lines, asm.Op0("cltd")) // sign-extend eax into edx:eax
-		} else if binop.OperandSize == 8 {
+		case 8:
 			lines = append(lines, asm.Op0("cqo")) // sign-extend rax into rdx:rax
 		}
 		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
 	case "%":
 		// Same as division, but result is in edx
-		if binop.OperandSize == 4 {
+		switch binop.OperandSize {
+		case 4:
 			lines = append(lines, asm.Op0("cltd"))
-		} else if binop.OperandSize == 8 {
+		case 8:
 			lines = append(lines, asm.Op0("cqo"))
 		}
 		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
@@ -850,7 +957,26 @@ func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable stri
 			lines = append(lines, asm.Op2("movq", labelArg, asm.Reg(reg)))
 		}
 	} else {
-		panic("global variable load with offset not yet implemented")
+		// Load address of global into temp register, add offset, then load from that address
+		// We'll use rcx as a temporary register (should be safe since we're in a load operation)
+		labelArg := asm.Arg{Label: label, Reg: "rip"}
+		lines = append(lines, asm.Op2("leaq", labelArg, asm.Reg("rcx")))
+
+		// Add offset if non-zero
+		if offset != 0 {
+			lines = append(lines, asm.Op2("addq", asm.Imm(offset), asm.Reg("rcx")))
+		}
+
+		// Load from the computed address
+		memArg := asm.Arg{Reg: "rcx", Deref: true}
+		switch regSize {
+		case 1:
+			lines = append(lines, asm.Op2("movb", memArg, asm.Reg(reg)))
+		case 4:
+			lines = append(lines, asm.Op2("movl", memArg, asm.Reg(reg)))
+		default:
+			lines = append(lines, asm.Op2("movq", memArg, asm.Reg(reg)))
+		}
 	}
 
 	return lines
@@ -860,7 +986,18 @@ func generateStoreToVariable(cc *CodegenContext, reg string, target string) []as
 	var lines []asm.Line
 
 	if ir.IsGlobal(target) {
-		panic("global variable store not yet implemented")
+		label := getGlobalLabel(target)
+		labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
+
+		regSize := registerSizeFromName(reg)
+		switch regSize {
+		case 1:
+			lines = append(lines, asm.Op2("movb", asm.Reg(reg), labelArg))
+		case 4:
+			lines = append(lines, asm.Op2("movl", asm.Reg(reg), labelArg))
+		default:
+			lines = append(lines, asm.Op2("movq", asm.Reg(reg), labelArg))
+		}
 	} else {
 		lines = append(lines, generateStoreToLocalWithOffset(cc, reg, target, 0)...)
 	}
@@ -951,6 +1088,103 @@ func alignSP(offset int) int {
 
 func getGlobalLabel(name string) string {
 	return strings.TrimPrefix(name, "@")
+}
+
+func generateFloatLiteralLoad(cc *CodegenContext, reg string, regSize int, literal float64) []asm.Line {
+	label := cc.floatLiterals[literal]
+	var lines []asm.Line
+
+	// Load float literal from .rodata using RIP-relative addressing
+	labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
+
+	switch regSize {
+	case 8:
+		// Load double (64-bit float) using movsd
+		lines = append(lines, asm.Op2("movsd", labelArg, asm.Reg(reg)))
+	case 4:
+		// Load float (32-bit float) using movss
+		lines = append(lines, asm.Op2("movss", labelArg, asm.Reg(reg)))
+	default:
+		panic(fmt.Errorf("unsupported float register size: %d", regSize))
+	}
+
+	return lines
+}
+
+func generateStoreFloatToVariable(cc *CodegenContext, reg string, regSize int, target string) []asm.Line {
+	var lines []asm.Line
+
+	if ir.IsGlobal(target) {
+		// Store to global variable using RIP-relative addressing
+		label := getGlobalLabel(target)
+		labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
+
+		switch regSize {
+		case 8:
+			lines = append(lines, asm.Op2("movsd", asm.Reg(reg), labelArg))
+		case 4:
+			lines = append(lines, asm.Op2("movss", asm.Reg(reg), labelArg))
+		default:
+			panic(fmt.Errorf("unsupported float store size: %d", regSize))
+		}
+	} else {
+		// Store to local variable on stack
+		fullOffset := cc.locals[target]
+		rbpArg := asm.Arg{Reg: "rbp", Offset: fullOffset, Deref: true}
+
+		switch regSize {
+		case 8:
+			lines = append(lines, asm.Op2("movsd", asm.Reg(reg), rbpArg))
+		case 4:
+			lines = append(lines, asm.Op2("movss", asm.Reg(reg), rbpArg))
+		default:
+			panic(fmt.Errorf("unsupported float store size: %d", regSize))
+		}
+	}
+
+	return lines
+}
+
+func generateFloatLoad(cc *CodegenContext, reg string, regSize int, arg ir.Arg) []asm.Line {
+	var lines []asm.Line
+
+	if arg.LiteralFloat != nil {
+		// Load float literal
+		lines = append(lines, generateFloatLiteralLoad(cc, reg, regSize, *arg.LiteralFloat)...)
+	} else if arg.Variable != "" {
+		// Load from variable
+		if ir.IsGlobal(arg.Variable) {
+			// Load from global variable using RIP-relative addressing
+			label := getGlobalLabel(arg.Variable)
+			labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
+
+			switch regSize {
+			case 8:
+				lines = append(lines, asm.Op2("movsd", labelArg, asm.Reg(reg)))
+			case 4:
+				lines = append(lines, asm.Op2("movss", labelArg, asm.Reg(reg)))
+			default:
+				panic(fmt.Errorf("unsupported float load size: %d", regSize))
+			}
+		} else {
+			// Load from local variable on stack
+			fullOffset := cc.locals[arg.Variable]
+			rbpArg := asm.Arg{Reg: "rbp", Offset: fullOffset, Deref: true}
+
+			switch regSize {
+			case 8:
+				lines = append(lines, asm.Op2("movsd", rbpArg, asm.Reg(reg)))
+			case 4:
+				lines = append(lines, asm.Op2("movss", rbpArg, asm.Reg(reg)))
+			default:
+				panic(fmt.Errorf("unsupported float load size: %d", regSize))
+			}
+		}
+	} else {
+		panic(fmt.Errorf("unsupported float load argument: %v", arg))
+	}
+
+	return lines
 }
 
 func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseReg string, baseOffset int) []asm.Line {

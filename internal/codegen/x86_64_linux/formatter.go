@@ -60,15 +60,11 @@ func formatLine(out io.Writer, line asm.Line) {
 func argToString(arg asm.Arg) string {
 	var result string
 
-	// Handle label with register (RIP-relative addressing)
+	// Handle label with register (RIP-relative addressing: label(%rip) or label+offset(%rip))
 	if arg.Label != "" && arg.Reg != "" {
 		if arg.Offset != 0 {
-			// label+offset(%rip)
 			result = fmt.Sprintf("%s+%d(%%%s)", arg.Label, arg.Offset, arg.Reg)
-		} else if arg.Deref {
-			result = fmt.Sprintf("%s(%%%s)", arg.Label, arg.Reg)
 		} else {
-			// For lea instruction: label(%rip)
 			result = fmt.Sprintf("%s(%%%s)", arg.Label, arg.Reg)
 		}
 		return result

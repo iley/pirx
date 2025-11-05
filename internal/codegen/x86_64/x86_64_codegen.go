@@ -151,28 +151,12 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 	result.Lines = append(result.Lines,
 		asm.Comment(fmt.Sprintf("frame size: %d bytes", frameSize)))
 
-	// Function arguments come in registers for C ABI or on stack above rbp for Pirx ABI.
-	// For now, handle args on stack above rbp (similar to ARM64 approach).
-	argsBlockSize := 0
-	for _, argSize := range irfn.ArgSizes {
-		argsBlockSize += argSize
-	}
-	// Add space for saved rbx (callee-saved register used for return address).
-	argsBlockSize += ast.WORD_SIZE
-	argsBlockSize = alignSP(argsBlockSize)
-
-	// Function arguments are already on the stack above our frame (after the return address and saved rbp).
-	// Calculate offsets for those.
-	// Stack layout: ... [args] [return address] [saved rbp] [locals] ...
-	//                                           ^rbp points here
-	argOffset := argsBlockSize
-	for i, arg := range irfn.Args {
-		argOffset -= irfn.ArgSizes[i]
-		locals[arg] = 16 + argOffset // 16 = saved rbp (8) + return addr (8) + saved rbx (8) - wait this doesn't add up
-	}
-
-	// Simplified: just use +16 for first arg
-	argOffset = 16 // skip saved rbp (8) and return address (8)
+	// For Pirx calling convention, function arguments are on the stack above rbp.
+	// Stack layout from high to low addresses:
+	//   ... [arg N] [arg 1] [return address] [saved rbp] [locals] ...
+	//                                         ^rbp points here
+	// Arguments start at rbp+16 (skip saved rbp at rbp+0 and return address at rbp+8).
+	argOffset := 16
 	for i, arg := range irfn.Args {
 		locals[arg] = argOffset
 		argOffset += irfn.ArgSizes[i]
@@ -267,7 +251,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 		// Store from xmm0 to target variable
 		lines = append(lines, generateStoreFloatToVariable(cc, "xmm0", assign.Size, assign.Target)...)
 	} else if assign.Value.Zero {
-		// Zero assignment
+		// Zero assignment - copy zero in chunks
 		lines = append(lines, generateRegisterLoad(cc, "rax", 8, assign.Value)...)
 		offset := 0
 		for offset < assign.Size {
@@ -286,15 +270,12 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 
 			if ir.IsGlobal(assign.Target) {
 				if offset == 0 {
-					// For first chunk with no offset, use direct store
 					lines = append(lines, generateStoreToVariable(cc, reg, assign.Target)...)
 				} else {
-					// For chunks with offset, need to compute address
+					// For non-zero offset, compute address using leaq + addq
 					label := getGlobalLabel(assign.Target)
 					lines = append(lines, asm.Op2("leaq", asm.Arg{Label: label, Reg: "rip"}, asm.Reg("rcx")))
-					if offset != 0 {
-						lines = append(lines, asm.Op2("addq", asm.Imm(offset), asm.Reg("rcx")))
-					}
+					lines = append(lines, asm.Op2("addq", asm.Imm(offset), asm.Reg("rcx")))
 					targetArg := asm.Arg{Reg: "rcx", Deref: true}
 					switch stepSize {
 					case 1:
@@ -416,36 +397,23 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 		return lines, nil
 	}
 
-	// Integer operations
-	// Load operands into registers
-	// Use rax and rcx (not rbx, since rbx holds the return value pointer in Pirx calling convention)
+	// Integer operations: load operands into rax (r0) and rcx (r1)
+	// Note: we avoid rbx since it holds the return value pointer in Pirx calling convention
 	lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, binop.OperandSize), binop.OperandSize, binop.Left)...)
 	lines = append(lines, generateRegisterLoad(cc, registerByIndex(2, binop.OperandSize), binop.OperandSize, binop.Right)...)
 
-	r0 := registerByIndex(0, binop.OperandSize)
-	r1 := registerByIndex(2, binop.OperandSize) // Use register 2 (rcx) instead of 1 (rbx)
+	r0 := registerByIndex(0, binop.OperandSize) // rax/eax/al
+	r1 := registerByIndex(2, binop.OperandSize) // rcx/ecx/cl
 
 	switch binop.Operation {
 	case "+":
-		// addl %ebx, %eax (eax = eax + ebx)
 		lines = append(lines, asm.Op2("add"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
 	case "-":
-		// subl %ebx, %eax (eax = eax - ebx)
 		lines = append(lines, asm.Op2("sub"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
 	case "*":
-		// imull %ebx, %eax (eax = eax * ebx)
 		lines = append(lines, asm.Op2("imul"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
 	case "/":
-		// For division: need to sign-extend eax into edx:eax, then idivl
-		switch binop.OperandSize {
-		case 4:
-			lines = append(lines, asm.Op0("cltd")) // sign-extend eax into edx:eax
-		case 8:
-			lines = append(lines, asm.Op0("cqo")) // sign-extend rax into rdx:rax
-		}
-		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
-	case "%":
-		// Same as division, but result is in edx
+		// Sign-extend dividend into rdx:rax, then divide by r1, quotient goes to rax
 		switch binop.OperandSize {
 		case 4:
 			lines = append(lines, asm.Op0("cltd"))
@@ -453,7 +421,15 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 			lines = append(lines, asm.Op0("cqo"))
 		}
 		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
-		// Move remainder from edx to eax
+	case "%":
+		// Same as division, but remainder is in rdx instead of quotient in rax
+		switch binop.OperandSize {
+		case 4:
+			lines = append(lines, asm.Op0("cltd"))
+		case 8:
+			lines = append(lines, asm.Op0("cqo"))
+		}
+		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
 		lines = append(lines, asm.Op2("mov"+sizeToSuffix(binop.OperandSize), asm.Reg(registerByIndex(3, binop.OperandSize)), asm.Reg(r0)))
 	case "==":
 		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
@@ -609,17 +585,14 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 }
 
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]asm.Line, error) {
-	// Implement System V AMD64 ABI for external calls
-	// First 6 integer/pointer arguments go in: rdi, rsi, rdx, rcx, r8, r9
-	// Additional arguments go on the stack
-	// Return value in rax (or rax:rdx for values up to 16 bytes)
-
+	// System V AMD64 ABI: first 6 args in rdi/rsi/rdx/rcx/r8/r9, rest on stack
+	// Return value in rax, or rax:rdx for 9-16 byte values
 	var lines []asm.Line
 	argRegisters := []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 	nextRegister := 0
-	var stackArgs []int // Indices of arguments that go on stack
+	var stackArgs []int
 
-	// First pass: load arguments into registers
+	// First pass: load register arguments
 	for i := range call.Args {
 		argSize := call.ArgSizes[i]
 
@@ -672,24 +645,20 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 	// Second pass: handle stack arguments
 	var spShift int
 	if len(stackArgs) > 0 {
-		// Calculate space needed for stack arguments
+		// Calculate space needed, ensuring each arg takes at least 8 bytes
 		totalStackArgSize := 0
 		for _, argIdx := range stackArgs {
 			argSize := call.ArgSizes[argIdx]
-			// Each argument takes at least 8 bytes on the stack
 			if argSize <= 8 {
 				totalStackArgSize += ast.WORD_SIZE
 			} else {
-				// Round up to multiple of 8
 				totalStackArgSize += ((argSize + 7) / 8) * 8
 			}
 		}
 		spShift = alignSP(totalStackArgSize)
 
-		// Allocate space on stack first
 		lines = append(lines, asm.Op2("subq", asm.Imm(spShift), asm.Reg("rsp")))
 
-		// Store arguments onto stack (in correct order, not reversed)
 		stackOffset := 0
 		for _, argIdx := range stackArgs {
 			arg := call.Args[argIdx]
@@ -945,8 +914,8 @@ func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable stri
 	var lines []asm.Line
 	label := getGlobalLabel(variable)
 
-	// Use RIP-relative addressing for position-independent code
 	if offset == 0 {
+		// Direct RIP-relative load for zero offset
 		labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
 		switch regSize {
 		case 1:
@@ -957,17 +926,11 @@ func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable stri
 			lines = append(lines, asm.Op2("movq", labelArg, asm.Reg(reg)))
 		}
 	} else {
-		// Load address of global into temp register, add offset, then load from that address
-		// We'll use rcx as a temporary register (should be safe since we're in a load operation)
+		// For non-zero offset: compute address with leaq, add offset, then load
 		labelArg := asm.Arg{Label: label, Reg: "rip"}
 		lines = append(lines, asm.Op2("leaq", labelArg, asm.Reg("rcx")))
+		lines = append(lines, asm.Op2("addq", asm.Imm(offset), asm.Reg("rcx")))
 
-		// Add offset if non-zero
-		if offset != 0 {
-			lines = append(lines, asm.Op2("addq", asm.Imm(offset), asm.Reg("rcx")))
-		}
-
-		// Load from the computed address
 		memArg := asm.Arg{Reg: "rcx", Deref: true}
 		switch regSize {
 		case 1:
@@ -1024,12 +987,7 @@ func generateStoreToLocalWithOffset(cc *CodegenContext, reg string, target strin
 }
 
 func registerByIndex(index, size int) string {
-	// x86_64 register naming:
-	// 64-bit: rax, rbx, rcx, rdx, rsi, rdi, r8-r15
-	// 32-bit: eax, ebx, ecx, edx, esi, edi, r8d-r15d
-	// 16-bit: ax, bx, cx, dx, si, di, r8w-r15w
-	// 8-bit: al, bl, cl, dl, sil, dil, r8b-r15b
-
+	// Maps (index, size) to register name: (0,8)→rax, (0,4)→eax, (0,1)→al, etc.
 	var base string
 	switch index {
 	case 0:
@@ -1092,17 +1050,13 @@ func getGlobalLabel(name string) string {
 
 func generateFloatLiteralLoad(cc *CodegenContext, reg string, regSize int, literal float64) []asm.Line {
 	label := cc.floatLiterals[literal]
-	var lines []asm.Line
-
-	// Load float literal from .rodata using RIP-relative addressing
 	labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
 
+	var lines []asm.Line
 	switch regSize {
 	case 8:
-		// Load double (64-bit float) using movsd
 		lines = append(lines, asm.Op2("movsd", labelArg, asm.Reg(reg)))
 	case 4:
-		// Load float (32-bit float) using movss
 		lines = append(lines, asm.Op2("movss", labelArg, asm.Reg(reg)))
 	default:
 		panic(fmt.Errorf("unsupported float register size: %d", regSize))
@@ -1187,6 +1141,8 @@ func generateFloatLoad(cc *CodegenContext, reg string, regSize int, arg ir.Arg) 
 	return lines
 }
 
+// Copy memory from source to [baseReg+baseOffset], size bytes in total.
+// Used for struct/array/slice copying. Copies in 8/4/1 byte chunks using rax.
 func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseReg string, baseOffset int) []asm.Line {
 	var lines []asm.Line
 	offset := 0
@@ -1208,29 +1164,26 @@ func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseRe
 	return lines
 }
 
+// Copy memory from [sourceRef] to target variable. Used for pointer dereference.
+// sourceRef is an argument holding a pointer, target is a local variable name.
 func generateMemoryCopyFromRef(cc *CodegenContext, sourceRef ir.Arg, size int, target string) []asm.Line {
 	var lines []asm.Line
 
-	// Load the source address into rcx
 	lines = append(lines, generateRegisterLoad(cc, "rcx", ast.WORD_SIZE, sourceRef)...)
 
-	// Copy from the address in rcx to target
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			// Load 8 bytes from [rcx+offset] into rax
 			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
 			lines = append(lines, asm.Op2("movq", srcArg, asm.Reg("rax")))
 			lines = append(lines, generateStoreToLocalWithOffset(cc, "rax", target, offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
-			// Load 4 bytes from [rcx+offset] into eax
 			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
 			lines = append(lines, asm.Op2("movl", srcArg, asm.Reg("eax")))
 			lines = append(lines, generateStoreToLocalWithOffset(cc, "eax", target, offset)...)
 			offset += 4
 		} else {
-			// Load 1 byte from [rcx+offset] into al
 			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
 			lines = append(lines, asm.Op2("movb", srcArg, asm.Reg("al")))
 			lines = append(lines, generateStoreToLocalWithOffset(cc, "al", target, offset)...)
@@ -1258,6 +1211,8 @@ func generateRegisterStore(reg string, baseReg string, offset int) []asm.Line {
 	return lines
 }
 
+// Load the address of a variable into a register (address-of operator &).
+// For globals: uses RIP-relative leaq. For locals: uses rbp-relative leaq.
 func generateAddressLoad(cc *CodegenContext, reg string, arg ir.Arg) []asm.Line {
 	if arg.Variable == "" {
 		panic(fmt.Errorf("can only load address of variables, got %s", arg))
@@ -1268,12 +1223,10 @@ func generateAddressLoad(cc *CodegenContext, reg string, arg ir.Arg) []asm.Line 
 
 	if ir.IsGlobal(arg.Variable) {
 		label := getGlobalLabel(arg.Variable)
-		// Use lea with RIP-relative addressing
 		labelArg := asm.Arg{Label: label, Reg: "rip", Deref: false}
 		lines = append(lines, asm.Op2("leaq", labelArg, regArg))
 	} else {
 		offset := cc.locals[arg.Variable]
-		// lea reg, [rbp + offset]
 		rbpArg := asm.Arg{Reg: "rbp", Offset: offset, Deref: false}
 		lines = append(lines, asm.Op2("leaq", rbpArg, regArg))
 	}

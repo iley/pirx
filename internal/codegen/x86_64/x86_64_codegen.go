@@ -504,14 +504,16 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]asm.Line, error) {
 	// Implement System V AMD64 ABI for external calls
 	// First 6 integer/pointer arguments go in: rdi, rsi, rdx, rcx, r8, r9
-	// Large arguments (>8 bytes) can be split across multiple registers
+	// Additional arguments go on the stack
 	// Return value in rax (or rax:rdx for values up to 16 bytes)
 
 	var lines []asm.Line
 	argRegisters := []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 	nextRegister := 0
+	var stackArgs []int // Indices of arguments that go on stack
 
-	for i, arg := range call.Args {
+	// First pass: load arguments into registers
+	for i := range call.Args {
 		argSize := call.ArgSizes[i]
 
 		// Calculate how many registers we need
@@ -522,63 +524,28 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 		// Check if we have enough registers
 		if nextRegister+needRegisters > len(argRegisters) {
-			return lines, fmt.Errorf("too many register arguments (register %d needed, only %d available)", nextRegister+needRegisters, len(argRegisters))
+			// This argument and all remaining go on stack
+			for j := i; j < len(call.Args); j++ {
+				stackArgs = append(stackArgs, j)
+			}
+			break
 		}
 
-		// Load the argument
+		// Load the argument into register(s)
+		arg := call.Args[i]
 		switch argSize {
 		case 1:
-			// Load 1-byte value and zero-extend to 64 bits
-			reg8 := ""
-			reg32 := ""
-			reg64 := argRegisters[nextRegister]
-			switch reg64 {
-			case "rdi":
-				reg8 = "dil"
-				reg32 = "edi"
-			case "rsi":
-				reg8 = "sil"
-				reg32 = "esi"
-			case "rdx":
-				reg8 = "dl"
-				reg32 = "edx"
-			case "rcx":
-				reg8 = "cl"
-				reg32 = "ecx"
-			case "r8":
-				reg8 = "r8b"
-				reg32 = "r8d"
-			case "r9":
-				reg8 = "r9b"
-				reg32 = "r9d"
-			}
+			// Load 1-byte value and sign-extend to 64 bits
+			reg8, reg32 := get8And32BitRegNames(argRegisters[nextRegister])
 			lines = append(lines, generateRegisterLoad(cc, reg8, argSize, arg)...)
-			// Sign-extend 8-bit to 32-bit using movsbl (upper 32 bits cleared automatically)
 			lines = append(lines, asm.Op2("movsbl", asm.Reg(reg8), asm.Reg(reg32)))
 		case 4:
 			// Load 4-byte value and sign-extend to 64 bits
-			reg32 := ""
-			reg64 := argRegisters[nextRegister]
-			switch reg64 {
-			case "rdi":
-				reg32 = "edi"
-			case "rsi":
-				reg32 = "esi"
-			case "rdx":
-				reg32 = "edx"
-			case "rcx":
-				reg32 = "ecx"
-			case "r8":
-				reg32 = "r8d"
-			case "r9":
-				reg32 = "r9d"
-			}
+			reg32 := get32BitRegName(argRegisters[nextRegister])
 			lines = append(lines, generateRegisterLoad(cc, reg32, argSize, arg)...)
-			// Sign-extend 32-bit to 64-bit using movslq
-			lines = append(lines, asm.Op2("movslq", asm.Reg(reg32), asm.Reg(reg64)))
+			lines = append(lines, asm.Op2("movslq", asm.Reg(reg32), asm.Reg(argRegisters[nextRegister])))
 		case 8:
-			reg := argRegisters[nextRegister]
-			lines = append(lines, generateRegisterLoad(cc, reg, argSize, arg)...)
+			lines = append(lines, generateRegisterLoad(cc, argRegisters[nextRegister], argSize, arg)...)
 		case 16:
 			// Split across two 8-byte registers
 			lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextRegister], 8, arg, 0)...)
@@ -590,6 +557,42 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		nextRegister += needRegisters
 	}
 
+	// Second pass: handle stack arguments
+	var spShift int
+	if len(stackArgs) > 0 {
+		// Calculate space needed for stack arguments (aligned to 16 bytes)
+		spShift = alignSP(len(stackArgs) * ast.WORD_SIZE)
+
+		// Allocate space on stack first
+		lines = append(lines, asm.Op2("subq", asm.Imm(spShift), asm.Reg("rsp")))
+
+		// Store arguments onto stack (in correct order, not reversed)
+		for i, argIdx := range stackArgs {
+			arg := call.Args[argIdx]
+			argSize := call.ArgSizes[argIdx]
+			stackOffset := i * ast.WORD_SIZE
+
+			// Load argument into appropriate register and sign-extend to 64 bits
+			switch argSize {
+			case 1:
+				lines = append(lines, generateRegisterLoad(cc, "al", argSize, arg)...)
+				lines = append(lines, asm.Op2("movsbl", asm.Reg("al"), asm.Reg("eax")))
+				lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
+			case 4:
+				lines = append(lines, generateRegisterLoad(cc, "eax", argSize, arg)...)
+				lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
+			case 8:
+				lines = append(lines, generateRegisterLoad(cc, "rax", argSize, arg)...)
+			default:
+				return lines, fmt.Errorf("unsupported stack argument size %d", argSize)
+			}
+
+			// Store to stack at correct offset
+			stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
+			lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
+		}
+	}
+
 	label := call.Function
 	if cc.features.FuncLabelsUnderscore {
 		label = "_" + label
@@ -597,12 +600,55 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 	lines = append(lines, asm.Op1("call", asm.Ref(label)))
 
+	// Clean up stack arguments if any
+	if spShift > 0 {
+		lines = append(lines, asm.Op2("addq", asm.Imm(spShift), asm.Reg("rsp")))
+	}
+
 	// Store result if needed
 	if call.Result != "" {
 		lines = append(lines, generateExternalResultStore(cc, call.Size, call.Result)...)
 	}
 
 	return lines, nil
+}
+
+func get32BitRegName(reg64 string) string {
+	switch reg64 {
+	case "rdi":
+		return "edi"
+	case "rsi":
+		return "esi"
+	case "rdx":
+		return "edx"
+	case "rcx":
+		return "ecx"
+	case "r8":
+		return "r8d"
+	case "r9":
+		return "r9d"
+	default:
+		panic(fmt.Errorf("unknown 64-bit register: %s", reg64))
+	}
+}
+
+func get8And32BitRegNames(reg64 string) (string, string) {
+	switch reg64 {
+	case "rdi":
+		return "dil", "edi"
+	case "rsi":
+		return "sil", "esi"
+	case "rdx":
+		return "dl", "edx"
+	case "rcx":
+		return "cl", "ecx"
+	case "r8":
+		return "r8b", "r8d"
+	case "r9":
+		return "r9b", "r9d"
+	default:
+		panic(fmt.Errorf("unknown 64-bit register: %s", reg64))
+	}
 }
 
 func generateExternalResultStore(cc *CodegenContext, size int, target string) []asm.Line {

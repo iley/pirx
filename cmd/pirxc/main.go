@@ -20,9 +20,18 @@ import (
 func getDefaultTarget() string {
 	switch runtime.GOOS {
 	case "darwin":
+		// Only aarch64-darwin is supported on macOS
 		return "aarch64-darwin"
 	case "linux":
-		return "x86_64-linux"
+		switch runtime.GOARCH {
+		case "arm64":
+			return "aarch64-linux"
+		case "amd64":
+			return "x86_64-linux"
+		default:
+			// Default to x86_64 for unknown architectures
+			return "x86_64-linux"
+		}
 	default:
 		return "x86_64-linux"
 	}

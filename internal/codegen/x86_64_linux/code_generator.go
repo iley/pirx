@@ -11,11 +11,7 @@ import (
 type CodeGenerator struct{}
 
 func (cg *CodeGenerator) Generate(program ir.IrProgram) (asm.Program, error) {
-	features := x86_64.Features{
-		VarargsOnStack:       false,
-		FuncLabelsUnderscore: false,
-	}
-	return x86_64.Generate(program, features)
+	return x86_64.Generate(program)
 }
 
 func (cg *CodeGenerator) Optimize(p asm.Program) asm.Program {

@@ -17,13 +17,7 @@ const (
 	FUNC_CALL_REGISTERS = 6 // rdi, rsi, rdx, rcx, r8, r9
 )
 
-type Features struct {
-	VarargsOnStack       bool
-	FuncLabelsUnderscore bool
-}
-
 type CodegenContext struct {
-	features       Features
 	stringLiterals map[string]string
 	floatLiterals  map[float64]string
 
@@ -33,7 +27,7 @@ type CodegenContext struct {
 	functionName string
 }
 
-func Generate(irp ir.IrProgram, features Features) (asm.Program, error) {
+func Generate(irp ir.IrProgram) (asm.Program, error) {
 	asmProgram := asm.Program{}
 
 	// Map from string to a label in the data section.
@@ -51,7 +45,6 @@ func Generate(irp ir.IrProgram, features Features) (asm.Program, error) {
 	globalVariables := common.GatherGlobals(irp)
 
 	cc := &CodegenContext{
-		features:       features,
 		stringLiterals: stringLiterals,
 		floatLiterals:  floatLiterals,
 	}
@@ -566,15 +559,10 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 		lines = append(lines, generateAddressLoad(cc, "rbx", ir.Arg{Variable: call.Result})...)
 	}
 
-	label := call.Function
-	if cc.features.FuncLabelsUnderscore {
-		label = "_" + label
-	}
-
 	// Adjust rsp, call, then restore rsp
 	lines = append(lines,
 		asm.Op2("subq", asm.Imm(totalSize), asm.Reg("rsp")),
-		asm.Op1("call", asm.Ref(label)),
+		asm.Op1("call", asm.Ref(call.Function)),
 		asm.Op2("addq", asm.Imm(totalSize), asm.Reg("rsp")))
 
 	// Restore rbx (using same offset as save)
@@ -708,12 +696,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 	}
 
-	label := call.Function
-	if cc.features.FuncLabelsUnderscore {
-		label = "_" + label
-	}
-
-	lines = append(lines, asm.Op1("call", asm.Ref(label)))
+	lines = append(lines, asm.Op1("call", asm.Ref(call.Function)))
 
 	// Clean up stack arguments if any
 	if spShift > 0 {

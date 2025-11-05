@@ -61,4 +61,17 @@ docker-shell:
 	docker build -t pirx-linux .
 	docker run --rm -it pirx-linux /bin/bash
 
-.PHONY: clean default examples test stdlib docker-test docker-shell
+# Docker targets for testing specific architectures.
+docker-test-arm64:
+	docker build --platform linux/arm64 -t pirx-linux-arm64 .
+	docker run --rm --platform linux/arm64 pirx-linux-arm64
+
+docker-test-x86:
+	docker build --platform linux/amd64 -t pirx-linux-x86 .
+	docker run --rm --platform linux/amd64 pirx-linux-x86
+
+docker-shell-x86:
+	docker build --platform linux/amd64 -t pirx-linux-x86 .
+	docker run --rm -it --platform linux/amd64 pirx-linux-x86 /bin/bash
+
+.PHONY: clean default examples test stdlib docker-test docker-shell docker-test-arm64 docker-test-x86 docker-shell-x86

@@ -1,0 +1,11 @@
+# Exclude pre-built binaries that may be for different architectures
+pirx
+pirxc
+testrunner
+
+# Exclude build artifacts
+**/*.o
+**/*.a
+**/*.s
+examples/**/*.out
+examples/*/prog

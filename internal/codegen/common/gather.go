@@ -19,7 +19,9 @@ func GatherStrings(p ir.IrProgram) []string {
 			}
 		}
 	}
-	return slices.Collect(maps.Keys(uniqueStrings))
+	result := slices.Collect(maps.Keys(uniqueStrings))
+	slices.Sort(result)
+	return result
 }
 
 func GatherFloats(p ir.IrProgram) []float64 {
@@ -34,7 +36,9 @@ func GatherFloats(p ir.IrProgram) []float64 {
 			}
 		}
 	}
-	return slices.Collect(maps.Keys(uniqueFloats))
+	result := slices.Collect(maps.Keys(uniqueFloats))
+	slices.Sort(result)
+	return result
 }
 
 type NameAndSize struct {

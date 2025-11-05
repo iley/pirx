@@ -22,7 +22,8 @@ type CodegenContext struct {
 	floatLiterals  map[float64]string
 
 	// Function-specific.
-	locals       map[string]int // name -> offset from rbp
+	locals       map[string]int  // name -> offset from rbp
+	floatVars    map[string]bool // variables that hold float values
 	frameSize    int
 	functionName string
 }
@@ -66,16 +67,38 @@ func Generate(irp ir.IrProgram) (asm.Program, error) {
 
 func generateStringLiterals(literals map[string]string) []asm.StringLiteral {
 	var result []asm.StringLiteral
-	for str, label := range literals {
-		result = append(result, asm.StringLiteral{Label: label, Text: str})
+
+	// Create inverse map: label -> text
+	labelToText := make(map[string]string)
+	for text, label := range literals {
+		labelToText[label] = text
+	}
+
+	// Sort labels and output in order
+	sortedLabels := slices.Collect(maps.Keys(labelToText))
+	slices.Sort(sortedLabels)
+
+	for _, label := range sortedLabels {
+		result = append(result, asm.StringLiteral{Label: label, Text: labelToText[label]})
 	}
 	return result
 }
 
 func generateFloatLiterals(literals map[float64]string) []asm.FloatLiteral {
 	var result []asm.FloatLiteral
+
+	// Create inverse map: label -> value
+	labelToValue := make(map[string]float64)
 	for val, label := range literals {
-		result = append(result, asm.FloatLiteral{Label: label, Value: val})
+		labelToValue[label] = val
+	}
+
+	// Sort labels and output in order
+	sortedLabels := slices.Collect(maps.Keys(labelToValue))
+	slices.Sort(sortedLabels)
+
+	for _, label := range sortedLabels {
+		result = append(result, asm.FloatLiteral{Label: label, Value: labelToValue[label]})
 	}
 	return result
 }
@@ -166,7 +189,29 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 			asm.Op2("subq", asm.Imm(frameSize), asm.Reg("rsp")))
 	}
 
+	// Track which variables are floats by analyzing operations
+	// TODO: Find a better way of marking float values.
+	floatVars := make(map[string]bool)
+	for _, op := range irfn.Ops {
+		target := op.GetTarget()
+		if target == "" {
+			continue
+		}
+		// Check if this operation produces a float value
+		if assign, ok := op.(ir.Assign); ok {
+			if assign.Value.LiteralFloat != nil {
+				floatVars[target] = true
+			}
+		} else if binop, ok := op.(ir.BinaryOp); ok {
+			// Float operations end with "."
+			if len(binop.Operation) >= 2 && binop.Operation[len(binop.Operation)-1:] == "." {
+				floatVars[target] = true
+			}
+		}
+	}
+
 	cc.locals = locals
+	cc.floatVars = floatVars
 	cc.frameSize = frameSize
 	cc.functionName = irfn.Name
 
@@ -573,61 +618,96 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 }
 
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]asm.Line, error) {
-	// System V AMD64 ABI: first 6 args in rdi/rsi/rdx/rcx/r8/r9, rest on stack
+	// System V AMD64 ABI:
+	// - Integer args in rdi/rsi/rdx/rcx/r8/r9
+	// - Float args in xmm0-xmm7
+	// - Rest on stack
 	// Return value in rax, or rax:rdx for 9-16 byte values
 	var lines []asm.Line
 	argRegisters := []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
-	nextRegister := 0
+	nextIntRegister := 0
+	nextFloatRegister := 0
 	var stackArgs []int
+
+	// Helper to check if an argument is a float
+	isFloatArg := func(arg ir.Arg) bool {
+		if arg.LiteralFloat != nil {
+			return true
+		}
+		if arg.Variable != "" {
+			return cc.floatVars[arg.Variable]
+		}
+		return false
+	}
 
 	// First pass: load register arguments
 	for i := range call.Args {
+		arg := call.Args[i]
 		argSize := call.ArgSizes[i]
+		isFloat := isFloatArg(arg)
 
-		// Calculate how many registers we need
-		needRegisters := 1
-		if argSize > 8 {
-			needRegisters = 2
-		}
-
-		// Check if we have enough registers
-		if nextRegister+needRegisters > len(argRegisters) {
-			// This argument and all remaining go on stack
-			for j := i; j < len(call.Args); j++ {
-				stackArgs = append(stackArgs, j)
+		// Check if argument goes on stack
+		if isFloat {
+			if nextFloatRegister >= 8 || argSize > 8 {
+				// Float argument goes on stack
+				stackArgs = append(stackArgs, i)
+				continue
 			}
-			break
+		} else {
+			// Calculate how many registers we need for non-float
+			needRegisters := 1
+			if argSize > 8 {
+				needRegisters = 2
+			}
+
+			if nextIntRegister+needRegisters > len(argRegisters) {
+				// This argument and all remaining go on stack
+				for j := i; j < len(call.Args); j++ {
+					stackArgs = append(stackArgs, j)
+				}
+				break
+			}
 		}
 
 		// Load the argument into register(s)
-		arg := call.Args[i]
-		switch argSize {
-		case 1:
-			// Load 1-byte value and sign-extend to 64 bits
-			reg8, _ := get8And32BitRegNames(argRegisters[nextRegister])
-			lines = append(lines, generateRegisterLoad(cc, reg8, argSize, arg)...)
-			lines = append(lines, asm.Op2("movsbq", asm.Reg(reg8), asm.Reg(argRegisters[nextRegister])))
-		case 4:
-			// Load 4-byte value and sign-extend to 64 bits
-			reg32 := get32BitRegName(argRegisters[nextRegister])
-			lines = append(lines, generateRegisterLoad(cc, reg32, argSize, arg)...)
-			lines = append(lines, asm.Op2("movslq", asm.Reg(reg32), asm.Reg(argRegisters[nextRegister])))
-		case 8:
-			lines = append(lines, generateRegisterLoad(cc, argRegisters[nextRegister], argSize, arg)...)
-		case 12:
-			// Split across two registers: 8 bytes + 4 bytes
-			lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextRegister], 8, arg, 0)...)
-			reg32 := get32BitRegName(argRegisters[nextRegister+1])
-			lines = append(lines, generateRegisterLoadWithOffset(cc, reg32, 4, arg, 8)...)
-		case 16:
-			// Split across two 8-byte registers
-			lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextRegister], 8, arg, 0)...)
-			lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextRegister+1], 8, arg, 8)...)
-		default:
-			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
+		if isFloat && argSize == 8 {
+			// Load float into XMM register
+			xmmReg := fmt.Sprintf("xmm%d", nextFloatRegister)
+			lines = append(lines, generateFloatLoad(cc, xmmReg, argSize, arg)...)
+			nextFloatRegister++
+		} else {
+			// Load integer argument
+			switch argSize {
+			case 1:
+				// Load 1-byte value and sign-extend to 64 bits
+				reg8, _ := get8And32BitRegNames(argRegisters[nextIntRegister])
+				lines = append(lines, generateRegisterLoad(cc, reg8, argSize, arg)...)
+				lines = append(lines, asm.Op2("movsbq", asm.Reg(reg8), asm.Reg(argRegisters[nextIntRegister])))
+				nextIntRegister++
+			case 4:
+				// Load 4-byte value and sign-extend to 64 bits
+				reg32 := get32BitRegName(argRegisters[nextIntRegister])
+				lines = append(lines, generateRegisterLoad(cc, reg32, argSize, arg)...)
+				lines = append(lines, asm.Op2("movslq", asm.Reg(reg32), asm.Reg(argRegisters[nextIntRegister])))
+				nextIntRegister++
+			case 8:
+				lines = append(lines, generateRegisterLoad(cc, argRegisters[nextIntRegister], argSize, arg)...)
+				nextIntRegister++
+			case 12:
+				// Split across two registers: 8 bytes + 4 bytes
+				lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextIntRegister], 8, arg, 0)...)
+				reg32 := get32BitRegName(argRegisters[nextIntRegister+1])
+				lines = append(lines, generateRegisterLoadWithOffset(cc, reg32, 4, arg, 8)...)
+				nextIntRegister += 2
+			case 16:
+				// Split across two 8-byte registers
+				lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextIntRegister], 8, arg, 0)...)
+				lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextIntRegister+1], 8, arg, 8)...)
+				nextIntRegister += 2
+			default:
+				return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
+			}
 		}
-
-		nextRegister += needRegisters
 	}
 
 	// Second pass: handle stack arguments
@@ -651,26 +731,34 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		for _, argIdx := range stackArgs {
 			arg := call.Args[argIdx]
 			argSize := call.ArgSizes[argIdx]
+			isFloat := isFloatArg(arg)
 
 			// For arguments that fit in a single 8-byte slot
 			if argSize <= 8 {
-				// Load argument into appropriate register and sign-extend to 64 bits
-				switch argSize {
-				case 1:
-					lines = append(lines, generateRegisterLoad(cc, "al", argSize, arg)...)
-					lines = append(lines, asm.Op2("movsbq", asm.Reg("al"), asm.Reg("rax")))
-				case 4:
-					lines = append(lines, generateRegisterLoad(cc, "eax", argSize, arg)...)
-					lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
-				case 8:
-					lines = append(lines, generateRegisterLoad(cc, "rax", argSize, arg)...)
-				default:
-					return lines, fmt.Errorf("unsupported stack argument size %d", argSize)
-				}
+				if isFloat && argSize == 8 {
+					// Load and store float using XMM register
+					lines = append(lines, generateFloatLoad(cc, "xmm0", argSize, arg)...)
+					stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
+					lines = append(lines, asm.Op2("movsd", asm.Reg("xmm0"), stackArg))
+				} else {
+					// Load argument into appropriate register and sign-extend to 64 bits
+					switch argSize {
+					case 1:
+						lines = append(lines, generateRegisterLoad(cc, "al", argSize, arg)...)
+						lines = append(lines, asm.Op2("movsbq", asm.Reg("al"), asm.Reg("rax")))
+					case 4:
+						lines = append(lines, generateRegisterLoad(cc, "eax", argSize, arg)...)
+						lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
+					case 8:
+						lines = append(lines, generateRegisterLoad(cc, "rax", argSize, arg)...)
+					default:
+						return lines, fmt.Errorf("unsupported stack argument size %d", argSize)
+					}
 
-				// Store to stack at correct offset
-				stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
-				lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
+					// Store to stack at correct offset
+					stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
+					lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
+				}
 				stackOffset += ast.WORD_SIZE
 			} else {
 				// For larger arguments, copy in 8/4/1 byte chunks
@@ -700,6 +788,12 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 				}
 			}
 		}
+	}
+
+	// For variadic functions, AL must contain the number of XMM registers used
+	// According to x86-64 System V ABI
+	if nextFloatRegister > 0 {
+		lines = append(lines, asm.Op2("movl", asm.Imm(nextFloatRegister), asm.Reg("eax")))
 	}
 
 	lines = append(lines, asm.Op1("call", asm.Ref(call.Function)))

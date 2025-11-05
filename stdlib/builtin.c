@@ -91,3 +91,22 @@ void PirxPrintf(PirxSlice fmt, ...) {
 }
 
 char *PirxCStr(PirxSlice str) { return (char *)str.data; }
+
+int32_t PirxTestStackArg9Bytes(
+    int32_t arg1, int32_t arg2, int32_t arg3,
+    int32_t arg4, int32_t arg5, int32_t arg6,
+    PirxTest9ByteStruct s) {
+  // Verify all register arguments are passed correctly
+  if (arg1 != 1 || arg2 != 2 || arg3 != 3 ||
+      arg4 != 4 || arg5 != 5 || arg6 != 6) {
+    return 0;
+  }
+
+  // Verify the 9-byte struct on the stack is passed correctly
+  // This would fail with the buffer overrun bug
+  if (s.a != 0x123456789ABCDEF0LL || s.b != 42) {
+    return 0;
+  }
+
+  return 1;
+}

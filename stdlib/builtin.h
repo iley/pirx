@@ -40,4 +40,17 @@ extern PirxSlice PirxString(int32_t len, const char *str);
 extern void PirxPrintf(PirxSlice fmt, ...);
 extern char *PirxCStr(PirxSlice str);
 
+// Test helper for verifying stack argument marshalling with odd-sized structs.
+// Takes 6 register args (fills all 6 x86_64 argument registers) plus a 9-byte
+// struct on the stack. Returns 1 if the struct bytes match expected values.
+typedef struct {
+  int64_t a;  // 8 bytes
+  int8_t b;   // 1 byte
+} PirxTest9ByteStruct;
+
+extern int32_t PirxTestStackArg9Bytes(
+    int32_t arg1, int32_t arg2, int32_t arg3,
+    int32_t arg4, int32_t arg5, int32_t arg6,
+    PirxTest9ByteStruct s);
+
 #endif // _PIRX_STDLIB_BUILTIN_H

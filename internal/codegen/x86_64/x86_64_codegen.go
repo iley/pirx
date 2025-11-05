@@ -546,6 +546,11 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 			lines = append(lines, asm.Op2("movslq", asm.Reg(reg32), asm.Reg(argRegisters[nextRegister])))
 		case 8:
 			lines = append(lines, generateRegisterLoad(cc, argRegisters[nextRegister], argSize, arg)...)
+		case 12:
+			// Split across two registers: 8 bytes + 4 bytes
+			lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextRegister], 8, arg, 0)...)
+			reg32 := get32BitRegName(argRegisters[nextRegister+1])
+			lines = append(lines, generateRegisterLoadWithOffset(cc, reg32, 4, arg, 8)...)
 		case 16:
 			// Split across two 8-byte registers
 			lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextRegister], 8, arg, 0)...)
@@ -560,36 +565,70 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 	// Second pass: handle stack arguments
 	var spShift int
 	if len(stackArgs) > 0 {
-		// Calculate space needed for stack arguments (aligned to 16 bytes)
-		spShift = alignSP(len(stackArgs) * ast.WORD_SIZE)
+		// Calculate space needed for stack arguments
+		totalStackArgSize := 0
+		for _, argIdx := range stackArgs {
+			argSize := call.ArgSizes[argIdx]
+			// Each argument takes at least 8 bytes on the stack
+			if argSize <= 8 {
+				totalStackArgSize += ast.WORD_SIZE
+			} else {
+				// Round up to multiple of 8
+				totalStackArgSize += ((argSize + 7) / 8) * 8
+			}
+		}
+		spShift = alignSP(totalStackArgSize)
 
 		// Allocate space on stack first
 		lines = append(lines, asm.Op2("subq", asm.Imm(spShift), asm.Reg("rsp")))
 
 		// Store arguments onto stack (in correct order, not reversed)
-		for i, argIdx := range stackArgs {
+		stackOffset := 0
+		for _, argIdx := range stackArgs {
 			arg := call.Args[argIdx]
 			argSize := call.ArgSizes[argIdx]
-			stackOffset := i * ast.WORD_SIZE
 
-			// Load argument into appropriate register and sign-extend to 64 bits
-			switch argSize {
-			case 1:
-				lines = append(lines, generateRegisterLoad(cc, "al", argSize, arg)...)
-				lines = append(lines, asm.Op2("movsbl", asm.Reg("al"), asm.Reg("eax")))
-				lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
-			case 4:
-				lines = append(lines, generateRegisterLoad(cc, "eax", argSize, arg)...)
-				lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
-			case 8:
-				lines = append(lines, generateRegisterLoad(cc, "rax", argSize, arg)...)
-			default:
-				return lines, fmt.Errorf("unsupported stack argument size %d", argSize)
+			// For arguments that fit in a single 8-byte slot
+			if argSize <= 8 {
+				// Load argument into appropriate register and sign-extend to 64 bits
+				switch argSize {
+				case 1:
+					lines = append(lines, generateRegisterLoad(cc, "al", argSize, arg)...)
+					lines = append(lines, asm.Op2("movsbl", asm.Reg("al"), asm.Reg("eax")))
+					lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
+				case 4:
+					lines = append(lines, generateRegisterLoad(cc, "eax", argSize, arg)...)
+					lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
+				case 8:
+					lines = append(lines, generateRegisterLoad(cc, "rax", argSize, arg)...)
+				default:
+					return lines, fmt.Errorf("unsupported stack argument size %d", argSize)
+				}
+
+				// Store to stack at correct offset
+				stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
+				lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
+				stackOffset += ast.WORD_SIZE
+			} else {
+				// For larger arguments, copy 8-byte chunks
+				bytesCopied := 0
+				for bytesCopied < argSize {
+					if argSize-bytesCopied >= 8 {
+						lines = append(lines, generateRegisterLoadWithOffset(cc, "rax", 8, arg, bytesCopied)...)
+						stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
+						lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
+						bytesCopied += 8
+						stackOffset += 8
+					} else {
+						// Handle remaining bytes
+						lines = append(lines, generateRegisterLoadWithOffset(cc, "eax", 4, arg, bytesCopied)...)
+						stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
+						lines = append(lines, asm.Op2("movl", asm.Reg("eax"), stackArg))
+						bytesCopied += 4
+						stackOffset += 4
+					}
+				}
 			}
-
-			// Store to stack at correct offset
-			stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
-			lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
 		}
 	}
 

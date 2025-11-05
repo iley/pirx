@@ -604,9 +604,9 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		switch argSize {
 		case 1:
 			// Load 1-byte value and sign-extend to 64 bits
-			reg8, reg32 := get8And32BitRegNames(argRegisters[nextRegister])
+			reg8, _ := get8And32BitRegNames(argRegisters[nextRegister])
 			lines = append(lines, generateRegisterLoad(cc, reg8, argSize, arg)...)
-			lines = append(lines, asm.Op2("movsbl", asm.Reg(reg8), asm.Reg(reg32)))
+			lines = append(lines, asm.Op2("movsbq", asm.Reg(reg8), asm.Reg(argRegisters[nextRegister])))
 		case 4:
 			// Load 4-byte value and sign-extend to 64 bits
 			reg32 := get32BitRegName(argRegisters[nextRegister])
@@ -658,8 +658,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 				switch argSize {
 				case 1:
 					lines = append(lines, generateRegisterLoad(cc, "al", argSize, arg)...)
-					lines = append(lines, asm.Op2("movsbl", asm.Reg("al"), asm.Reg("eax")))
-					lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
+					lines = append(lines, asm.Op2("movsbq", asm.Reg("al"), asm.Reg("rax")))
 				case 4:
 					lines = append(lines, generateRegisterLoad(cc, "eax", argSize, arg)...)
 					lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))

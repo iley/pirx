@@ -1,0 +1,3 @@
+PirxIntFromInt8(-1i8) = -1
+PirxIntFromInt8(-127i8) = -127
+PirxIntFromInt8(127i8) = 127

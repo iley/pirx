@@ -1,0 +1,18 @@
+// Test that int8 values are correctly sign-extended when passed to external functions
+extern func PirxIntFromInt8(value: int8): int;
+
+func main(): int {
+  var x: int8 = -1i8;
+  var result: int = PirxIntFromInt8(x);
+  printf("PirxIntFromInt8(-1i8) = %d\n", result);
+
+  x = -127i8;
+  result = PirxIntFromInt8(x);
+  printf("PirxIntFromInt8(-127i8) = %d\n", result);
+
+  x = 127i8;
+  result = PirxIntFromInt8(x);
+  printf("PirxIntFromInt8(127i8) = %d\n", result);
+
+  return 0;
+}

@@ -11,12 +11,12 @@ jobs:
     runs-on: macos-15
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.25'
-    
+
     - name: Run tests
       run: make citest
 
@@ -24,11 +24,24 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.25'
-    
+
     - name: Run tests on aarch64
+      run: make citest
+
+  test-linux-x86_64:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+
+    - name: Run tests on x86_64
       run: make citest

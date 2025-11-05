@@ -674,22 +674,29 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 				lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
 				stackOffset += ast.WORD_SIZE
 			} else {
-				// For larger arguments, copy 8-byte chunks
+				// For larger arguments, copy in 8/4/1 byte chunks
 				bytesCopied := 0
 				for bytesCopied < argSize {
-					if argSize-bytesCopied >= 8 {
+					remaining := argSize - bytesCopied
+					if remaining >= 8 {
 						lines = append(lines, generateRegisterLoadWithOffset(cc, "rax", 8, arg, bytesCopied)...)
 						stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
 						lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
 						bytesCopied += 8
 						stackOffset += 8
-					} else {
-						// Handle remaining bytes
+					} else if remaining >= 4 {
 						lines = append(lines, generateRegisterLoadWithOffset(cc, "eax", 4, arg, bytesCopied)...)
 						stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
 						lines = append(lines, asm.Op2("movl", asm.Reg("eax"), stackArg))
 						bytesCopied += 4
 						stackOffset += 4
+					} else {
+						// Copy remaining 1-3 bytes one at a time
+						lines = append(lines, generateRegisterLoadWithOffset(cc, "al", 1, arg, bytesCopied)...)
+						stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
+						lines = append(lines, asm.Op2("movb", asm.Reg("al"), stackArg))
+						bytesCopied += 1
+						stackOffset += 1
 					}
 				}
 			}

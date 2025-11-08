@@ -370,7 +370,8 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		nRegisterArgs = len(call.Args)
 	}
 
-	nextRegister := 0 // X0
+	nextIntRegister := 0   // X0
+	nextFloatRegister := 0 // S0/D0
 	for range nRegisterArgs {
 		callArg := remainingArgs[0]
 		arg := callArg.Arg
@@ -383,35 +384,59 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 
 		// Check if we ran out of registers.
-		if nextRegister+needRegisters > FUNC_CALL_REGISTERS {
-			break
+		if callArg.IsFloat {
+			if nextFloatRegister+needRegisters > FUNC_CALL_REGISTERS {
+				break
+			}
+		} else {
+			if nextIntRegister+needRegisters > FUNC_CALL_REGISTERS {
+				break
+			}
 		}
 
 		switch argSize {
 		case 1:
-			reg32 := registerByIndex(nextRegister, 4)
-			reg64 := registerByIndex(nextRegister, 8)
-			lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextRegister, argSize), argSize, arg)...)
+			reg32 := registerByIndex(nextIntRegister, 4)
+			reg64 := registerByIndex(nextIntRegister, 8)
+			lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextIntRegister, argSize), argSize, arg)...)
 			lines = append(lines, asm.Op2("sxtb", asm.Reg(reg64), asm.Reg(reg32)))
+			nextIntRegister++
 		case 4:
-			reg32 := registerByIndex(nextRegister, 4)
-			reg64 := registerByIndex(nextRegister, 8)
-			lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextRegister, argSize), argSize, arg)...)
-			lines = append(lines, asm.Op2("sxtw", asm.Reg(reg64), asm.Reg(reg32)))
+			if callArg.IsFloat {
+				// Float argument - use S register
+				sReg := fmt.Sprintf("s%d", nextFloatRegister)
+				lines = append(lines, generateRegisterLoad(cc, sReg, argSize, arg)...)
+				nextFloatRegister++
+			} else {
+				reg32 := registerByIndex(nextIntRegister, 4)
+				reg64 := registerByIndex(nextIntRegister, 8)
+				lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextIntRegister, argSize), argSize, arg)...)
+				lines = append(lines, asm.Op2("sxtw", asm.Reg(reg64), asm.Reg(reg32)))
+				nextIntRegister++
+			}
 		case 8:
-			lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextRegister, argSize), argSize, arg)...)
+			if callArg.IsFloat {
+				// Double argument - use D register
+				dReg := fmt.Sprintf("d%d", nextFloatRegister)
+				lines = append(lines, generateRegisterLoad(cc, dReg, argSize, arg)...)
+				nextFloatRegister++
+			} else {
+				lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextIntRegister, argSize), argSize, arg)...)
+				nextIntRegister++
+			}
 		case 12:
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister, 8), 8, arg, 0)...)
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister+1, 4), 4, arg, 8)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextIntRegister, 8), 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextIntRegister+1, 4), 4, arg, 8)...)
+			nextIntRegister += 2
 		case 16:
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister, 8), 8, arg, 0)...)
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextRegister+1, 8), 8, arg, 8)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextIntRegister, 8), 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextIntRegister+1, 8), 8, arg, 8)...)
+			nextIntRegister += 2
 		default:
 			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
 		}
 
 		remainingArgs = remainingArgs[1:]
-		nextRegister += needRegisters
 	}
 
 	var spShift int

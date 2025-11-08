@@ -22,8 +22,7 @@ type CodegenContext struct {
 	floatLiterals  map[float64]string
 
 	// Function-specific.
-	locals       map[string]int  // name -> offset from rbp
-	floatVars    map[string]bool // variables that hold float values
+	locals       map[string]int // name -> offset from rbp
 	frameSize    int
 	functionName string
 }
@@ -189,29 +188,7 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 			asm.Op2("subq", asm.Imm(frameSize), asm.Reg("rsp")))
 	}
 
-	// Track which variables are floats by analyzing operations
-	// TODO: Find a better way of marking float values.
-	floatVars := make(map[string]bool)
-	for _, op := range irfn.Ops {
-		target := op.GetTarget()
-		if target == "" {
-			continue
-		}
-		// Check if this operation produces a float value
-		if assign, ok := op.(ir.Assign); ok {
-			if assign.Value.LiteralFloat != nil {
-				floatVars[target] = true
-			}
-		} else if binop, ok := op.(ir.BinaryOp); ok {
-			// Float operations end with "."
-			if len(binop.Operation) >= 2 && binop.Operation[len(binop.Operation)-1:] == "." {
-				floatVars[target] = true
-			}
-		}
-	}
-
 	cc.locals = locals
-	cc.floatVars = floatVars
 	cc.frameSize = frameSize
 	cc.functionName = irfn.Name
 
@@ -628,23 +605,12 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 	nextFloatRegister := 0
 	var stackArgs []int
 
-	// Helper to check if an argument is a float
-	isFloatArg := func(arg ir.Arg) bool {
-		if arg.LiteralFloat != nil {
-			return true
-		}
-		if arg.Variable != "" {
-			return cc.floatVars[arg.Variable]
-		}
-		return false
-	}
-
 	// First pass: load register arguments
 	for i := range call.Args {
 		callArg := call.Args[i]
 		arg := callArg.Arg
 		argSize := callArg.Size
-		isFloat := isFloatArg(arg)
+		isFloat := callArg.IsFloat
 
 		// Check if argument goes on stack
 		if isFloat {
@@ -732,7 +698,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 			callArg := call.Args[argIdx]
 			arg := callArg.Arg
 			argSize := callArg.Size
-			isFloat := isFloatArg(arg)
+			isFloat := callArg.IsFloat
 
 			// For arguments that fit in a single 8-byte slot
 			if argSize <= 8 {

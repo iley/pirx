@@ -36,5 +36,9 @@ type CallArg struct {
 }
 
 func (c CallArg) String() string {
-	return fmt.Sprintf("%s/%d", c.Arg, c.Size)
+	suffix := ""
+	if c.IsFloat {
+		suffix = "f"
+	}
+	return fmt.Sprintf("%s%s/%d", c.Arg, suffix, c.Size)
 }

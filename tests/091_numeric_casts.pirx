@@ -1,6 +1,6 @@
 func main(): int {
   printf("%d %d %d\n", int(1), int(2i8), int(3l));
   // Passing floats to external functions doesn't work yet.
-  // printf("%d\n", int(4.1));
+  printf("%d\n", int(5.1));
   return 0;
 }

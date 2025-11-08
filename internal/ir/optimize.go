@@ -126,7 +126,7 @@ func foldConstants(body []Op) []Op {
 			for i, arg := range call.Args {
 				constArg, ok := evalArg(oc, arg.Arg)
 				if ok {
-					callArgs[i] = CallArg{Arg: constArg, Size: arg.Size}
+					callArgs[i] = CallArg{Arg: constArg, Size: arg.Size, IsFloat: arg.IsFloat}
 				} else {
 					callArgs[i] = arg
 				}
@@ -139,7 +139,7 @@ func foldConstants(body []Op) []Op {
 			for i, arg := range call.Args {
 				constArg, ok := evalArg(oc, arg.Arg)
 				if ok {
-					callArgs[i] = CallArg{Arg: constArg, Size: arg.Size}
+					callArgs[i] = CallArg{Arg: constArg, Size: arg.Size, IsFloat: arg.IsFloat}
 				} else {
 					callArgs[i] = arg
 				}

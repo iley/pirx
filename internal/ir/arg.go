@@ -30,8 +30,9 @@ func (a Arg) String() string {
 }
 
 type CallArg struct {
-	Arg  Arg
-	Size int
+	Arg     Arg
+	Size    int
+	IsFloat bool
 }
 
 func (c CallArg) String() string {

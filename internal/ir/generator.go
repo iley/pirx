@@ -474,14 +474,10 @@ func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int
 }
 
 // generateExternalCall creates an ExternalCall operation with the appropriate function name.
-func (g *Generator) generateExternalCall(funcProto ast.FuncProto, resultVar string, args []Arg, sizes []int, size int) ExternalCall {
+func (g *Generator) generateExternalCall(funcProto ast.FuncProto, resultVar string, callArgs []CallArg, size int) ExternalCall {
 	name := funcProto.Name
 	if funcProto.ExternalName != "" {
 		name = funcProto.ExternalName
-	}
-	callArgs := make([]CallArg, len(args))
-	for i := range args {
-		callArgs[i] = CallArg{Arg: args[i], Size: sizes[i]}
 	}
 	return ExternalCall{
 		Result:    resultVar,
@@ -492,12 +488,12 @@ func (g *Generator) generateExternalCall(funcProto ast.FuncProto, resultVar stri
 	}
 }
 
-func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string, arg Arg) ExternalCall {
+func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string, callArg CallArg) ExternalCall {
 	if ast.IsPointerType(call.Args[0].GetType()) {
 		return ExternalCall{
 			Result:    resultVar,
 			Function:  "PirxDispose",
-			Args:      []CallArg{{Arg: arg, Size: ast.WORD_SIZE}},
+			Args:      []CallArg{callArg},
 			NamedArgs: 1,
 			Size:      ast.WORD_SIZE,
 		}
@@ -505,7 +501,7 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 		return ExternalCall{
 			Result:    resultVar,
 			Function:  "PirxSliceDispose",
-			Args:      []CallArg{{Arg: arg, Size: ast.SLICE_SIZE}},
+			Args:      []CallArg{callArg},
 			NamedArgs: 1,
 			Size:      ast.WORD_SIZE,
 		}
@@ -514,7 +510,7 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 	}
 }
 
-func (g *Generator) generateRangeCall(call *ast.FunctionCall, resultVar string, args []Arg, sizes []int, size int) ExternalCall {
+func (g *Generator) generateRangeCall(call *ast.FunctionCall, resultVar string, callArgs []CallArg, size int) ExternalCall {
 	var elementSize int
 	if sliceType, ok := call.Args[0].GetType().(*ast.SliceType); ok {
 		elementSize = g.types.GetSizeNoError(sliceType.ElementType)
@@ -528,17 +524,17 @@ func (g *Generator) generateRangeCall(call *ast.FunctionCall, resultVar string, 
 		Result:   resultVar,
 		Function: "PirxSliceRange",
 		Args: []CallArg{
-			{Arg: Arg{LiteralInt: util.Int64Ptr(int64(elementSize))}, Size: ast.INT_SIZE},
-			{Arg: args[0], Size: ast.SLICE_SIZE},
-			{Arg: args[1], Size: ast.INT_SIZE},
-			{Arg: args[2], Size: ast.INT_SIZE},
+			{Arg: Arg{LiteralInt: util.Int64Ptr(int64(elementSize))}, Size: ast.INT_SIZE, IsFloat: false},
+			callArgs[0],
+			callArgs[1],
+			callArgs[2],
 		},
 		NamedArgs: 4,
 		Size:      size,
 	}
 }
 
-func (g *Generator) generateResizeCall(call *ast.FunctionCall, resultVar string, args []Arg, sizes []int, size int) ExternalCall {
+func (g *Generator) generateResizeCall(call *ast.FunctionCall, resultVar string, callArgs []CallArg, size int) ExternalCall {
 	// First argument is a pointer to a slice
 	slicePtrType, ok := call.Args[0].GetType().(*ast.PointerType)
 	if !ok {
@@ -554,9 +550,9 @@ func (g *Generator) generateResizeCall(call *ast.FunctionCall, resultVar string,
 		Result:   resultVar,
 		Function: "PirxSliceResize",
 		Args: []CallArg{
-			{Arg: Arg{LiteralInt: util.Int64Ptr(int64(elementSize))}, Size: ast.INT_SIZE},
-			{Arg: args[0], Size: ast.WORD_SIZE},
-			{Arg: args[1], Size: ast.INT_SIZE},
+			{Arg: Arg{LiteralInt: util.Int64Ptr(int64(elementSize))}, Size: ast.INT_SIZE, IsFloat: false},
+			callArgs[0],
+			callArgs[1],
 		},
 		NamedArgs: 3,
 		Size:      size,
@@ -567,14 +563,15 @@ func (g *Generator) generateResizeCall(call *ast.FunctionCall, resultVar string,
 // Returns a slice of ops, an Arg representing the return value, and the size of the return type in bytes.
 func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, int) {
 	ops := []Op{}
-	args := []Arg{}
-	sizes := []int{}
+	callArgs := []CallArg{}
 	for _, argNode := range call.Args {
-		// TODO: What to do with the size of the argument?
 		subOps, subArg, subSize := g.generateExpressionOps(argNode)
 		ops = append(ops, subOps...)
-		args = append(args, subArg)
-		sizes = append(sizes, subSize)
+		callArgs = append(callArgs, CallArg{
+			Arg:     subArg,
+			Size:    subSize,
+			IsFloat: ast.IsFloatingPointType(argNode.GetType()),
+		})
 	}
 
 	funcProto, ok := g.funcs[call.FunctionName]
@@ -583,9 +580,9 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 		panic(fmt.Sprintf("unknown function %s", call.FunctionName))
 	}
 
-	if !funcProto.Variadic && len(args) != len(funcProto.Args) {
+	if !funcProto.Variadic && len(callArgs) != len(funcProto.Args) {
 		// We assume this is handled by typecheck.
-		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(args), len(funcProto.Args)))
+		panic(fmt.Sprintf("argument mismatch for function %s: expected %d arguments, got %d", call.FunctionName, len(callArgs), len(funcProto.Args)))
 	}
 
 	var size int
@@ -603,20 +600,16 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 		var externalCall ExternalCall
 		switch funcProto.Name {
 		case "dispose":
-			externalCall = g.generateDisposeCall(call, temp, args[0])
+			externalCall = g.generateDisposeCall(call, temp, callArgs[0])
 		case "range":
-			externalCall = g.generateRangeCall(call, temp, args, sizes, size)
+			externalCall = g.generateRangeCall(call, temp, callArgs, size)
 		case "resize":
-			externalCall = g.generateResizeCall(call, temp, args, sizes, size)
+			externalCall = g.generateResizeCall(call, temp, callArgs, size)
 		default:
-			externalCall = g.generateExternalCall(funcProto, temp, args, sizes, size)
+			externalCall = g.generateExternalCall(funcProto, temp, callArgs, size)
 		}
 		ops = append(ops, externalCall)
 	} else {
-		callArgs := make([]CallArg, len(args))
-		for i := range args {
-			callArgs[i] = CallArg{Arg: args[i], Size: sizes[i]}
-		}
 		ops = append(ops, Call{
 			Result:   temp,
 			Function: call.FunctionName,

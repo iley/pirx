@@ -28,3 +28,12 @@ func (a Arg) String() string {
 	}
 	panic(fmt.Sprintf("invalid arg value: %#v", a))
 }
+
+type CallArg struct {
+	Arg  Arg
+	Size int
+}
+
+func (c CallArg) String() string {
+	return fmt.Sprintf("%s/%d", c.Arg, c.Size)
+}

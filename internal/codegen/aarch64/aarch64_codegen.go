@@ -321,10 +321,9 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 
 	var lines []asm.Line
 	offset := 0
-	for i, arg := range call.Args {
-		argSize := call.ArgSizes[i]
-		offset += argSize
-		lines = append(lines, generateMemoryCopyToReg(cc, arg, argSize, "sp", -offset)...)
+	for _, arg := range call.Args {
+		offset += arg.Size
+		lines = append(lines, generateMemoryCopyToReg(cc, arg.Arg, arg.Size, "sp", -offset)...)
 	}
 
 	// Save x19 to the stack because it currently holds this function's result address.
@@ -363,7 +362,6 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]asm.Line, error) {
 	var lines []asm.Line
 	remainingArgs := call.Args
-	remainingArgSizes := call.ArgSizes
 
 	var nRegisterArgs int // how many args can go into registers
 	if cc.features.VarargsOnStack {
@@ -374,8 +372,9 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 	nextRegister := 0 // X0
 	for range nRegisterArgs {
-		arg := remainingArgs[0]
-		argSize := remainingArgSizes[0]
+		callArg := remainingArgs[0]
+		arg := callArg.Arg
+		argSize := callArg.Size
 
 		// We can split a larger argument into two registers.
 		needRegisters := 1
@@ -412,7 +411,6 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 
 		remainingArgs = remainingArgs[1:]
-		remainingArgSizes = remainingArgSizes[1:]
 		nextRegister += needRegisters
 	}
 
@@ -425,8 +423,9 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		spShift = alignSP(ast.WORD_SIZE * (len(remainingArgs)))
 
 		// Then generate the stack pushes.
-		for i, arg := range remainingArgs {
-			argSize := call.ArgSizes[i+call.NamedArgs]
+		for i, callArg := range remainingArgs {
+			arg := callArg.Arg
+			argSize := callArg.Size
 			lines = append(lines, generateRegisterLoad(cc, registerByIndex(10, argSize), argSize, arg)...)
 			// We extend all arguments to 64 bit.
 			if argSize == 4 {

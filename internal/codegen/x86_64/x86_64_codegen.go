@@ -572,8 +572,8 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 
 	// Calculate total space needed for args and saved rbx
 	argsSize := 0
-	for _, argSize := range call.ArgSizes {
-		argsSize += argSize
+	for _, arg := range call.Args {
+		argsSize += arg.Size
 	}
 	totalSize := argsSize + ast.WORD_SIZE // args + saved rbx
 	totalSize = alignSP(totalSize)
@@ -589,10 +589,9 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 
 	// Store arguments starting from -totalSize
 	argOffset := totalSize
-	for i, arg := range call.Args {
-		argSize := call.ArgSizes[i]
-		lines = append(lines, generateMemoryCopyToReg(cc, arg, argSize, "rsp", -argOffset)...)
-		argOffset -= argSize
+	for _, arg := range call.Args {
+		lines = append(lines, generateMemoryCopyToReg(cc, arg.Arg, arg.Size, "rsp", -argOffset)...)
+		argOffset -= arg.Size
 	}
 
 	// Save rbx after the arguments
@@ -642,8 +641,9 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 	// First pass: load register arguments
 	for i := range call.Args {
-		arg := call.Args[i]
-		argSize := call.ArgSizes[i]
+		callArg := call.Args[i]
+		arg := callArg.Arg
+		argSize := callArg.Size
 		isFloat := isFloatArg(arg)
 
 		// Check if argument goes on stack
@@ -716,7 +716,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		// Calculate space needed, ensuring each arg takes at least 8 bytes
 		totalStackArgSize := 0
 		for _, argIdx := range stackArgs {
-			argSize := call.ArgSizes[argIdx]
+			argSize := call.Args[argIdx].Size
 			if argSize <= 8 {
 				totalStackArgSize += ast.WORD_SIZE
 			} else {
@@ -729,8 +729,9 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 		stackOffset := 0
 		for _, argIdx := range stackArgs {
-			arg := call.Args[argIdx]
-			argSize := call.ArgSizes[argIdx]
+			callArg := call.Args[argIdx]
+			arg := callArg.Arg
+			argSize := callArg.Size
 			isFloat := isFloatArg(arg)
 
 			// For arguments that fit in a single 8-byte slot

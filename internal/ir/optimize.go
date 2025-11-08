@@ -122,29 +122,29 @@ func foldConstants(body []Op) []Op {
 				oc.invalidateKnownValue(unop.Result)
 			}
 		} else if call, ok := op.(Call); ok {
-			args := make([]Arg, len(call.Args))
+			callArgs := make([]CallArg, len(call.Args))
 			for i, arg := range call.Args {
-				constArg, ok := evalArg(oc, arg)
+				constArg, ok := evalArg(oc, arg.Arg)
 				if ok {
-					args[i] = constArg
+					callArgs[i] = CallArg{Arg: constArg, Size: arg.Size}
 				} else {
-					args[i] = arg
+					callArgs[i] = arg
 				}
 			}
-			call.Args = args
+			call.Args = callArgs
 			op = call
 			oc.invalidateKnownValue(call.Result)
 		} else if call, ok := op.(ExternalCall); ok {
-			args := make([]Arg, len(call.Args))
+			callArgs := make([]CallArg, len(call.Args))
 			for i, arg := range call.Args {
-				constArg, ok := evalArg(oc, arg)
+				constArg, ok := evalArg(oc, arg.Arg)
 				if ok {
-					args[i] = constArg
+					callArgs[i] = CallArg{Arg: constArg, Size: arg.Size}
 				} else {
-					args[i] = arg
+					callArgs[i] = arg
 				}
 			}
-			call.Args = args
+			call.Args = callArgs
 			op = call
 			oc.invalidateKnownValue(call.Result)
 		} else {

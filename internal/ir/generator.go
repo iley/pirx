@@ -268,8 +268,11 @@ func (g *Generator) generateNewExpressionOps(ne *ast.NewExpression) ([]Op, Arg, 
 			Result:   res,
 			Function: "PirxSliceAlloc",
 			// TODO: Support independent capacity argument.
-			Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, sizeArg, sizeArg},
-			ArgSizes:  []int{ast.INT_SIZE, ast.INT_SIZE, ast.INT_SIZE},
+			Args: []CallArg{
+				{Arg: Arg{LiteralInt: util.Int64Ptr(int64(elementSize))}, Size: ast.INT_SIZE},
+				{Arg: sizeArg, Size: ast.INT_SIZE},
+				{Arg: sizeArg, Size: ast.INT_SIZE},
+			},
 			NamedArgs: 3,
 			Size:      ast.SLICE_SIZE,
 		}
@@ -283,8 +286,7 @@ func (g *Generator) generateNewExpressionOps(ne *ast.NewExpression) ([]Op, Arg, 
 		allocCall := ExternalCall{
 			Result:    res,
 			Function:  "PirxAlloc",
-			Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(allocSize))}},
-			ArgSizes:  []int{ast.WORD_SIZE},
+			Args:      []CallArg{{Arg: Arg{LiteralInt: util.Int64Ptr(int64(allocSize))}, Size: ast.WORD_SIZE}},
 			NamedArgs: 1,
 			Size:      ast.WORD_SIZE,
 		}
@@ -477,11 +479,14 @@ func (g *Generator) generateExternalCall(funcProto ast.FuncProto, resultVar stri
 	if funcProto.ExternalName != "" {
 		name = funcProto.ExternalName
 	}
+	callArgs := make([]CallArg, len(args))
+	for i := range args {
+		callArgs[i] = CallArg{Arg: args[i], Size: sizes[i]}
+	}
 	return ExternalCall{
 		Result:    resultVar,
 		Function:  name,
-		Args:      args,
-		ArgSizes:  sizes,
+		Args:      callArgs,
 		NamedArgs: len(funcProto.Args),
 		Size:      size,
 	}
@@ -492,8 +497,7 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 		return ExternalCall{
 			Result:    resultVar,
 			Function:  "PirxDispose",
-			Args:      []Arg{arg},
-			ArgSizes:  []int{ast.WORD_SIZE},
+			Args:      []CallArg{{Arg: arg, Size: ast.WORD_SIZE}},
 			NamedArgs: 1,
 			Size:      ast.WORD_SIZE,
 		}
@@ -501,8 +505,7 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 		return ExternalCall{
 			Result:    resultVar,
 			Function:  "PirxSliceDispose",
-			Args:      []Arg{arg},
-			ArgSizes:  []int{ast.SLICE_SIZE},
+			Args:      []CallArg{{Arg: arg, Size: ast.SLICE_SIZE}},
 			NamedArgs: 1,
 			Size:      ast.WORD_SIZE,
 		}
@@ -522,10 +525,14 @@ func (g *Generator) generateRangeCall(call *ast.FunctionCall, resultVar string, 
 	}
 
 	return ExternalCall{
-		Result:    resultVar,
-		Function:  "PirxSliceRange",
-		Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, args[0], args[1], args[2]},
-		ArgSizes:  []int{ast.INT_SIZE, ast.SLICE_SIZE, ast.INT_SIZE, ast.INT_SIZE},
+		Result:   resultVar,
+		Function: "PirxSliceRange",
+		Args: []CallArg{
+			{Arg: Arg{LiteralInt: util.Int64Ptr(int64(elementSize))}, Size: ast.INT_SIZE},
+			{Arg: args[0], Size: ast.SLICE_SIZE},
+			{Arg: args[1], Size: ast.INT_SIZE},
+			{Arg: args[2], Size: ast.INT_SIZE},
+		},
 		NamedArgs: 4,
 		Size:      size,
 	}
@@ -544,10 +551,13 @@ func (g *Generator) generateResizeCall(call *ast.FunctionCall, resultVar string,
 	elementSize := g.types.GetSizeNoError(sliceType.ElementType)
 
 	return ExternalCall{
-		Result:    resultVar,
-		Function:  "PirxSliceResize",
-		Args:      []Arg{{LiteralInt: util.Int64Ptr(int64(elementSize))}, args[0], args[1]},
-		ArgSizes:  []int{ast.INT_SIZE, ast.WORD_SIZE, ast.INT_SIZE},
+		Result:   resultVar,
+		Function: "PirxSliceResize",
+		Args: []CallArg{
+			{Arg: Arg{LiteralInt: util.Int64Ptr(int64(elementSize))}, Size: ast.INT_SIZE},
+			{Arg: args[0], Size: ast.WORD_SIZE},
+			{Arg: args[1], Size: ast.INT_SIZE},
+		},
 		NamedArgs: 3,
 		Size:      size,
 	}
@@ -603,11 +613,14 @@ func (g *Generator) generateFunctionCallOps(call *ast.FunctionCall) ([]Op, Arg, 
 		}
 		ops = append(ops, externalCall)
 	} else {
+		callArgs := make([]CallArg, len(args))
+		for i := range args {
+			callArgs[i] = CallArg{Arg: args[i], Size: sizes[i]}
+		}
 		ops = append(ops, Call{
 			Result:   temp,
 			Function: call.FunctionName,
-			Args:     args,
-			ArgSizes: sizes,
+			Args:     callArgs,
 			Size:     size,
 		})
 	}
@@ -729,14 +742,12 @@ func (g *Generator) generateMain() IrFunction {
 	ops := []Op{
 		Call{
 			Function: "Pirx_Init",
-			Args:     []Arg{},
-			ArgSizes: []int{},
+			Args:     []CallArg{},
 		},
 		Call{
 			Result:   "$ret",
 			Function: "Pirx_Main",
-			Args:     []Arg{},
-			ArgSizes: []int{},
+			Args:     []CallArg{},
 			Size:     ast.INT_SIZE,
 		},
 		ExternalReturn{

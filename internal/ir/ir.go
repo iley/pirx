@@ -156,15 +156,14 @@ func (o BinaryOp) GetSize() int {
 type Call struct {
 	Result   string
 	Function string
-	Args     []Arg
-	ArgSizes []int
+	Args     []CallArg
 	Size     int // Result size.
 }
 
 func (c Call) String() string {
 	args := []string{}
-	for i := 0; i < len(c.Args); i++ {
-		args = append(args, fmt.Sprintf("%s/%d", c.Args[i], c.ArgSizes[i]))
+	for _, arg := range c.Args {
+		args = append(args, arg.String())
 	}
 	argsString := strings.Join(args, ", ")
 	if c.Result == "" {
@@ -178,7 +177,11 @@ func (c Call) GetTarget() string {
 }
 
 func (c Call) GetArgs() []Arg {
-	return c.Args
+	args := make([]Arg, len(c.Args))
+	for i, arg := range c.Args {
+		args[i] = arg.Arg
+	}
+	return args
 }
 
 func (c Call) GetSize() int {
@@ -188,16 +191,15 @@ func (c Call) GetSize() int {
 type ExternalCall struct {
 	Result    string
 	Function  string
-	Args      []Arg
-	ArgSizes  []int
+	Args      []CallArg
 	NamedArgs int // How many of the provided arguments correspond to named arguments. Everything else are variadic args.
 	Size      int // Result size.
 }
 
 func (c ExternalCall) String() string {
 	args := []string{}
-	for i := 0; i < len(c.Args); i++ {
-		args = append(args, fmt.Sprintf("%s/%d", c.Args[i], c.ArgSizes[i]))
+	for _, arg := range c.Args {
+		args = append(args, arg.String())
 	}
 	return fmt.Sprintf("ExternalCall%d(%s = %s(%s))", c.Size, c.Result, c.Function, strings.Join(args, ", "))
 }
@@ -207,7 +209,11 @@ func (c ExternalCall) GetTarget() string {
 }
 
 func (c ExternalCall) GetArgs() []Arg {
-	return c.Args
+	args := make([]Arg, len(c.Args))
+	for i, arg := range c.Args {
+		args[i] = arg.Arg
+	}
+	return args
 }
 
 func (c ExternalCall) GetSize() int {

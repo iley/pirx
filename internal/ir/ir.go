@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/iley/pirx/internal/util"
 )
 
 /*
@@ -332,29 +330,6 @@ func (a Anchor) GetArgs() []Arg {
 
 func (a Anchor) GetSize() int {
 	return 0
-}
-
-type Arg struct {
-	Variable      string
-	LiteralInt    *int64
-	LiteralFloat  *float64
-	LiteralString *string
-	Zero          bool
-}
-
-func (a Arg) String() string {
-	if a.Variable != "" {
-		return a.Variable
-	} else if a.LiteralInt != nil {
-		return fmt.Sprintf("%d", *a.LiteralInt)
-	} else if a.LiteralFloat != nil {
-		return fmt.Sprintf("%g", *a.LiteralFloat)
-	} else if a.LiteralString != nil {
-		return fmt.Sprintf("\"%s\"", util.EscapeString(*a.LiteralString))
-	} else if a.Zero {
-		return "0"
-	}
-	panic(fmt.Sprintf("invalid arg value: %#v", a))
 }
 
 func ReplaceTarget(op Op, newTarget string) Op {

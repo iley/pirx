@@ -716,3 +716,30 @@ func (p *PostfixOperator) isExpression() {}
 func (p *PostfixOperator) String() string {
 	return fmt.Sprintf("(%s %s)", p.Operator, p.Operand.String())
 }
+
+type InitializerList struct {
+	Loc      Location
+	Elements []Expression
+	Type     Type
+}
+
+func (i *InitializerList) GetLocation() Location {
+	return i.Loc
+}
+
+func (i *InitializerList) GetType() Type {
+	return i.Type
+}
+
+func (i *InitializerList) isExpression() {}
+
+func (i *InitializerList) String() string {
+	var sb strings.Builder
+	sb.WriteString("(init-list")
+	for _, elem := range i.Elements {
+		sb.WriteString(" ")
+		sb.WriteString(elem.String())
+	}
+	sb.WriteString(")")
+	return sb.String()
+}

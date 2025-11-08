@@ -729,12 +729,18 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		}
 		return nil, fmt.Errorf("%s: unknown expression: %v", lex.Loc, lex)
 	case lexer.LEX_PUNCTUATION:
-		if lex.Str == "(" {
+		switch lex.Str {
+		case "(":
 			expr, err = p.parseParenthesizedExpression()
 			if err != nil {
 				return nil, err
 			}
-		} else {
+		case "{":
+			expr, err = p.parseInitializerList()
+			if err != nil {
+				return nil, err
+			}
+		default:
 			return nil, fmt.Errorf("%s: unknown expression: %v", lex.Loc, lex)
 		}
 	default:
@@ -1520,6 +1526,72 @@ func (p *Parser) parseBlockStatement() (*ast.BlockStatement, error) {
 		Loc:   blockLoc,
 		Block: *block,
 	}, nil
+}
+
+func (p *Parser) parseInitializerList() (ast.Expression, error) {
+	// consume '{'
+	lex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	if !lex.IsPunctuation("{") {
+		return nil, fmt.Errorf("%s: expected '{', got %v", lex.Loc, lex)
+	}
+	initLoc := locationFromLexeme(lex)
+
+	elements := []ast.Expression{}
+
+	// check for empty initializer list
+	lex, err = p.peek()
+	if err != nil {
+		return nil, err
+	}
+	if lex.IsPunctuation("}") {
+		p.consume() // consume '}'
+		return &ast.InitializerList{Loc: initLoc, Elements: elements}, nil
+	}
+
+	// parse comma-separated list of expressions
+	for {
+		elem, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		elements = append(elements, elem)
+
+		lex, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if lex.IsPunctuation("}") {
+			break
+		}
+
+		lex, err = p.consume()
+		if err != nil {
+			return nil, err
+		}
+		if !lex.IsPunctuation(",") {
+			return nil, fmt.Errorf("%s: expected ',' or '}' in initializer list, got %v", lex.Loc, lex)
+		}
+
+		// Allow optional trailing comma
+		lex, err = p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if lex.IsPunctuation("}") {
+			break
+		}
+	}
+
+	// consume '}'
+	_, err = p.consume()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.InitializerList{Loc: initLoc, Elements: elements}, nil
 }
 
 func (p *Parser) parseStructDeclaration() (*ast.StructDeclaration, error) {

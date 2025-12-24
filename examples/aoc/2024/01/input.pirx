@@ -2,19 +2,6 @@ val N = 1000;
 
 func InputArray1(): []int {
   var a = new([]int, N);
-  Array1_0_499(a);
-  Array1_500_999(a);
-  return a;
-}
-
-func InputArray2(): []int {
-  var a = new([]int, N);
-  Array2_0_499(a);
-  Array2_500_999(a);
-  return a;
-}
-
-func Array1_0_499(a: []int) {
   a[0] = 40885;
   a[1] = 14780;
   a[2] = 35132;
@@ -515,9 +502,6 @@ func Array1_0_499(a: []int) {
   a[497] = 94747;
   a[498] = 48638;
   a[499] = 58066;
-}
-
-func Array1_500_999(a: []int) {
   a[500] = 87610;
   a[501] = 29519;
   a[502] = 81807;
@@ -1018,9 +1002,11 @@ func Array1_500_999(a: []int) {
   a[997] = 98153;
   a[998] = 67237;
   a[999] = 25854;
+  return a;
 }
 
-func Array2_0_499(a: []int) {
+func InputArray2(): []int {
+  var a = new([]int, N);
   a[0] = 43247;
   a[1] = 86274;
   a[2] = 49508;
@@ -1522,9 +1508,6 @@ func Array2_0_499(a: []int) {
   a[498] = 89583;
   a[499] = 88496;
   a[500] = 37187;
-}
-
-func Array2_500_999(a: []int) {
   a[501] = 33525;
   a[502] = 52362;
   a[503] = 40364;
@@ -2024,4 +2007,5 @@ func Array2_500_999(a: []int) {
   a[997] = 38453;
   a[998] = 72168;
   a[999] = 59466;
+  return a;
 }

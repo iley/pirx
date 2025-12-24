@@ -45,5 +45,6 @@ extern char *PirxCStr(PirxSlice str);
 // File I/O.
 extern void *PirxOpen(PirxSlice file);
 extern PirxSlice PirxReadLine(void *fp);
+extern void PirxClose(void *fp);
 
 #endif // _PIRX_STDLIB_BUILTIN_H

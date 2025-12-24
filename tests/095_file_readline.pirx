@@ -3,12 +3,17 @@ func main(): int {
 
   var line1 = readline(fp);
   printf("Line 1: %s\n", line1);
+  dispose(line1);
 
   var line2 = readline(fp);
   printf("Line 2: %s\n", line2);
+  dispose(line2);
 
   var line3 = readline(fp);
   printf("Line 3 size: %d\n", getsize(line3));
+  dispose(line3);
+
+  close(fp);
 
   return 0;
 }

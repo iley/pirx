@@ -157,5 +157,11 @@ func getBuiltins() []FuncProto {
 			ReturnType:   String,
 			External:     true,
 		},
+		{
+			Name:         "close",
+			ExternalName: "PirxClose",
+			Args:         []FuncArg{{"fp", File}},
+			External:     true,
+		},
 	}
 }

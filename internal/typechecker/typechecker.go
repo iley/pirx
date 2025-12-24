@@ -287,7 +287,7 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 				c.errorf("%s: argument of %s must be a pointer, got %s", call.Loc, call.FunctionName, actualArgType)
 			}
 		} else if expectedArgType == ast.Disposable {
-			if !ast.IsPointerType(actualArgType) && !ast.IsSliceType(actualArgType) {
+			if !ast.IsPointerType(actualArgType) && !ast.IsSliceType(actualArgType) && actualArgType != ast.String {
 				c.errorf("%s: argument of %s must be either a pointer or a slice, got %s", call.Loc, call.FunctionName, actualArgType)
 			}
 		} else if expectedArgType == ast.Any {

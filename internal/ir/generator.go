@@ -497,7 +497,7 @@ func (g *Generator) generateDisposeCall(call *ast.FunctionCall, resultVar string
 			NamedArgs: 1,
 			Size:      ast.WORD_SIZE,
 		}
-	} else if ast.IsSliceType(call.Args[0].GetType()) {
+	} else if ast.IsSliceType(call.Args[0].GetType()) || call.Args[0].GetType() == ast.String {
 		return ExternalCall{
 			Result:    resultVar,
 			Function:  "PirxSliceDispose",

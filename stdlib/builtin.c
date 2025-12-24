@@ -124,3 +124,9 @@ PirxSlice PirxReadLine(void *fp) {
   PirxSlice result = {.data = buffer, .size = read, .cap = read + 1};
   return result;
 }
+
+void PirxClose(void *fp) {
+  if (fp != NULL) {
+    fclose((FILE *)fp);
+  }
+}

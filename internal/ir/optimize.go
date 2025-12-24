@@ -14,6 +14,7 @@ func Optimize(program IrProgram) IrProgram {
 		ops := foldConstants(fn.Ops)
 		ops = reorderAssignments(ops)
 		ops = removeIneffectiveAssignments(ops)
+		ops = coalesceVariables(ops, fn.Args)
 
 		optFn := IrFunction{
 			Name:     fn.Name,
@@ -431,4 +432,210 @@ func argBoolValue(arg Arg) bool {
 		return *arg.LiteralInt != 0
 	}
 	panic(fmt.Errorf("arg does not have a boolean value: %#v", arg))
+}
+
+type liveRange struct {
+	firstDef int
+	lastUse  int
+	size     int
+}
+
+func computeLiveRanges(ops []Op) map[string]liveRange {
+	ranges := make(map[string]liveRange)
+
+	for i, op := range ops {
+		target := op.GetTarget()
+		if target != "" {
+			if lr, exists := ranges[target]; exists {
+				lr.lastUse = i
+				ranges[target] = lr
+			} else {
+				ranges[target] = liveRange{firstDef: i, lastUse: i, size: op.GetSize()}
+			}
+		}
+
+		for _, arg := range op.GetArgs() {
+			if arg.Variable != "" {
+				if lr, exists := ranges[arg.Variable]; exists {
+					lr.lastUse = i
+					ranges[arg.Variable] = lr
+				} else {
+					ranges[arg.Variable] = liveRange{firstDef: -1, lastUse: i, size: 0}
+				}
+			}
+		}
+	}
+
+	return ranges
+}
+
+func findLeakedVars(ops []Op) map[string]bool {
+	leaked := make(map[string]bool)
+	for _, op := range ops {
+		if unary, ok := op.(UnaryOp); ok {
+			if unary.Operation == "&" && unary.Value.Variable != "" {
+				leaked[unary.Value.Variable] = true
+			}
+		}
+	}
+	return leaked
+}
+
+func hasControlFlowBetween(ops []Op, start, end int) bool {
+	if start > end {
+		start, end = end, start
+	}
+	for i := start; i <= end; i++ {
+		switch ops[i].(type) {
+		case Anchor, Jump, JumpUnless:
+			return true
+		}
+	}
+	return false
+}
+
+func canMerge(r1, r2 liveRange, ops []Op) bool {
+	if r1.size != r2.size {
+		return false
+	}
+	if r1.lastUse >= r2.firstDef && r2.lastUse >= r1.firstDef {
+		return false
+	}
+
+	rangeStart := min(r1.firstDef, r2.firstDef)
+	rangeEnd := max(r1.lastUse, r2.lastUse)
+
+	return !hasControlFlowBetween(ops, rangeStart, rangeEnd)
+}
+
+func coalesceVariables(ops []Op, fnArgs []string) []Op {
+	if len(ops) == 0 {
+		return ops
+	}
+
+	ranges := computeLiveRanges(ops)
+	leaked := findLeakedVars(ops)
+
+	argSet := make(map[string]bool)
+	for _, arg := range fnArgs {
+		argSet[arg] = true
+	}
+
+	type varInfo struct {
+		name   string
+		range_ liveRange
+	}
+	var vars []varInfo
+	for name, r := range ranges {
+		if !argSet[name] && !leaked[name] && !IsGlobal(name) && r.firstDef != -1 && r.size > 0 {
+			vars = append(vars, varInfo{name: name, range_: r})
+		}
+	}
+
+	slices.SortFunc(vars, func(a, b varInfo) int {
+		return a.range_.firstDef - b.range_.firstDef
+	})
+
+	merged := make(map[string]string)
+	mergedRanges := make(map[string]liveRange)
+
+	for i := 0; i < len(vars); i++ {
+		for j := 0; j < i; j++ {
+			target := vars[j].name
+			targetRange := vars[j].range_
+
+			if mr, exists := mergedRanges[target]; exists {
+				targetRange = mr
+			}
+
+			if canMerge(vars[i].range_, targetRange, ops) {
+				merged[vars[i].name] = target
+
+				newRange := liveRange{
+					firstDef: min(vars[i].range_.firstDef, targetRange.firstDef),
+					lastUse:  max(vars[i].range_.lastUse, targetRange.lastUse),
+					size:     targetRange.size,
+				}
+				mergedRanges[target] = newRange
+				break
+			}
+		}
+	}
+
+	if len(merged) == 0 {
+		return ops
+	}
+
+	return renameVariables(ops, merged)
+}
+
+func renameVar(name string, merged map[string]string) string {
+	if replacement, exists := merged[name]; exists {
+		return replacement
+	}
+	return name
+}
+
+func renameArg(arg Arg, merged map[string]string) Arg {
+	if arg.Variable != "" {
+		arg.Variable = renameVar(arg.Variable, merged)
+	}
+	return arg
+}
+
+func renameVariables(ops []Op, merged map[string]string) []Op {
+	result := make([]Op, len(ops))
+
+	for i, op := range ops {
+		switch o := op.(type) {
+		case Assign:
+			o.Target = renameVar(o.Target, merged)
+			o.Value = renameArg(o.Value, merged)
+			result[i] = o
+		case AssignByAddr:
+			o.Target = renameArg(o.Target, merged)
+			o.Value = renameArg(o.Value, merged)
+			result[i] = o
+		case UnaryOp:
+			o.Result = renameVar(o.Result, merged)
+			o.Value = renameArg(o.Value, merged)
+			result[i] = o
+		case BinaryOp:
+			o.Result = renameVar(o.Result, merged)
+			o.Left = renameArg(o.Left, merged)
+			o.Right = renameArg(o.Right, merged)
+			result[i] = o
+		case Call:
+			o.Result = renameVar(o.Result, merged)
+			for j := range o.Args {
+				o.Args[j].Arg = renameArg(o.Args[j].Arg, merged)
+			}
+			result[i] = o
+		case ExternalCall:
+			o.Result = renameVar(o.Result, merged)
+			for j := range o.Args {
+				o.Args[j].Arg = renameArg(o.Args[j].Arg, merged)
+			}
+			result[i] = o
+		case Return:
+			if o.Value != nil {
+				val := renameArg(*o.Value, merged)
+				o.Value = &val
+			}
+			result[i] = o
+		case ExternalReturn:
+			if o.Value != nil {
+				val := renameArg(*o.Value, merged)
+				o.Value = &val
+			}
+			result[i] = o
+		case JumpUnless:
+			o.Condition = renameArg(o.Condition, merged)
+			result[i] = o
+		default:
+			result[i] = op
+		}
+	}
+
+	return result
 }

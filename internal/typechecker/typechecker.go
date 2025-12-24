@@ -619,10 +619,13 @@ func (c *TypeChecker) checkIndexExpression(indexExpr *ast.IndexExpression) *ast.
 		c.errorf("%s: slice index must be an integer type, got %s", indexExpr.Loc, indexType)
 	}
 
-	// Check that array is a slice type
-	sliceType, ok := arrayType.(*ast.SliceType)
-	if !ok {
-		c.errorf("%s: indexing requires a slice type, got %s", indexExpr.Loc, arrayType)
+	var elementType ast.Type
+	if sliceType, ok := arrayType.(*ast.SliceType); ok {
+		elementType = sliceType.ElementType
+	} else if arrayType == ast.String {
+		elementType = ast.Int8
+	} else {
+		c.errorf("%s: indexing requires a slice or string type, got %s", indexExpr.Loc, arrayType)
 		// Return with error type to continue type checking
 		result := *indexExpr
 		result.Array = arrayExpr
@@ -634,7 +637,7 @@ func (c *TypeChecker) checkIndexExpression(indexExpr *ast.IndexExpression) *ast.
 	result := *indexExpr
 	result.Array = arrayExpr
 	result.Index = indexExprChecked
-	result.Type = sliceType.ElementType
+	result.Type = elementType
 	return &result
 }
 

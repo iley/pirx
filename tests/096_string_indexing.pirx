@@ -1,0 +1,12 @@
+func main(): int {
+  var s = "hello";
+
+  printf("s[0] = %d\n", int(s[0]));
+  printf("s[1] = %d\n", int(s[1]));
+  printf("s[4] = %d\n", int(s[4]));
+
+  var ch: int8 = s[0];
+  printf("ch = %d\n", int(ch));
+
+  return 0;
+}

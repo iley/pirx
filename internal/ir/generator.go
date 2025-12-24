@@ -649,11 +649,14 @@ func (g *Generator) generateIndexAddrOps(sliceExpr, indexExpr ast.Expression) ([
 		panic(fmt.Errorf("%s: expected size of the index value to be %d, got %d", sliceExpr.GetLocation(), ast.INT_SIZE, indexSize))
 	}
 
-	sliceType, ok := sliceExpr.GetType().(*ast.SliceType)
-	if !ok {
+	var elementSize int64
+	if sliceType, ok := sliceExpr.GetType().(*ast.SliceType); ok {
+		elementSize = int64(g.types.GetSizeNoError(sliceType.ElementType))
+	} else if sliceExpr.GetType() == ast.String {
+		elementSize = int64(g.types.GetSizeNoError(ast.Int8))
+	} else {
 		panic(fmt.Errorf("%s: cannot index an element of non-slice type %s", sliceExpr.GetLocation(), sliceExpr.GetType()))
 	}
-	elementSize := int64(g.types.GetSizeNoError(sliceType.ElementType))
 
 	ops := append(sliceOps, indexOps...)
 

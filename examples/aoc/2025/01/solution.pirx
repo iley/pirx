@@ -1,0 +1,75 @@
+func main(): int {
+  var input = read_input();
+  printf("part 1: %d\n", part1(input));
+  dispose(input);
+  return 0;
+}
+
+func read_input(): []int {
+  var lines = read_file("input.txt");
+  var input = new([]int, getsize(lines));
+
+  for var i = 0; i < getsize(lines); i++ {
+    var sign = 1;
+    if lines[i][0] == 'L' {
+      sign = -1;
+    }
+
+    var amount = atoi_offset(lines[i], 1);
+    input[i] = sign * amount;
+  }
+
+  for var i = 0; i < getsize(lines); i++ {
+    dispose(lines[i]);
+  }
+  dispose(lines);
+  return input;
+}
+
+func atoi_offset(str: string, offset: int): int {
+  var result = 0;
+  for var i = offset; i < getsize(str); i++ {
+    result = result * 10 + int(str[i] - '0');
+  }
+  return result;
+}
+
+func read_file(path: string): []string {
+  var nlines = count_lines_in_file("input.txt");
+  var buffer = new([]string, nlines);
+
+  var in = open(path);
+  for var i = 0; i < nlines; i++ {
+    buffer[i] = readline(in);
+  }
+  close(in);
+
+  return buffer;
+}
+
+func count_lines_in_file(path: string): int {
+  var nlines = 0;
+  var in = open(path);
+  while true {
+    var line = readline(in);
+    if getsize(line) == 0 {
+      break;
+    }
+    nlines++;
+  }
+  close(in);
+  return nlines;
+}
+
+func part1(input: []int): int {
+  var result = 0;
+  var value = 50;
+  for var i = 0; i < getsize(input); i++ {
+    value = (value + input[i]) % 100;
+    if value == 0 {
+      result++;
+    }
+    printf("%d: %d\n", i, value);
+  }
+  return result;
+}

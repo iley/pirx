@@ -1,6 +1,7 @@
 func main(): int {
   var input = read_input();
   printf("part 1: %d\n", part1(input));
+  printf("part 2: %d\n", part2(input));
   dispose(input);
   return 0;
 }
@@ -69,7 +70,26 @@ func part1(input: []int): int {
     if value == 0 {
       result++;
     }
-    printf("%d: %d\n", i, value);
+  }
+  return result;
+}
+
+func part2(input: []int): int {
+  var result = 0;
+  var value = 50;
+  for var i = 0; i < getsize(input); i++ {
+    var dir = 1;
+    if input[i] < 0 {
+      dir = -1;
+    }
+
+    var steps = input[i] * dir;
+    for var j = 0; j < steps; j++ {
+      value = (value + dir) % 100;
+      if value == 0 {
+        result++;
+      }
+    }
   }
   return result;
 }

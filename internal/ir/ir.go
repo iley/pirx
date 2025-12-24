@@ -43,8 +43,27 @@ type IrFunction struct {
 	Ops      []Op
 }
 
+func (irf IrFunction) countLocals() int {
+	locals := make(map[string]bool)
+	args := make(map[string]bool)
+
+	for _, arg := range irf.Args {
+		args[arg] = true
+	}
+
+	for _, op := range irf.Ops {
+		target := op.GetTarget()
+		if target != "" && !args[target] && !IsGlobal(target) {
+			locals[target] = true
+		}
+	}
+
+	return len(locals)
+}
+
 func (irf IrFunction) Print(writer io.Writer) {
-	fmt.Fprintf(writer, "Function %s:\n", irf.Name)
+	localCount := irf.countLocals()
+	fmt.Fprintf(writer, "Function %s (%d temporaries):\n", irf.Name, localCount)
 	for i, op := range irf.Ops {
 		fmt.Fprintf(writer, "%4d  %s\n", i, op)
 	}

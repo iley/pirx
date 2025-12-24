@@ -39,7 +39,8 @@ int32_t PirxSliceSize(PirxSlice slice) { return slice.size; }
 
 int32_t PirxSliceCap(PirxSlice slice) { return slice.cap; }
 
-PirxSlice PirxSliceRange(int32_t elem_size, PirxSlice slice, int32_t start, int32_t end) {
+PirxSlice PirxSliceRange(int32_t elem_size, PirxSlice slice, int32_t start,
+                         int32_t end) {
   PirxSlice result = {
       .data = (char *)slice.data + (elem_size * start),
       .size = end - start,
@@ -91,3 +92,35 @@ void PirxPrintf(PirxSlice fmt, ...) {
 }
 
 char *PirxCStr(PirxSlice str) { return (char *)str.data; }
+
+void *PirxOpen(PirxSlice path_str) {
+  const char *path = (const char *)path_str.data;
+  return fopen(path, "r");
+}
+
+PirxSlice PirxReadLine(void *fp) {
+  FILE *file = (FILE *)fp;
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t read = getline(&line, &len, file);
+
+  if (read == -1) {
+    if (line) {
+      free(line);
+    }
+    PirxSlice empty = {.data = NULL, .size = 0, .cap = 0};
+    return empty;
+  }
+
+  if (read > 0 && line[read - 1] == '\n') {
+    read--;
+  }
+
+  char *buffer = PirxAlloc(read + 1);
+  memcpy(buffer, line, read);
+  buffer[read] = '\0';
+  free(line);
+
+  PirxSlice result = {.data = buffer, .size = read, .cap = read + 1};
+  return result;
+}

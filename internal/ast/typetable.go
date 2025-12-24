@@ -86,6 +86,7 @@ func declarePrimitiveTypes(types map[string]TypeDescriptor) {
 	types["float32"] = &PrimitiveTypeDescriptor{"float32", 4}
 	types["float64"] = &PrimitiveTypeDescriptor{"float64", 8}
 	types["string"] = &PrimitiveTypeDescriptor{"string", SLICE_SIZE}
+	types["file"] = &PrimitiveTypeDescriptor{"file", WORD_SIZE}
 }
 
 type TypeDescriptor interface {

@@ -22,6 +22,7 @@ var (
 	String  = &BaseType{Name: "string"}
 	Bool    = &BaseType{Name: "bool"}
 	Void    = &BaseType{Name: "void"}
+	File    = &BaseType{Name: "file"}
 	// Not directly accessible to the user.
 	VoidPtr = &BaseType{Name: "voidptr"}
 	// Not directly accessible to the user.

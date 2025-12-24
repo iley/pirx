@@ -443,21 +443,42 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 	// Everything else goes on the stack.
 	if len(remainingArgs) > 0 {
-		// First, move SP to allocate space for the args. Don't forget to align SP.
-		// TODO: Walk the arguments and add their sizes up (including padding).
-		spShift = alignSP(ast.WORD_SIZE * (len(remainingArgs)))
+		// Calculate space needed for stack arguments.
+		stackSize := 0
+		for _, callArg := range remainingArgs {
+			if callArg.Size <= 8 {
+				stackSize += ast.WORD_SIZE
+			} else {
+				// For larger arguments, round up to multiple of WORD_SIZE
+				stackSize += ((callArg.Size + ast.WORD_SIZE - 1) / ast.WORD_SIZE) * ast.WORD_SIZE
+			}
+		}
+		spShift = alignSP(stackSize)
 
 		// Then generate the stack pushes.
-		for i, callArg := range remainingArgs {
+		stackOffset := 0
+		for _, callArg := range remainingArgs {
 			arg := callArg.Arg
 			argSize := callArg.Size
-			lines = append(lines, generateRegisterLoad(cc, registerByIndex(10, argSize), argSize, arg)...)
-			// We extend all arguments to 64 bit.
-			if argSize == 4 {
-				// Sign extend 32-bit values to 64-bit
-				lines = append(lines, asm.Op2("sxtw", asm.Reg("x10"), asm.Reg("w10")))
+
+			switch argSize {
+			case 16:
+				// For 16-byte arguments (like slices/strings), load and store as two 8-byte values
+				lines = append(lines, generateRegisterLoadWithOffset(cc, "x10", 8, arg, 0)...)
+				lines = append(lines, generateRegisterStore("x10", "sp", stackOffset-int(spShift))...)
+				lines = append(lines, generateRegisterLoadWithOffset(cc, "x10", 8, arg, 8)...)
+				lines = append(lines, generateRegisterStore("x10", "sp", stackOffset+8-int(spShift))...)
+				stackOffset += 16
+			default:
+				lines = append(lines, generateRegisterLoad(cc, registerByIndex(10, argSize), argSize, arg)...)
+				// We extend all arguments to 64 bit.
+				if argSize == 4 {
+					// Sign extend 32-bit values to 64-bit
+					lines = append(lines, asm.Op2("sxtw", asm.Reg("x10"), asm.Reg("w10")))
+				}
+				lines = append(lines, generateRegisterStore("x10", "sp", stackOffset-int(spShift))...)
+				stackOffset += ast.WORD_SIZE
 			}
-			lines = append(lines, generateRegisterStore("x10", "sp", i*ast.WORD_SIZE-int(spShift))...)
 		}
 	}
 

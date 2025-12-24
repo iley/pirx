@@ -143,5 +143,19 @@ func getBuiltins() []FuncProto {
 			ReturnType: Int,
 			External:   true,
 		},
+		{
+			Name:         "open",
+			ExternalName: "PirxOpen",
+			Args:         []FuncArg{{"path", String}},
+			ReturnType:   File,
+			External:     true,
+		},
+		{
+			Name:         "readline",
+			ExternalName: "PirxReadLine",
+			Args:         []FuncArg{{"fp", File}},
+			ReturnType:   String,
+			External:     true,
+		},
 	}
 }

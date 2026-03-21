@@ -1,0 +1,30 @@
+// Return only in one branch of if/else.
+func incomplete_if(x: int): int {
+  if (x > 0) {
+    return 1;
+  }
+}
+
+// Return in both branches should be fine.
+func complete_if(x: int): int {
+  if (x > 0) {
+    return 1;
+  } else {
+    return -1;
+  }
+}
+
+// Nested if: inner if missing else.
+func nested_incomplete(x: int, y: int): int {
+  if (x > 0) {
+    if (y > 0) {
+      return 1;
+    }
+  } else {
+    return -1;
+  }
+}
+
+func main() {
+  printf("%d\n", complete_if(5));
+}

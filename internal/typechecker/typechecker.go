@@ -16,7 +16,6 @@ type TypeChecker struct {
 	types         *ast.TypeTable
 	errors        []error
 	currentFunc   ast.FuncProto
-	hasReturn     bool
 	nestedLoops   int
 }
 
@@ -71,7 +70,6 @@ func (c *TypeChecker) Check() (*ast.Program, []error) {
 
 func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 	c.currentFunc = c.declaredFuncs[fn.Name]
-	c.hasReturn = false
 	c.nestedLoops = 0
 
 	c.vars.resetUsageCounts()
@@ -89,8 +87,8 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 	if fn.Body != nil {
 		checkedBody = c.checkBlock(fn.Body)
 
-		if c.currentFunc.ReturnType != nil && !c.hasReturn {
-			c.errorf("%s: function %s with return type %s must contain a return operator", fn.Loc, c.currentFunc.Name, c.currentFunc.ReturnType)
+		if c.currentFunc.ReturnType != nil && !blockReturns(checkedBody) {
+			c.errorf("%s: function %s with return type %s must return a value on all code paths", fn.Loc, c.currentFunc.Name, c.currentFunc.ReturnType)
 		}
 	}
 
@@ -379,8 +377,6 @@ func (c *TypeChecker) checkVariableReference(ref *ast.VariableReference) *ast.Va
 }
 
 func (c *TypeChecker) checkReturnStatement(stmt *ast.ReturnStatement) *ast.ReturnStatement {
-	c.hasReturn = true
-
 	if stmt.Value == nil && c.currentFunc.ReturnType != nil {
 		c.errorf("%s: function %s should return a value of type %s but no value was provided",
 			stmt.Loc, c.currentFunc.Name, c.currentFunc.ReturnType,
@@ -697,6 +693,32 @@ func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, b
 		}
 	}
 	panic(fmt.Sprintf("unknown unary operation %s", op))
+}
+
+// blockReturns checks whether a block is guaranteed to return on all code paths.
+func blockReturns(block *ast.Block) bool {
+	for _, stmt := range block.Statements {
+		if statementReturns(stmt) {
+			return true
+		}
+	}
+	return false
+}
+
+func statementReturns(stmt ast.Statement) bool {
+	switch s := stmt.(type) {
+	case *ast.ReturnStatement:
+		return true
+	case *ast.IfStatement:
+		if s.ElseBlock == nil {
+			return false
+		}
+		return blockReturns(&s.ThenBlock) && blockReturns(s.ElseBlock)
+	case *ast.BlockStatement:
+		return blockReturns(&s.Block)
+	default:
+		return false
+	}
 }
 
 func (c *TypeChecker) errorf(format string, args ...any) {

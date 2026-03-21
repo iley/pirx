@@ -1,0 +1,4 @@
+pirxc compilation failed: exit status 1
+Output: tests/104_missing_return_paths.pirx:2:1: function incomplete_if with return type int must return a value on all code paths
+tests/104_missing_return_paths.pirx:18:1: function nested_incomplete with return type int must return a value on all code paths
+Error: exit status 1

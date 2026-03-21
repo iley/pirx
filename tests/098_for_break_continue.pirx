@@ -1,8 +1,18 @@
 // Test that break and continue work inside for loops.
 func main(): int {
+  // break in for loop
   for var i = 0; i < 10; i++ {
     if i == 5 {
       break;
+    }
+    printf("%d\n", i);
+  }
+
+  // continue in for loop
+  printf("---\n");
+  for var i = 0; i < 10; i++ {
+    if i % 2 == 0 {
+      continue;
     }
     printf("%d\n", i);
   }

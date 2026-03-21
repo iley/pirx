@@ -111,7 +111,9 @@ func desugarVariableDeclaration(dc *desugarContext, decl *ast.VariableDeclaratio
 	return &result
 }
 
-// Desugar a `for init; cond; update { block }` into `{ init; while (cond) { block; update } }`.
+// Desugar a `for init; cond; update { block }` into `{ init; while (cond) { block'; update } }`,
+// where block' has each `continue` replaced with `{ update; continue; }` so the update
+// expression is not skipped.
 func desugarForStatement(dc *desugarContext, forStmt *ast.ForStatement) ast.Statement {
 	statements := []ast.Statement{}
 
@@ -120,16 +122,24 @@ func desugarForStatement(dc *desugarContext, forStmt *ast.ForStatement) ast.Stat
 		statements = append(statements, desugaredInit)
 	}
 
-	whileStatements := make([]ast.Statement, 0, len(forStmt.Body.Statements)+1)
-	for _, stmt := range forStmt.Body.Statements {
-		whileStatements = append(whileStatements, desugarStatement(dc, stmt))
-	}
+	var updateStmt ast.Statement
 	if forStmt.Update != nil {
 		desugaredUpdate := desugarExpression(dc, forStmt.Update)
-		updateStmt := &ast.ExpressionStatement{
+		updateStmt = &ast.ExpressionStatement{
 			Loc:        desugaredUpdate.GetLocation(),
 			Expression: desugaredUpdate,
 		}
+	}
+
+	whileStatements := make([]ast.Statement, 0, len(forStmt.Body.Statements)+1)
+	for _, stmt := range forStmt.Body.Statements {
+		desugared := desugarStatement(dc, stmt)
+		if updateStmt != nil {
+			desugared = rewriteContinue(desugared, updateStmt)
+		}
+		whileStatements = append(whileStatements, desugared)
+	}
+	if updateStmt != nil {
 		whileStatements = append(whileStatements, updateStmt)
 	}
 
@@ -150,6 +160,45 @@ func desugarForStatement(dc *desugarContext, forStmt *ast.ForStatement) ast.Stat
 			Statements: statements,
 		},
 	}
+}
+
+// rewriteContinue replaces each `continue` in stmt with `{ updateStmt; continue; }`,
+// without descending into nested loops (which have their own continue targets).
+func rewriteContinue(stmt ast.Statement, updateStmt ast.Statement) ast.Statement {
+	switch s := stmt.(type) {
+	case *ast.ContinueStatement:
+		return &ast.BlockStatement{
+			Loc: s.Loc,
+			Block: ast.Block{
+				Statements: []ast.Statement{updateStmt, s},
+			},
+		}
+	case *ast.IfStatement:
+		result := *s
+		result.ThenBlock = *rewriteContinueBlock(&s.ThenBlock, updateStmt)
+		if s.ElseBlock != nil {
+			result.ElseBlock = rewriteContinueBlock(s.ElseBlock, updateStmt)
+		}
+		return &result
+	case *ast.BlockStatement:
+		result := *s
+		result.Block = *rewriteContinueBlock(&s.Block, updateStmt)
+		return &result
+	// Don't descend into nested loops — they have their own continue targets.
+	case *ast.WhileStatement, *ast.ForStatement:
+		return stmt
+	default:
+		return stmt
+	}
+}
+
+func rewriteContinueBlock(block *ast.Block, updateStmt ast.Statement) *ast.Block {
+	result := *block
+	result.Statements = make([]ast.Statement, len(block.Statements))
+	for i, stmt := range block.Statements {
+		result.Statements[i] = rewriteContinue(stmt, updateStmt)
+	}
+	return &result
 }
 
 func desugarExpression(dc *desugarContext, originalExpr ast.Expression) ast.Expression {

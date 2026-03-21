@@ -498,7 +498,9 @@ func (c *TypeChecker) checkForLoop(forLoop *ast.ForStatement) *ast.ForStatement 
 	checkedInit := c.checkStatement(forLoop.Init)
 	checkedCond := c.checkExpression(forLoop.Condition)
 	checkedUpdate := c.checkExpression(forLoop.Update)
+	c.nestedLoops++
 	checkedBody := c.checkBlock(&forLoop.Body)
+	c.nestedLoops--
 	return &ast.ForStatement{
 		Loc:       forLoop.Loc,
 		Init:      checkedInit,

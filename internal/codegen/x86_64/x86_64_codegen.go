@@ -84,6 +84,15 @@ func generateStringLiterals(literals map[string]string) []asm.StringLiteral {
 	return result
 }
 
+// ensureFloatLiteral adds a float literal to the map if it doesn't already exist.
+// This is needed for codegen-generated constants like negative zero.
+func ensureFloatLiteral(cc *CodegenContext, value float64) {
+	if _, ok := cc.floatLiterals[value]; !ok {
+		label := fmt.Sprintf(".Lflt%d", len(cc.floatLiterals))
+		cc.floatLiterals[value] = label
+	}
+}
+
 func generateFloatLiterals(literals map[float64]string) []asm.FloatLiteral {
 	var result []asm.FloatLiteral
 
@@ -403,6 +412,30 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 			lines = append(lines, asm.Op2("mulsd", asm.Reg("xmm1"), asm.Reg("xmm0")))
 		case "/.":
 			lines = append(lines, asm.Op2("divsd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+		case "<.":
+			lines = append(lines, asm.Op2("ucomisd", asm.Reg("xmm0"), asm.Reg("xmm1")))
+			lines = append(lines, asm.Op1("seta", asm.Reg("al")))
+			lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+			lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+			return lines, nil
+		case ">.":
+			lines = append(lines, asm.Op2("ucomisd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+			lines = append(lines, asm.Op1("seta", asm.Reg("al")))
+			lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+			lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+			return lines, nil
+		case "<=.":
+			lines = append(lines, asm.Op2("ucomisd", asm.Reg("xmm0"), asm.Reg("xmm1")))
+			lines = append(lines, asm.Op1("setae", asm.Reg("al")))
+			lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+			lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+			return lines, nil
+		case ">=.":
+			lines = append(lines, asm.Op2("ucomisd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+			lines = append(lines, asm.Op1("setae", asm.Reg("al")))
+			lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+			lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+			return lines, nil
 		default:
 			return lines, fmt.Errorf("unsupported float binary operation: %v", binop.Operation)
 		}
@@ -517,6 +550,7 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) ([]asm.Line, error) {
 		// Float negation: XOR the sign bit
 		lines = append(lines, generateFloatLoad(cc, "xmm0", op.Size, op.Value)...)
 		negZero := math.Copysign(0, -1)
+		ensureFloatLiteral(cc, negZero)
 		lines = append(lines, generateFloatLoad(cc, "xmm1", op.Size, ir.Arg{LiteralFloat: &negZero})...)
 		lines = append(lines, asm.Op2("xorpd", asm.Reg("xmm1"), asm.Reg("xmm0")))
 		lines = append(lines, generateStoreFloatToVariable(cc, "xmm0", op.Size, op.Result)...)

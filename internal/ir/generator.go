@@ -455,10 +455,8 @@ func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int
 		return ops, rvalueArg, rvalueSize
 	} else if targetRef, ok := assgn.Target.(*ast.UnaryOperation); ok && targetRef.Operator == "*" {
 		ops, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
-		lvalueOps, lvalueArg, lvalueSize := g.generateExpressionOps(targetRef.Operand)
+		lvalueOps, lvalueArg, _ := g.generateExpressionOps(targetRef.Operand)
 		ops = append(ops, lvalueOps...)
-		addrTemp := g.allocTemp(lvalueSize)
-		ops = append(ops, Assign{Target: addrTemp, Value: lvalueArg, Size: lvalueSize})
 		ops = append(ops, AssignByAddr{Target: lvalueArg, Value: rvalueArg, Size: rvalueSize})
 		return ops, rvalueArg, rvalueSize
 	} else if fieldAccess, ok := assgn.Target.(*ast.FieldAccess); ok {

@@ -372,22 +372,18 @@ func (l *Lexer) Next() (Lexeme, error) {
 			return l.makeLexeme(LEX_OPERATOR, "&", startLine, startCol), nil
 		}
 	case r == '|':
-		// Check for logical OR operator
 		nextR, _, err := l.readRune()
 		if err != nil {
 			if err == io.EOF {
-				// Single '|' at EOF - not a valid operator, return EOF
-				return Lexeme{Type: LEX_EOF}, nil
+				return Lexeme{}, fmt.Errorf("%s: unexpected character '|'", l.loc(startLine, startCol))
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
 		if nextR == '|' {
-			// It's a logical OR operator
 			return l.makeLexeme(LEX_OPERATOR, "||", startLine, startCol), nil
 		} else {
-			// Single '|' is not supported, return EOF for unknown character
 			l.unreadRune()
-			return Lexeme{Type: LEX_EOF}, nil
+			return Lexeme{}, fmt.Errorf("%s: unexpected character '|'", l.loc(startLine, startCol))
 		}
 	case r == '+':
 		// Check for ++ and +=.

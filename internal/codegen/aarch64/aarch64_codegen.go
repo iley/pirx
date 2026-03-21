@@ -607,6 +607,12 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) ([]asm.Line, error) {
 		reg := asm.Reg(registerByIndex(0, op.Size))
 		lines = append(lines, asm.Op2("neg", reg, reg))
 		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+	case "-.":
+		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
+		lines = append(lines, asm.Op2("fmov", asm.Reg("d0"), asm.Reg(registerByIndex(0, op.Size))))
+		lines = append(lines, asm.Op2("fneg", asm.Reg("d0"), asm.Reg("d0")))
+		lines = append(lines, asm.Op2("fmov", asm.Reg(registerByIndex(0, op.Size)), asm.Reg("d0")))
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
 	case "&":
 		lines = append(lines, generateAddressLoad(cc, "x0", op.Value)...)
 		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)

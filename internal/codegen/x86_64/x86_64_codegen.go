@@ -3,6 +3,7 @@ package x86_64
 import (
 	"fmt"
 	"maps"
+	"math"
 	"slices"
 	"strings"
 
@@ -512,6 +513,13 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) ([]asm.Line, error) {
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
 		lines = append(lines, asm.Op1("neg"+sizeToSuffix(op.Size), asm.Reg(registerByIndex(0, op.Size))))
 		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+	case "-.":
+		// Float negation: XOR the sign bit
+		lines = append(lines, generateFloatLoad(cc, "xmm0", op.Size, op.Value)...)
+		negZero := math.Copysign(0, -1)
+		lines = append(lines, generateFloatLoad(cc, "xmm1", op.Size, ir.Arg{LiteralFloat: &negZero})...)
+		lines = append(lines, asm.Op2("xorpd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+		lines = append(lines, generateStoreFloatToVariable(cc, "xmm0", op.Size, op.Result)...)
 	case "&":
 		// Address-of
 		lines = append(lines, generateAddressLoad(cc, registerByIndex(0, op.Size), op.Value)...)

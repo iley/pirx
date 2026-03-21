@@ -250,7 +250,11 @@ func (g *Generator) generateUnaryOperationOps(op *ast.UnaryOperation) ([]Op, Arg
 		resultSize = operandSize
 	}
 	temp := g.allocTemp(resultSize)
-	ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: op.Operator, Size: resultSize})
+	operation := op.Operator
+	if operation == "-" && ast.IsFloatingPointType(op.GetType()) {
+		operation = "-."
+	}
+	ops = append(ops, UnaryOp{Result: temp, Value: arg, Operation: operation, Size: resultSize})
 	return ops, Arg{Variable: temp}, resultSize
 }
 

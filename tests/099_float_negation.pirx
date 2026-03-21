@@ -1,0 +1,14 @@
+// Test unary minus on floating-point values.
+func main(): int {
+  var x: float64 = 3.14;
+  var y: float64 = -x;
+  printf("%.2f\n", y);
+
+  var z: float64 = -2.5;
+  printf("%.2f\n", z);
+
+  var w: float64 = -(1.0 + 2.0);
+  printf("%.2f\n", w);
+
+  return 0;
+}

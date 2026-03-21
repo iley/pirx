@@ -300,6 +300,9 @@ func evalUnaryOp(oc *optimizationContext, operation string, value Arg) (Arg, boo
 	case "-":
 		result := -argIntValue(constVal)
 		return Arg{LiteralInt: &result}, true
+	case "-.":
+		result := -argFloatValue(constVal)
+		return Arg{LiteralFloat: &result}, true
 	case "!":
 		result := !argBoolValue(constVal)
 		intResult := int64(0)

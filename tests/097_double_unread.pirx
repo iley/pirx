@@ -1,0 +1,6 @@
+// Test that a number followed by 'i' + non-'8' character produces the correct
+// error (the 'i' should not be silently dropped by the lexer).
+func main(): int {
+    var iv = 5;
+    return 0iv;
+}

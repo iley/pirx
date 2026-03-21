@@ -659,25 +659,18 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 
 			// "i8" suffix indicates an int8 literal
 			if r == 'i' {
-				nextR, _, err := l.readRune()
-				if err != nil {
-					if err == io.EOF {
-						// Just "i" at EOF, treat as end of number
-						l.unreadRune()
-						break
+				nextBytes, _ := l.input.Peek(1)
+				if len(nextBytes) == 1 && nextBytes[0] == '8' {
+					if _, _, err := l.input.ReadRune(); err != nil {
+						return Lexeme{}, err
 					}
-					return Lexeme{}, err
-				}
-				if nextR == '8' {
-					// It's an i8 suffix
+					l.col++
 					num += "i8"
 					break
-				} else {
-					// Not an i8 suffix, put back both characters
-					l.unreadRune() // put back the second character
-					l.unreadRune() // put back the 'i'
-					break
 				}
+				// Not an i8 suffix, put back 'i'
+				l.unreadRune()
+				break
 			}
 		}
 
@@ -716,24 +709,18 @@ func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, er
 
 		// "i8" suffix indicates an int8 literal
 		if r == 'i' {
-			nextR, _, err := l.readRune()
-			if err != nil {
-				if err == io.EOF {
-					// Just "i" at EOF, treat as end of number
-					l.unreadRune()
-					break
+			nextBytes, _ := l.input.Peek(1)
+			if len(nextBytes) == 1 && nextBytes[0] == '8' {
+				if _, _, err := l.input.ReadRune(); err != nil {
+					return Lexeme{}, err
 				}
-				return Lexeme{}, err
-			}
-			if nextR == '8' {
+				l.col++
 				num += "i8"
 				break
-			} else {
-				// Not an i8 suffix, put back both characters
-				l.unreadRune() // put back the second character
-				l.unreadRune() // put back the 'i'
-				break
 			}
+			// Not an i8 suffix, put back 'i'
+			l.unreadRune()
+			break
 		}
 
 		if !isValidHexDigit(r) {

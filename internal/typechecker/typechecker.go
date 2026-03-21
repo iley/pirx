@@ -719,8 +719,7 @@ func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 	}
 
 	if op == "<" || op == ">" || op == "<=" || op == ">=" {
-		// These are (currently) supproted for integers only.
-		return ast.Bool, ast.IsIntegerType(left)
+		return ast.Bool, ast.IsNumericType(left)
 	}
 
 	if op == "&&" || op == "||" {

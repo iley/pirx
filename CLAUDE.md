@@ -14,6 +14,7 @@ __Always follow those unless I explicitly tell you otherwise!__
 * Try to order all functions you add from top-to-bottom in the dependency order, i.e. the function that is called first comes first in the file.
 * Always run lint and formatter when you're done with you changes. Fix any lint errors.
 * Don't add unecessary comments that just describe what a straightforward line of code is doing.
+* Document all missing features in `TODO.md`.
 
 ## Compiler Architecture
 

@@ -214,7 +214,7 @@ func (g *Generator) generateBinaryOperationOps(binOp *ast.BinaryOperation) ([]Op
 	temp := g.allocTemp(leftSize)
 	resultSize := binaryOperationSize(binOp.Operator, leftSize)
 	operation := binOp.Operator
-	if ast.IsFloatingPointType(binOp.Type) {
+	if ast.IsFloatingPointType(binOp.Type) || ast.IsFloatingPointType(binOp.Left.GetType()) {
 		operation += "."
 	}
 	ops = append(ops, BinaryOp{

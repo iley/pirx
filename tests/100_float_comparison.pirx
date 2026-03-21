@@ -1,0 +1,29 @@
+func main(): int {
+  var a: float64;
+  var b: float64;
+
+  a = 2.5;
+  b = 1.5;
+
+  if a > b {
+    printf("a > b: yes\n");
+  }
+
+  if b < a {
+    printf("b < a: yes\n");
+  }
+
+  if a >= 2.5 {
+    printf("a >= 2.5: yes\n");
+  }
+
+  if b <= 1.5 {
+    printf("b <= 1.5: yes\n");
+  }
+
+  if a > 1.5 {
+    printf("a > 1.5: yes\n");
+  }
+
+  return 0;
+}

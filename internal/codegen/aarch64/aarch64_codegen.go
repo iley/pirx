@@ -566,15 +566,27 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 	case "<":
 		lines = append(lines, asm.Op2("cmp", r0, r1))
 		lines = append(lines, asm.Op2("cset", r0, asm.Ref("lt"))) // signed <
+	case "<.":
+		lines = append(lines, asm.Op2("fcmp", asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("cset", r0, asm.Ref("mi")))
 	case ">":
 		lines = append(lines, asm.Op2("cmp", r0, r1))
 		lines = append(lines, asm.Op2("cset", r0, asm.Ref("gt"))) // signed >
+	case ">.":
+		lines = append(lines, asm.Op2("fcmp", asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("cset", r0, asm.Ref("gt")))
 	case "<=":
 		lines = append(lines, asm.Op2("cmp", r0, r1))
 		lines = append(lines, asm.Op2("cset", r0, asm.Ref("le"))) // signed <=
+	case "<=.":
+		lines = append(lines, asm.Op2("fcmp", asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ls")))
 	case ">=":
 		lines = append(lines, asm.Op2("cmp", r0, r1))
 		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ge"))) // signed >=
+	case ">=.":
+		lines = append(lines, asm.Op2("fcmp", asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ge")))
 	case "&&":
 		lines = append(lines, asm.Op2("cmp", r0, asm.Imm(0)))
 		lines = append(lines, asm.Op4("ccmp", r1, asm.Imm(0), asm.Imm(4), asm.Ref("ne")))

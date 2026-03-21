@@ -50,6 +50,32 @@ func TestNumberFollowedByIdentStartingWithI(t *testing.T) {
 	}
 }
 
+func TestPlusAtEOF(t *testing.T) {
+	tokens, err := tokenize("a +")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tokens) != 2 {
+		t.Fatalf("expected 2 tokens, got %d: %v", len(tokens), tokens)
+	}
+	if tokens[1].Type != LEX_OPERATOR || tokens[1].Str != "+" {
+		t.Errorf("token 1: expected OPERATOR '+', got %s '%s'", tokens[1].Type, tokens[1].Str)
+	}
+}
+
+func TestMinusAtEOF(t *testing.T) {
+	tokens, err := tokenize("a -")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tokens) != 2 {
+		t.Fatalf("expected 2 tokens, got %d: %v", len(tokens), tokens)
+	}
+	if tokens[1].Type != LEX_OPERATOR || tokens[1].Str != "-" {
+		t.Errorf("token 1: expected OPERATOR '-', got %s '%s'", tokens[1].Type, tokens[1].Str)
+	}
+}
+
 func TestHexNumberFollowedByIdentStartingWithI(t *testing.T) {
 	// Same bug in lexHexNumber
 	tokens, err := tokenize("0xFFid")

@@ -394,7 +394,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 		nextR, _, err := l.readRune()
 		if err != nil {
 			if err == io.EOF {
-				return Lexeme{Type: LEX_EOF}, nil
+				return l.makeLexeme(LEX_OPERATOR, "+", startLine, startCol), nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
@@ -411,7 +411,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 		nextR, _, err := l.readRune()
 		if err != nil {
 			if err == io.EOF {
-				return Lexeme{Type: LEX_EOF}, nil
+				return l.makeLexeme(LEX_OPERATOR, "-", startLine, startCol), nil
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}

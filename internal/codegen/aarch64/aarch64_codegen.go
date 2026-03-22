@@ -598,7 +598,7 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 		lines = append(lines, asm.Op4("ccmp", r1, asm.Imm(0), asm.Imm(0), asm.Ref("eq")))
 		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ne")))
 	default:
-		return lines, fmt.Errorf("unsupported binary operation in aarch64-darwing codegen: %v", binop.Operation)
+		return lines, fmt.Errorf("unsupported binary operation in aarch64-darwin codegen: %v", binop.Operation)
 	}
 
 	// Attention! This can be an implicit size cast!
@@ -688,7 +688,7 @@ func generateExternalResultStore(cc *CodegenContext, size int, target string) []
 	if size > 16 {
 		// TODO: Returns over 16 bytes are done via a caller-allocated buffer referenced by x8.
 		// Once that is supported on the call side, we can just remove the check here.
-		panic("returning values larger than 16 bytes from externa functions is not currently supported")
+		panic("returning values larger than 16 bytes from external functions is not currently supported")
 	}
 
 	var lines []asm.Line

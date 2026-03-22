@@ -367,7 +367,8 @@ func (c *TypeChecker) checkVariableReference(ref *ast.VariableReference) *ast.Va
 	vd, ok := c.vars.lookup(ref.Name)
 	if !ok {
 		c.errorf("%s: variable %s is not declared before reference", ref.Loc, ref.Name)
-		vd.typ = ast.Undefined // Use a default type to avoid nil
+		vd.typ = ast.Undefined
+		vd.uniqueName = ref.Name
 	}
 
 	result := *ref
@@ -391,7 +392,7 @@ func (c *TypeChecker) checkReturnStatement(stmt *ast.ReturnStatement) *ast.Retur
 			c.errorf("%s: function %s does not have a return type but a value was provided",
 				stmt.Loc, c.currentFunc.Name,
 			)
-		} else if !typ.Equals(c.currentFunc.ReturnType) {
+		} else if !areCompatibleTypes(typ, c.currentFunc.ReturnType) {
 			c.errorf("%s: function %s has return type %s but a value of type %s was provided",
 				stmt.Loc, c.currentFunc.Name, c.currentFunc.ReturnType, typ,
 			)

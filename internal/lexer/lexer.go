@@ -425,8 +425,7 @@ func (l *Lexer) Next() (Lexeme, error) {
 		if tokenType, ok := singleCharTokens[r]; ok {
 			return l.makeLexeme(tokenType, string(r), startLine, startCol), nil
 		}
-		// For now, return EOF for unknown characters
-		return Lexeme{Type: LEX_EOF}, nil
+		return Lexeme{}, fmt.Errorf("%s: unexpected character %q", l.loc(startLine, startCol), r)
 	}
 }
 
@@ -657,10 +656,9 @@ func (l *Lexer) lexNumber(startLine, startCol int) (Lexeme, error) {
 			if r == 'i' {
 				nextBytes, _ := l.input.Peek(1)
 				if len(nextBytes) == 1 && nextBytes[0] == '8' {
-					if _, _, err := l.input.ReadRune(); err != nil {
+					if _, _, err := l.readRune(); err != nil {
 						return Lexeme{}, err
 					}
-					l.col++
 					num += "i8"
 					break
 				}
@@ -707,10 +705,9 @@ func (l *Lexer) lexHexNumber(prefix string, startLine, startCol int) (Lexeme, er
 		if r == 'i' {
 			nextBytes, _ := l.input.Peek(1)
 			if len(nextBytes) == 1 && nextBytes[0] == '8' {
-				if _, _, err := l.input.ReadRune(); err != nil {
+				if _, _, err := l.readRune(); err != nil {
 					return Lexeme{}, err
 				}
-				l.col++
 				num += "i8"
 				break
 			}

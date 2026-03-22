@@ -367,7 +367,7 @@ func removeIneffectiveAssignmentsPass(body []Op) []Op {
 // x = (operation A)
 // $1 = x
 //
-// The idea is that ineffective assignment elimination will then get rid of "$1 = x" and we'll get rid of the intermediar and we'll get rid of the intermediary
+// The idea is that ineffective assignment elimination will then get rid of "$1 = x" and we'll get rid of the intermediary.
 func reorderAssignments(ops []Op) []Op {
 	res := slices.Clone(ops)
 

@@ -173,6 +173,7 @@ func makeStructDescriptor(node *StructDeclaration, tt *TypeTable) (*StructDescri
 	}
 
 	offset := 0
+	maxAlign := 1
 	for _, fnode := range node.Fields {
 		size, err := tt.GetSize(fnode.Type)
 		if err != nil {
@@ -185,9 +186,13 @@ func makeStructDescriptor(node *StructDeclaration, tt *TypeTable) (*StructDescri
 			Offset: util.Align(offset, size),
 		})
 		offset = util.Align(offset, size) + size
+		if size > maxAlign {
+			maxAlign = size
+		}
 	}
 
-	desc.Size = offset
+	// Pad the struct size to its alignment so that arrays of structs work correctly.
+	desc.Size = util.Align(offset, maxAlign)
 
 	return desc, nil
 }

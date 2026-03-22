@@ -1,0 +1,7 @@
+// Test that non-bool for-loop conditions are rejected.
+func main(): int {
+    for var i = 0; i; i++ {
+        printf("%d\n", i);
+    }
+    return 0;
+}

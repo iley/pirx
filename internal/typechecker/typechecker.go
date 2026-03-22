@@ -492,9 +492,26 @@ func (c *TypeChecker) checkForLoop(forLoop *ast.ForStatement) *ast.ForStatement 
 	c.vars.startScope()
 	defer c.vars.endScope()
 
-	checkedInit := c.checkStatement(forLoop.Init)
-	checkedCond := c.checkExpression(forLoop.Condition)
-	checkedUpdate := c.checkExpression(forLoop.Update)
+	var checkedInit ast.Statement
+	if forLoop.Init != nil {
+		checkedInit = c.checkStatement(forLoop.Init)
+	}
+
+	var checkedCond ast.Expression
+	if forLoop.Condition != nil {
+		checkedCond = c.checkExpression(forLoop.Condition)
+		condType := checkedCond.GetType()
+		if condType != ast.Bool {
+			c.errorf("%s: expected an expression of type bool in for condition, got type %s",
+				forLoop.Loc, condType)
+		}
+	}
+
+	var checkedUpdate ast.Expression
+	if forLoop.Update != nil {
+		checkedUpdate = c.checkExpression(forLoop.Update)
+	}
+
 	c.nestedLoops++
 	checkedBody := c.checkBlock(&forLoop.Body)
 	c.nestedLoops--

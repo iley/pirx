@@ -8,3 +8,7 @@ func Int32Ptr(value int) *int32 {
 func Int64Ptr(value int64) *int64 {
 	return &value
 }
+
+func BoolPtr(value bool) *bool {
+	return &value
+}

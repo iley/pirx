@@ -143,9 +143,17 @@ func desugarForStatement(dc *desugarContext, forStmt *ast.ForStatement) ast.Stat
 		whileStatements = append(whileStatements, updateStmt)
 	}
 
+	// A missing condition means "loop forever".
+	var condition ast.Expression
+	if forStmt.Condition != nil {
+		condition = desugarExpression(dc, forStmt.Condition)
+	} else {
+		condition = &ast.Literal{Loc: forStmt.Loc, BoolValue: util.BoolPtr(true), Type: ast.Bool}
+	}
+
 	whileStmt := &ast.WhileStatement{
 		Loc:       forStmt.Loc,
-		Condition: desugarExpression(dc, forStmt.Condition),
+		Condition: condition,
 		Body: ast.Block{
 			Loc:        forStmt.Loc,
 			Statements: whileStatements,
@@ -342,28 +350,21 @@ func desugarAssignment(dc *desugarContext, expr *ast.Assignment) ast.Expression 
 			Operator: "=",
 			Type:     expr.Type,
 		}
-	case "+=":
-		return &ast.Assignment{
-			Loc:    expr.Loc,
-			Target: target,
-			Value: &ast.BinaryOperation{
-				Loc:      expr.Loc,
-				Operator: "+",
-				Left:     target,
-				Right:    value,
-				Type:     expr.Type,
-			},
-			Operator: "=",
-			Type:     expr.Type,
+	case "+=", "-=":
+		// Desugar the target a second time to get an independent copy for the read side,
+		// avoiding double-evaluation of a shared AST node.
+		readTarget := desugarExpression(dc, expr.Target)
+		op := "+"
+		if expr.Operator == "-=" {
+			op = "-"
 		}
-	case "-=":
 		return &ast.Assignment{
 			Loc:    expr.Loc,
 			Target: target,
 			Value: &ast.BinaryOperation{
 				Loc:      expr.Loc,
-				Operator: "-",
-				Left:     target,
+				Operator: op,
+				Left:     readTarget,
 				Right:    value,
 				Type:     expr.Type,
 			},

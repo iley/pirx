@@ -298,12 +298,14 @@ func generateAssignmentByAddr(cc *CodegenContext, assign ir.AssignByAddr) ([]asm
 		return generateMemoryCopyToReference(cc, assign.Value, assign.Size, assign.Target), nil
 	} else if assign.Value.LiteralInt != nil {
 		// Assign integer constant to variable.
-		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
-		lines = append(lines, generateStoreByAddr(cc, registerByIndex(0, assign.Size), assign.Target, 0)...)
+		reg := registerByIndex(0, assign.Size)
+		lines = append(lines, generateRegisterLoad(cc, reg, assign.Size, assign.Value)...)
+		lines = append(lines, generateStoreByAddrSized(cc, reg, assign.Size, assign.Target, 0)...)
 	} else if assign.Value.LiteralFloat != nil {
 		// Assign float constant to variable.
-		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
-		lines = append(lines, generateStoreByAddr(cc, registerByIndex(0, assign.Size), assign.Target, 0)...)
+		reg := registerByIndex(0, assign.Size)
+		lines = append(lines, generateRegisterLoad(cc, reg, assign.Size, assign.Value)...)
+		lines = append(lines, generateStoreByAddrSized(cc, reg, assign.Size, assign.Target, 0)...)
 	} else if assign.Value.Zero {
 		return lines, fmt.Errorf("zero assignment by address not supported")
 	} else {
@@ -901,6 +903,28 @@ func generateStoreByAddr(cc *CodegenContext, reg string, target ir.Arg, offset i
 	return lines
 }
 
+// generateStoreByAddrSized is like generateStoreByAddr but uses an explicit size
+// instead of inferring it from the register name.
+func generateStoreByAddrSized(cc *CodegenContext, reg string, regSize int, target ir.Arg, offset int) []asm.Line {
+	var lines []asm.Line
+
+	lines = append(lines, generateRegisterLoad(cc, "x1", ast.WORD_SIZE, target)...)
+	addrReg := asm.Reg("x1")
+	srcReg := asm.Reg(reg)
+
+	if offset != 0 {
+		lines = append(lines, asm.Op3("add", addrReg, addrReg, asm.Imm(offset)))
+	}
+
+	if regSize == 1 {
+		lines = append(lines, asm.Op2("strb", srcReg, addrReg.AsDeref()))
+	} else {
+		lines = append(lines, asm.Op2("str", srcReg, addrReg.AsDeref()))
+	}
+
+	return lines
+}
+
 // Copy `size` bytes from `source` to the memory location identified by a register and an offset.
 // Trashes x0.
 func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseReg string, baseOffset int) []asm.Line {
@@ -917,7 +941,7 @@ func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseRe
 			offset += 4
 		} else {
 			lines = append(lines, generateRegisterLoadWithOffset(cc, "w0", 1, source, offset)...)
-			lines = append(lines, generateRegisterStore("w0", baseReg, baseOffset+offset)...)
+			lines = append(lines, generateRegisterStoreSized("w0", 1, baseReg, baseOffset+offset)...)
 			offset += 1
 		}
 	}
@@ -940,7 +964,7 @@ func generateMemoryCopyToReference(cc *CodegenContext, source ir.Arg, size int, 
 			offset += 4
 		} else {
 			lines = append(lines, generateRegisterLoadWithOffset(cc, "w0", 1, source, offset)...)
-			lines = append(lines, generateStoreByAddr(cc, "w0", targetRef, offset)...)
+			lines = append(lines, generateStoreByAddrSized(cc, "w0", 1, targetRef, offset)...)
 			offset += 1
 		}
 	}

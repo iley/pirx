@@ -1,0 +1,32 @@
+// Regression test: storing int8 values to adjacent struct fields
+// must not overwrite neighboring fields (strb vs str on aarch64).
+
+struct Color {
+  r: int8;
+  g: int8;
+  b: int8;
+  a: int8;
+}
+
+func MakeColor(r: int8, g: int8, b: int8, a: int8): Color {
+  var c: Color;
+  c.r = r;
+  c.g = g;
+  c.b = b;
+  c.a = a;
+  return c;
+}
+
+func main(): int {
+  // Passing int8 args that, if stored as 4 bytes, would overwrite each other.
+  var c = MakeColor(0i8, -80i8, 0i8, -1i8);
+  printf("r=%d g=%d b=%d a=%d\n", c.r, c.g, c.b, c.a);
+
+  var c2 = MakeColor(10i8, 20i8, 30i8, 40i8);
+  printf("r=%d g=%d b=%d a=%d\n", c2.r, c2.g, c2.b, c2.a);
+
+  var c3 = MakeColor(-1i8, -2i8, -3i8, -4i8);
+  printf("r=%d g=%d b=%d a=%d\n", c3.r, c3.g, c3.b, c3.a);
+
+  return 0;
+}

@@ -75,10 +75,7 @@ func argToString(arg asm.Arg) string {
 	}
 
 	if arg.Reg != "" {
-		if arg.Offset != 0 && arg.Deref {
-			result = fmt.Sprintf("%d(%%%s)", arg.Offset, arg.Reg)
-		} else if arg.Offset != 0 && !arg.Deref {
-			// For lea with offset
+		if arg.Offset != 0 {
 			result = fmt.Sprintf("%d(%%%s)", arg.Offset, arg.Reg)
 		} else if arg.Deref {
 			result = fmt.Sprintf("(%%%s)", arg.Reg)

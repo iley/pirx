@@ -575,7 +575,9 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 	if _, ok := n.TypeExpr.(*ast.SliceType); ok {
 		if n.Count == nil {
 			c.errorf("%s: when allocating a slice via new(), an element count must be specified", n.Loc)
-			return nil
+			result := *n
+			result.Type = ast.Undefined
+			return &result
 		}
 		result := *n
 		result.Type = n.TypeExpr

@@ -354,6 +354,7 @@ func desugarAssignment(dc *desugarContext, expr *ast.Assignment) ast.Expression 
 				Type:     expr.Type,
 			},
 			Operator: "=",
+			Type:     expr.Type,
 		}
 	case "-=":
 		return &ast.Assignment{
@@ -367,6 +368,7 @@ func desugarAssignment(dc *desugarContext, expr *ast.Assignment) ast.Expression 
 				Type:     expr.Type,
 			},
 			Operator: "=",
+			Type:     expr.Type,
 		}
 	}
 	panic(fmt.Errorf("unsupported assignment operator %s", expr.Operator))

@@ -16,7 +16,7 @@ func Optimize(program asm.Program) asm.Program {
 		}
 	}
 
-	return program
+	return result
 }
 
 func optimizeFunction(fn []asm.Line) []asm.Line {

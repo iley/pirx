@@ -281,7 +281,7 @@ func (r ExternalReturn) String() string {
 	if r.Value != nil {
 		return fmt.Sprintf("ExternalReturn%d(%s)", r.Size, r.Value)
 	}
-	return "Return()"
+	return "ExternalReturn()"
 }
 
 func (r ExternalReturn) GetTarget() string {

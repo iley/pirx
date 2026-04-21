@@ -1,7 +1,7 @@
 # Pirx-in-OCaml: Design Notes
 
 Companion to `PLAN.md`. This file records OCaml-specific design decisions
-(ADT shapes, error handling, module layout) and breaks milestones into
+(ADT shapes, error monad, module layout) and breaks milestones into
 session-sized chunks so we can pick work up and put it down cleanly. Add
 entries as decisions land; don't retrofit after the fact.
 
@@ -15,7 +15,38 @@ entries as decisions land; don't retrofit after the fact.
 These apply to the whole port, not just M1. Revisit only if a concrete
 problem surfaces.
 
-### D1. Error handling: exceptions for lexer/parser, accumulator for typechecker
+### D1. Standard library: Base + Core (not Stdlib)
+
+All OCaml modules in this project use Jane Street's `Base` + `Core` as
+their standard library. Each `.ml` file starts with `open Core`. Core
+re-exports Base, so one open covers both.
+
+Rationale:
+- Richer, more orthogonal data-structure APIs than Stdlib (consistent
+  `Map`, `Set`, `Hashtbl`, `List`, `Option`, `Result`).
+- Total functions by default — no silent `List.hd []` exceptions. Partial
+  functions are spelled `_exn`.
+- No polymorphic equality / comparison / hashing. Forces per-type
+  `equal` / `compare`, which matches the Go codebase's discipline.
+- `Sexp` derivers via `ppx_jane` give us AST/IR pretty-printers almost
+  for free — useful for `-t ast` and `-t ir` dumps.
+
+Consequences to be aware of while porting:
+- Use `String.equal a b`, not `a = b`. `Poly.(=)` exists as an escape
+  hatch; don't reach for it.
+- `print_string`, `prerr_endline`, `exit`, `Printf.ksprintf` all still
+  work post-`open Core` (Core re-exports them from Stdlib).
+- `Stdlib.Arg` for command-line parsing is kept as-is — `Core.Command`
+  is a heavier declarative framework and overkill for `pirxc`'s three
+  flags. Reference it explicitly as `Stdlib.Arg.…` when needed.
+- File I/O: `Out_channel.write_all` / `In_channel.read_all` from `stdio`
+  (transitively in Core) replace `open_out`/`Fun.protect` patterns.
+- `implicit_transitive_deps` is off in `dune-project` — each library
+  declares its Core/Stdio deps explicitly. Catches layering drift.
+- Preprocess directive on every library with derivers: `(preprocess (pps
+  ppx_jane))`.
+
+### D2. Error handling: exceptions for lexer/parser, accumulator for typechecker
 
 The Go compiler uses two styles:
 - Lexer and parser bail on the first error (return `error`).
@@ -37,19 +68,20 @@ We mirror this rather than invent a uniform monad:
 
 Rationale: matches the Go structure, avoids boilerplate in stages that
 bail anyway, keeps accumulation where it matters. A universal `result`
-monad is more code for the same observable behavior.
+monad is more code for the same observable behavior. Core's `Or_error` is
+available if we change our minds, but don't mix styles preemptively.
 
-### D2. Location: plain record, by value
+### D3. Location: plain record, by value
 
 ```ocaml
-type t = { file: string; line: int; col: int }
+type t = { file: string; line: int; col: int } [@@deriving sexp, compare, equal]
 ```
 
 Lives in its own module (`Location`). Every AST node and lexeme carries
 one. No source-range tracking (start/end) — the Go version doesn't have
 that either, and adding it is a separate workstream.
 
-### D3. AST: variant types with mutable `typ` field for expressions
+### D4. AST: variant types with mutable `typ` field for expressions
 
 Expressions gain their type during type-checking. Two viable approaches:
 
@@ -64,21 +96,21 @@ post-port we decide typed-AST-as-separate-type is worth it, that's a
 dedicated refactor.
 
 Mutable fields are ugly but contained: only the `typ` field on expression
-nodes. Statement and declaration nodes are immutable.
+nodes. Statement and declaration nodes are immutable. `[@@deriving sexp]`
+still works fine with mutable fields.
 
-### D4. Types: singleton `BaseType`s, structural equality via dedicated function
+### D5. Types: singleton `BaseType`s, structural equality via dedicated function
 
 Mirror Go: singletons for `int`, `int8`, `int64`, `bool`, `string`,
 `void`, etc. Composite types (`Pointer`, `Slice`, `Struct`) as normal
-records. A function `Type.equals : t -> t -> bool` does the structural
-comparison — do **not** rely on `(=)` (polymorphic equality works for
-this subset but will bite once we add reference cycles in the type
-table).
+records. A function `Type.equal : t -> t -> bool` does the structural
+comparison. Under Base, polymorphic `=` is disabled anyway, so the habit
+is already enforced.
 
 For M1, only `int` and `string` (and `void` internally) matter. The rest
 are defined as stubs and filled in as later milestones need them.
 
-### D5. IR Arg and Op: natural variants
+### D6. IR Arg and Op: natural variants
 
 Go's `Arg` is an "any-of-these-fields-is-set" struct — in OCaml a sum
 type. This is one of the few places the OCaml version is cleaner than
@@ -86,24 +118,26 @@ the Go version:
 
 ```ocaml
 type arg =
-  | Var of string
-  | Int_lit of int64
-  | Float_lit of float
+  | Var        of string
+  | Int_lit    of int64
+  | Float_lit  of float
   | String_lit of string
   | Zero
+[@@deriving sexp, equal]
 ```
 
 Same for `Op`: one constructor per IR op. We take this win without
 considering it an "architectural change" — it's the obvious OCaml
 encoding of the same data.
 
-### D6. Module layout: one dune library per stage
+### D7. Module layout: one dune library per stage
 
 Per PLAN.md §Layout, `lib/{lexer,parser,ast,types,typecheck,desugar,ir,codegen}/`
 each have their own `dune` with an explicit `(libraries ...)` list. This
 forces dependencies between stages to be explicit (parser depends on
-lexer, typechecker on ast+types, etc.) and catches layering mistakes
-at build time.
+lexer, typechecker on ast+types, etc.) and catches layering mistakes at
+build time. Combined with `implicit_transitive_deps false` (D1) this is
+strict.
 
 Library name convention: `pirx.lexer`, `pirx.parser`, ... with public
 names `Pirx_lexer`, `Pirx_parser` ... so cross-stage access looks like
@@ -112,17 +146,17 @@ names `Pirx_lexer`, `Pirx_parser` ... so cross-stage access looks like
 Alternative considered: single flat library. Rejected — loses the
 layering discipline and makes unit tests harder to target.
 
-### D7. Testing framework: `alcotest`
+### D8. Testing framework: `alcotest`
 
 Small, idiomatic, no ceremony. Add `test/lexer/` first; other stages
 rely on the `testrunner` end-to-end suite per PLAN.md §Testing strategy.
 
-### D8. Formatting and lint
+### D9. Formatting and lint
 
 Defer `ocamlformat` setup until post-M1 per `PROGRESS.md`. Style drift in
 a small codebase isn't worth fighting yet.
 
-### D9. CLI surface of `pirxc`
+### D10. CLI surface of `pirxc`
 
 Keep the Go `pirxc` flag set verbatim (`-o`, `-O0`, `-t`). Meaningful
 values for `-t` during the port:
@@ -135,7 +169,9 @@ values for `-t` during the port:
 
 The `-t ast`/`-t ir` dumps are the **primary debugging tool** during the
 port. Matching the Go version's textual output byte-for-byte isn't
-required, but close-enough-to-diff is very valuable.
+required, but close-enough-to-diff is very valuable. With `[@@deriving
+sexp]` (D1) we get most of the printer for free; a thin adapter formats
+to match Go's S-expression conventions.
 
 ---
 
@@ -153,11 +189,11 @@ inspection shows it's plain int assignment with a temp. 003 stays in M1.
 ### M1.2. ADT sketches
 
 These are the shapes we're committing to. Write actual `.mli` files from
-these during the work.
+these during the work. All modules assume `open Core` at the top.
 
 **`Location.t`**
 ```ocaml
-type t = { file: string; line: int; col: int }
+type t = { file: string; line: int; col: int } [@@deriving sexp, compare, equal]
 ```
 
 **`Lexer.token`**
@@ -170,6 +206,7 @@ type token =
   | Tok_keyword of string
   | Tok_op      of string
   | Tok_punct   of string
+[@@deriving sexp, equal]
 ```
 Paired with `{ tok: token; loc: Location.t }`. Keeping numbers as strings
 at lex time avoids deciding int vs int64 vs int8 in the lexer — matches
@@ -187,6 +224,7 @@ type t =
   | Undefined                (* for error recovery *)
   | Pointer of t             (* stubbed in M1, used by later tests *)
   | Slice   of t
+[@@deriving sexp, equal]
 ```
 
 **`Ast.expr`** (M1 subset)
@@ -201,6 +239,7 @@ and expr_kind =
   | E_string_lit of string
   | E_ident      of string
   | E_call       of { name: string; args: expr list }
+[@@deriving sexp_of]
 ```
 
 **`Ast.stmt`**
@@ -210,6 +249,7 @@ type stmt =
   | S_assign   of { loc: Location.t; target: expr; value: expr }
   | S_expr     of expr
   | S_return   of { loc: Location.t; value: expr option }
+[@@deriving sexp_of]
 ```
 
 **`Ast.func`**
@@ -222,9 +262,10 @@ type func = {
   body:       stmt list;
   external_:  bool;
 }
+[@@deriving sexp_of]
 ```
 
-**`Ir.arg`, `Ir.op`, `Ir.func`, `Ir.program`** — as sketched in D5. For
+**`Ir.arg`, `Ir.op`, `Ir.func`, `Ir.program`** — as sketched in D6. For
 M1, `op` has only `Assign | Call | External_call | Return | External_return`.
 
 ### M1.3. Builtin function table (M1 subset)
@@ -309,11 +350,12 @@ Log session completion in `PROGRESS.md` as we go.
 ### S1 — Library skeleton + lexer  *(target: 1 session)*
 
 - Create `lib/{location,lexer,ast,types,typecheck,desugar,ir,codegen}/`
-  with `dune` files. Some empty placeholders are fine — we'll fill as we
-  go. (Deviating slightly from PLAN.md by hoisting `Location` to its own
-  module, since lexer and ast both depend on it.)
+  with `dune` files wired for Core + `ppx_jane` (D1). Some empty
+  placeholders are fine — we'll fill as we go. (Deviating slightly from
+  PLAN.md by hoisting `Location` to its own module, since lexer and ast
+  both depend on it.)
 - `test/lexer/dune` and initial alcotest runner.
-- Port `Location` module (D2).
+- Port `Location` module (D3).
 - Port `Lexer.Token` type and `Lexer.next : Lexer.t -> lexeme`.
   - Subset per M1.2. Skip float literals, hex, `l`/`i8` suffixes,
     char literals — not needed by 000–006.
@@ -334,7 +376,8 @@ still works, `testrunner test 000` still green.
     assignment, expression statement, return.
   - Expressions: int lit, string lit, ident, call.
   - Errors raise `Compile_error` with the location of the offending token.
-- `Ast.Pp` — S-expression printer matching Go's `String()` output format
+- `Ast.Pp` — S-expression printer. With `[@@deriving sexp_of]` (D1) most
+  of this is free; write a thin wrapper to match Go's output format
   closely enough to diff.
 - `bin/pirxc`: wire `-t ast` to parse and pretty-print. Other targets
   still hit the M0 hardcoded-asm fallback (or just `die`, since M1 is
@@ -346,12 +389,12 @@ diff against `go run ./cmd/pirxc -t ast` if suspicious).
 
 ### S3 — Types + typechecker + desugar + `-t final_ast`  *(target: 1 session)*
 
-- `Types` module per D4. Just `Int`, `String`, `Void`, `Undefined` needed
+- `Types` module per D5. Just `Int`, `String`, `Void`, `Undefined` needed
   for M1; stubs for the rest.
 - `Typecheck.Builtins` — hardcoded table per M1.3.
 - `Typecheck.Varstack` — list of `(string, Type.t)` frames for scoping.
 - `Typecheck.check : Ast.program -> Ast.program`. Fills in `typ` on
-  every expression. Accumulates errors per D1.
+  every expression. Accumulates errors per D2.
 - `Desugar.run : Ast.program -> Ast.program`. Only rule: string literals →
   `PirxString` wrapping.
 - `bin/pirxc`: wire `-t final_ast`.
@@ -436,6 +479,9 @@ Things likely to bite. Not action items — just things to watch.
 - **Error monad creep.** If the typechecker starts wanting exceptions
   too, that's fine — document in DESIGN.md and convert. Don't let it
   drift toward "both everywhere" without deciding.
+- **`Base` friction on first contact.** No polymorphic `=`, no silent
+  partial functions, different `List`/`Map`/`Hashtbl` surface. Expect a
+  round of small fixes in S1 while muscle memory catches up.
 
 ## Questions to resolve at milestone boundaries
 

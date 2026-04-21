@@ -3,6 +3,8 @@
    program. Input files are not read; this exists to prove the build/install/
    test plumbing end-to-end against testrunner. *)
 
+open Core
+
 let hardcoded_asm =
 {|.globl _Pirx_Main
 .p2align 2
@@ -85,32 +87,30 @@ let derive_output_name = function
     die "When more than one input file name is provided, you must specify an output file name via -o"
 
 let write_output out_spec content =
-  if out_spec = "-" then print_string content
-  else
-    let oc = open_out out_spec in
-    Fun.protect
-      ~finally:(fun () -> close_out_noerr oc)
-      (fun () -> output_string oc content)
+  if String.equal out_spec "-" then print_string content
+  else Out_channel.write_all out_spec ~data:content
 
 let () =
   let output = ref "" in
   let no_opt = ref false in
   let target = ref default_target in
   let inputs = ref [] in
-  let specs = [
-    ("-o",  Arg.Set_string output, " output file name");
-    ("-O0", Arg.Set no_opt,        " don't optimize");
-    ("-t",  Arg.Set_string target, " target architecture");
-  ] in
-  Arg.parse specs (fun f -> inputs := f :: !inputs) usage;
+  let specs =
+    Stdlib.Arg.[
+      ("-o",  Set_string output, " output file name");
+      ("-O0", Set no_opt,        " don't optimize");
+      ("-t",  Set_string target, " target architecture");
+    ]
+  in
+  Stdlib.Arg.parse specs (fun f -> inputs := f :: !inputs) usage;
   let inputs = List.rev !inputs in
-  if inputs = [] then begin
+  if List.is_empty inputs then begin
     prerr_endline usage;
     exit 1
   end;
   ignore !no_opt;
   ignore !target;
   let out_spec =
-    if !output = "" then derive_output_name inputs else !output
+    if String.is_empty !output then derive_output_name inputs else !output
   in
   write_output out_spec hardcoded_asm

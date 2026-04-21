@@ -1,2 +1,4 @@
 (executable
- (name main))
+ (name main)
+ (libraries core stdio)
+ (preprocess (pps ppx_jane)))

@@ -1,0 +1,4 @@
+(library
+ (name pirx_types)
+ (libraries core)
+ (preprocess (pps ppx_jane)))

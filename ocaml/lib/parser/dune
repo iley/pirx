@@ -1,0 +1,4 @@
+(library
+ (name pirx_parser)
+ (libraries core pirx_location pirx_types pirx_lexer pirx_ast)
+ (preprocess (pps ppx_jane)))

@@ -1,9 +1,13 @@
 (* pirxc — OCaml port of the Pirx compiler.
-   Milestone M0: flag parsing + hardcoded aarch64-darwin assembly for the empty
-   program. Input files are not read; this exists to prove the build/install/
-   test plumbing end-to-end against testrunner. *)
+   Through M1/S2: -t ast runs lex + parse + print. Other targets still emit
+   the M0 hardcoded aarch64-darwin blob (only valid for tests/000_empty.pirx
+   — enough to keep testrunner test 000 green while later slices land). *)
 
 open Core
+module Location = Pirx_location.Location
+module Lexer = Pirx_lexer.Lexer
+module Parser = Pirx_parser.Parser
+module Ast_pp = Pirx_ast.Pp
 
 let hardcoded_asm =
 {|.globl _Pirx_Main
@@ -81,14 +85,29 @@ let strip_pirx_ext name =
     try Filename.chop_extension name
     with Invalid_argument _ -> name
 
-let derive_output_name = function
-  | [one] -> strip_pirx_ext one ^ ".s"
+let derive_output_name target inputs =
+  match inputs with
+  | [one] ->
+    let base = strip_pirx_ext one in
+    (match target with
+     | "ast" -> base ^ ".txt"
+     | _ -> base ^ ".s")
   | _ ->
     die "When more than one input file name is provided, you must specify an output file name via -o"
 
 let write_output out_spec content =
   if String.equal out_spec "-" then print_string content
   else Out_channel.write_all out_spec ~data:content
+
+let read_file path =
+  try In_channel.read_all path
+  with Sys_error msg -> die "cannot read %s: %s" path msg
+
+let compile_ast input =
+  let source = read_file input in
+  let lexer = Lexer.create ~filename:input ~source in
+  let program = Parser.parse lexer in
+  Ast_pp.string_of_program program ^ "\n"
 
 let () =
   let output = ref "" in
@@ -109,8 +128,22 @@ let () =
     exit 1
   end;
   ignore !no_opt;
-  ignore !target;
   let out_spec =
-    if String.is_empty !output then derive_output_name inputs else !output
+    if String.is_empty !output then derive_output_name !target inputs
+    else !output
   in
-  write_output out_spec hardcoded_asm
+  try
+    let content =
+      match !target with
+      | "ast" ->
+        (match inputs with
+         | [one] -> compile_ast one
+         | _ -> die "-t ast expects a single input file")
+      | "final_ast" | "ir" -> die "-t %s not implemented yet" !target
+      | "aarch64-darwin" -> hardcoded_asm
+      | other -> die "unsupported target: %s" other
+    in
+    write_output out_spec content
+  with Lexer.Compile_error (loc, msg) ->
+    prerr_endline (Printf.sprintf "%s: %s" (Location.to_string loc) msg);
+    exit 1

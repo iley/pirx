@@ -35,4 +35,48 @@ Not yet addressed (intentionally — deferred to later milestones):
 
 ## M1 — Hello world slice
 
+### S1 — Library skeleton + lexer ✅
+
+Done:
+- `lib/location/` — `Location.t = { file; line; col }` with `sexp`/`compare`/
+  `equal` derivers and a `to_string` ("file:line:col").
+- `lib/lexer/` — `Token.t` and `Lexer.t`. Lexer is a string-backed cursor,
+  not a buffered reader (simpler and fine for the source sizes we handle).
+  Covers the subset needed by tests 000–006: three keywords (`func`/`var`/
+  `return`), decimal numbers, strings with `\n \t \r \\ \" \'` escapes,
+  `=`, `( ) { } , : ;`, `//` line comments. Unknown chars and
+  unterminated strings raise `Lexer.Compile_error`.
+- `test/lexer/` — 13 alcotest cases covering each token class, comment
+  skipping, location tracking, 000/003 fixture token streams, and both
+  error paths. `dune runtest` green.
+- `./testrunner test 000` still passes (M0 hardcoded path untouched).
+
+Deviations from DESIGN.md logged:
+- **Token shape.** DESIGN.md M1.2 originally specified string-tagged
+  `Tok_keyword of string` / `Tok_op of string` / `Tok_punct of string`.
+  Switched to exhaustive constructors (`Kw_func`, `Op_assign`, `Lparen`,
+  …) so the parser gets exhaustiveness checks. DESIGN.md M1.2 updated to
+  reflect the new shape.
+- **Lib placeholders.** DESIGN.md §S1 suggested creating all eight
+  `lib/*/` subdirs up front with dune stubs. Skipped — only `location/`
+  and `lexer/` exist. Matches the PROGRESS.md M0 note ("create as code
+  lands"). Later stages will add their own subdir when their session
+  arrives.
+- **No `public_name` on libraries.** The `pirx.*` public names dune
+  expected require a `pirx.opam` at the project root, which we don't
+  have and don't want yet. Dropped to internal-only `(name pirx_<stage>)`.
+
+Environment notes for next sessions:
+- `alcotest` 1.9.1 was installed into the opam switch. `fmt` has to be
+  named explicitly as a library dep even though alcotest depends on it
+  (its cmi isn't transitively in-scope when `implicit_transitive_deps`
+  is off).
+
+Not yet addressed (intentionally — deferred to later S-sessions):
+- Keywords/operators beyond what tests 000–006 need (`if`, `else`, `for`,
+  arithmetic, comparisons, …). They arrive with their tests.
+- Char literals, hex numbers, `l`/`i8`/float literals. Later milestones.
+
+### S2–S7
+
 Not started.

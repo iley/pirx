@@ -1,0 +1,4 @@
+(test
+ (name test_lexer)
+ (libraries alcotest fmt core pirx_lexer pirx_location)
+ (preprocess (pps ppx_jane)))

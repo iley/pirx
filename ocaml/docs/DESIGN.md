@@ -196,21 +196,31 @@ these during the work. All modules assume `open Core` at the top.
 type t = { file: string; line: int; col: int } [@@deriving sexp, compare, equal]
 ```
 
-**`Lexer.token`**
+**`Lexer.Token.t`**
 ```ocaml
-type token =
+type t =
   | Tok_eof
-  | Tok_ident   of string
-  | Tok_number  of string     (* keep as string, parse later *)
-  | Tok_string  of string     (* post-escape decoded *)
-  | Tok_keyword of string
-  | Tok_op      of string
-  | Tok_punct   of string
+  | Tok_ident  of string
+  | Tok_number of string     (* keep as string, parse later *)
+  | Tok_string of string     (* post-escape decoded *)
+  (* keywords — one constructor per keyword, added as milestones require *)
+  | Kw_func | Kw_var | Kw_return
+  (* operators *)
+  | Op_assign
+  (* punctuation *)
+  | Lparen | Rparen | Lbrace | Rbrace
+  | Comma | Colon | Semicolon
 [@@deriving sexp, equal]
 ```
-Paired with `{ tok: token; loc: Location.t }`. Keeping numbers as strings
+Paired with `{ tok: t; loc: Location.t }`. Keeping numbers as strings
 at lex time avoids deciding int vs int64 vs int8 in the lexer — matches
 what Go does.
+
+Deviation from the Go lexer: the Go version groups keywords/operators/
+punctuation behind a `Str` field on a `Lexeme` struct (so every keyword
+is `LEX_KEYWORD`-tagged). We use exhaustive constructors instead —
+parser pattern matches get exhaustiveness checks, and the set grows by
+adding constructors per milestone.
 
 **`Type.t`** (M1 subset)
 ```ocaml

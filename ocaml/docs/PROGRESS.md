@@ -131,6 +131,71 @@ Not yet addressed (deferred to S3+):
 - Desugaring of string literals into `PirxString`.
 - IR generation and codegen wiring.
 
-### S3–S7
+### S3.1 — Typechecker ✅
+
+Done:
+- `lib/typecheck/` with:
+  - `Diag` — mutable `entry list` collector; `push`/`pushf`/`entries`/`is_empty`
+    per DESIGN.md D2.
+  - `Varstack` — frame stack of `(string * Type.t) list`. Innermost-first
+    `lookup`; `declare` returns `` `Ok | `Duplicate_in_scope ``.
+  - `Proto.t` — shared record for builtin + user-function signatures.
+    `external_name` is carried but unused until IR-gen.
+  - `Builtins.protos` — hardcoded M1 table: `PirxString`, `printf` (variadic,
+    external name `PirxPrintf`), `putchar`.
+  - `Functions.build` — seeds a `String.Table.t` with builtins, folds in
+    user functions via `Hashtbl.set` (last write wins). User functions
+    silently shadow builtins; duplicate user functions silently overwrite
+    the earlier entry. Matches Go's `declaredFuncs[name] = proto`
+    semantics — the Go typechecker doesn't warn about duplicates at this
+    stage either.
+  - `Typecheck.check : Ast.program -> Ast.program * Diag.t` — mutates
+    `expr.typ` in place. On error: `Diag.push` + set `typ = Undefined`,
+    continue walking. A `compatible : Type.t -> Type.t -> bool` helper
+    treats `Undefined` on either side as "already errored, don't cascade,"
+    keeping every call site honest about the rule.
+- `Typecheck.check_func` opens two scopes per function: one for the
+  params, then a nested one for the body. Matches Go
+  (`checkFunction` + `checkBlock`) so that `func f(x: int) { var x: int = 1; }`
+  shadows rather than collides.
+- `test/typecheck/` — eleven alcotest cases: four positives
+  (000/002/003/006 parse+check clean, plus spot-checks that specific call
+  results are typed correctly), two scope pins (param shadowed by
+  body-local, user function shadowing a builtin), and five negatives
+  (undeclared ident, arity mismatch, init-type mismatch, void return with
+  required value, duplicate `var` in same scope). Negative assertions use
+  substring match on diag messages, per D2's "same error, different
+  wording OK" policy.
+- `./testrunner test 000` still passes — main.ml is untouched this
+  session.
+
+Deviations from DESIGN.md:
+- **`Hashtbl.create (module String)`** hits a `Base`/`Core` signature
+  mismatch in this toolchain (`Base_internalhash_types.hash_value` vs
+  `int`). Switched to `String.Table.create ()` — same effect, Core-native.
+- **`Proto` lifted to its own module** (`proto.ml`) so `builtins.mli` and
+  `functions.mli` can both reference the type without cycles. DESIGN.md
+  didn't spell out the split; this is the obvious one.
+- **No `Proto.mli`.** The record is exposed directly; fields are all that
+  consumers need. Add one if the type grows private state.
+- **Return-type check messages** say "must return a value of type X" and
+  "returned value has type X, expected Y" — worded for humans rather
+  than matching Go verbatim. D2 allows this; `.err` fixtures will be
+  regenerated at M3.
+
+Environment notes for next sessions:
+- The full dune test set is now `lexer` + `parser` + `typecheck`. Run
+  `eval $(opam env) && dune runtest` to catch regressions across all three.
+- `Typecheck.check` is ready for S3.2 to call — just thread the returned
+  `Diag.t` into a "non-empty → print and exit 1" path in `main.ml`.
+
+Not yet addressed (deferred to S3.2+):
+- `main.ml` wiring — `-t final_ast` pipeline and diag-to-stderr on
+  non-empty lands in S3.2.
+- Desugar of string literals to `PirxString` — S3.2.
+- Builtins beyond M1's three — each later milestone grows the table.
+- No `is_lvalue` beyond `E_ident`; field/deref targets arrive with M4.
+
+### S3.2–S7
 
 Not started.

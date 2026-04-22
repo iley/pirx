@@ -173,6 +173,34 @@ required, but close-enough-to-diff is very valuable. With `[@@deriving
 sexp]` (D1) we get most of the printer for free; a thin adapter formats
 to match Go's S-expression conventions.
 
+### D11. Pipeline order: parse → typecheck → desugar → ir
+
+Matches the Go compiler (`cmd/pirxc/main.go` runs typecheck before
+desugar, with a comment flagging the dependency). Desugar needs types
+for later rules: `sizeof(T)` reads the `TypeTable` to get a size, and
+`int(x)` casts dispatch on the operand's type to pick
+`PirxIntFromInt8`/`…Float64`/etc.
+
+M1's only rule (string-literal wrapping) doesn't need types, so
+desugar-first would work for M1 alone. Rejected because it forces a
+reorder at M4 and leaves a persistent divergence from Go in the interim
+— a larger structural cost than the ~3 lines per rule of setting `typ`
+on synthesized nodes.
+
+Consequences to track:
+
+- **Desugar sets `typ` on synthesized nodes.** Typecheck doesn't re-run;
+  IR-gen consumes the fully-typed post-desugar tree.
+- **Typecheck only ever sees user-written calls.** Synthesized calls
+  (`PirxString`, `PirxIntFromInt8`, `range`, …) never get validated
+  against their `Builtins` signature. This matches Go, which declares
+  `PirxString`'s second arg as `*int8` while typecheck types a string
+  literal as `String` — the tension never surfaces because desugar
+  mints the call post-typecheck and IR-gen / codegen handle the
+  "string literal in `PirxString` arg 2" case positionally.
+- **Desugar gets a `TypeTable` reference once `sizeof` lands (M4).**
+  Not needed for M1.
+
 ---
 
 ## M1 design
@@ -293,10 +321,19 @@ add them in later milestones as their tests require.
 
 ### M1.4. Desugaring
 
-Only one rule for M1: a string literal `"foo"` appearing as an expression
-is rewritten to `PirxString(<len>, "foo")`, where `<len>` is the byte
-length (post-escape) and the `"foo"` argument passes through as a
-primitive `Tok_string`-backed literal that codegen emits into `.cstring`.
+Runs after typecheck (per D11). Only one rule for M1: a string literal
+`"foo"` appearing as an expression is rewritten to
+`PirxString(<len>, "foo")`, where `<len>` is the byte length (post-escape).
+
+The inner `"foo"` passes through unchanged — its `typ = Type.String` from
+the prior typecheck pass stays. IR-gen / codegen recognize "string
+literal as second arg of `PirxString`" as the cue to emit a `.cstring`
+pointer; no new AST variant is needed for the "raw primitive backing"
+form.
+
+Desugar sets `typ` on the nodes it synthesizes:
+- the new `E_call "PirxString"` gets `typ = Type.String`;
+- the new `E_int_lit <len>` gets `typ = Type.Int`.
 
 The `printf` → `PirxPrintf` rename happens during IR generation by
 consulting `ExternalName` on the builtin proto (mirroring Go).
@@ -397,21 +434,60 @@ still works, `testrunner test 000` still green.
 produces a plausible S-expression. No automated check — eyeball it (and
 diff against `go run ./cmd/pirxc -t ast` if suspicious).
 
-### S3 — Types + typechecker + desugar + `-t final_ast`  *(target: 1 session)*
+### S3.1 — Typechecker  *(target: 1 session)*
 
-- `Types` module per D5. Just `Int`, `String`, `Void`, `Undefined` needed
-  for M1; stubs for the rest.
-- `Typecheck.Builtins` — hardcoded table per M1.3.
-- `Typecheck.Varstack` — list of `(string, Type.t)` frames for scoping.
-- `Typecheck.check : Ast.program -> Ast.program`. Fills in `typ` on
-  every expression. Accumulates errors per D2.
-- `Desugar.run : Ast.program -> Ast.program`. Only rule: string literals →
-  `PirxString` wrapping.
-- `bin/pirxc`: wire `-t final_ast`.
+Pipeline order per D11: typecheck runs *before* desugar. This session
+lands the checker; desugar + CLI wiring come in S3.2.
+
+- `lib/typecheck/` with:
+  - `Diag` — mutable error-list collector (record `loc`+`msg`, push,
+    `is_empty`).
+  - `Varstack` — frame list of `(string, Type.t)` for scoped lookup.
+    Push on function entry / block entry, pop on exit.
+  - `Builtins` — hardcoded table per M1.3 (three entries).
+  - `Functions` — index of user-defined function signatures built from
+    the `Ast.program` before any bodies are checked, so forward calls
+    and calls to user functions resolve (needed for test 002).
+- `check : Ast.program -> Ast.program` — fills `typ` on every expression.
+  On type mismatch: push a `Diag` entry, set `typ = Type.Undefined`,
+  continue (per D2). Coverage matches the M1 parser subset:
+  - Expressions: `E_int_lit` → `Int`, `E_string_lit` → `String`,
+    `E_ident` → varstack lookup, `E_call` → builtins ∪ user functions,
+    arity + arg-type check, return the callee's return type.
+  - Statements: `S_var_decl` (check init against annotation if both;
+    infer from one if only one; add to varstack), `S_assign`
+    (target typed + lvalue, value type matches), `S_expr`, `S_return`
+    (matches enclosing function's return type).
+  - Function decls: push scope with params, check body, pop.
+- `Types` module already exists (landed with S2 for the parser); no new
+  work there.
+- **Not wired into `bin/pirxc` yet.** Verified via alcotest: run `check`
+  on the parsed trees of tests 000–006, assert `Diag` is empty; plus
+  one or two negative cases (undefined ident, arity mismatch).
+
+**Exit criteria:** `dune build && dune runtest` green.
+`./testrunner test 000` still passes (the M0 hardcoded-asm path used
+for non-`-t ast` targets is untouched).
+
+### S3.2 — Desugar + `-t final_ast`  *(target: 1 session)*
+
+- `lib/desugar/` with `Desugar.run : Ast.program -> Ast.program`.
+  - Single M1 rule: `E_string_lit s` rewritten to
+    `E_call "PirxString" [E_int_lit (byte_len s); E_string_lit s]`,
+    top-down, no re-walk of the rewritten node.
+  - Synthesized call: `typ = Type.String`. Synthesized int literal:
+    `typ = Type.Int`. Inner `E_string_lit` is passed through unchanged
+    with its existing `typ = Type.String` (from S3.1's typecheck pass).
+- `bin/pirxc`: add `-t final_ast`. Pipeline for that target:
+  lex → parse → typecheck → desugar → print. On non-empty `Diag`:
+  print all entries to stderr, `exit 1`. Other targets (default and
+  `-t ast`) are unchanged from S2 — default still emits the M0
+  hardcoded blob so `./testrunner test 000` stays green until S5 wires
+  codegen.
 
 **Exit criteria:** `./pirxc -t final_ast -o - tests/004_string_literal.pirx`
 shows the `PirxString` wrapping. `./pirxc -t final_ast` on tests 000–006
-produces no errors.
+produces no errors. `./testrunner test 000` still green.
 
 ### S4 — IR generation + `-t ir`  *(target: 1 session)*
 

@@ -164,8 +164,11 @@ values for `-t` during the port:
 - `ast` — print parsed AST (pre-typecheck) as S-expression.
 - `final_ast` — print desugared AST.
 - `ir` — print IR in the textual form Go's `Print` produces.
-- `aarch64-darwin` (default) — emit `.s`.
+- `aarch64-linux` (default on Linux), `aarch64-darwin` (default on macOS) — emit `.s`.
 - Other targets (`x86_64-linux`, etc.) — `die "unsupported target"`.
+
+The default target is detected at runtime from `Sys.os_type` / `uname`
+or a compile-time constant — decide during S5 whichever is simpler.
 
 The `-t ast`/`-t ir` dumps are the **primary debugging tool** during the
 port. Matching the Go version's textual output byte-for-byte isn't
@@ -350,29 +353,51 @@ For each program, the IR generator emits:
 3. A synthetic `main`: calls `Pirx_Init`, then `Pirx_Main`, then
    `ExternalReturn(result)`.
 
-### M1.6. Codegen surface (aarch64-darwin)
+### M1.6. Codegen surface (aarch64-darwin + aarch64-linux)
 
-The M0 hardcoded asm shows the exact template we need to hit for the
-empty program. Starting from that, M1 adds:
+We target both platforms. Most of the codegen is identical; the
+platform-specific differences are isolated to a small formatter layer
+(same approach as the Go codegen's `aarch64_darwin/` vs
+`aarch64_linux/` packages).
 
-- Local variable slots on the stack, addressed as `[sp, #offset]`.
-- Temps (`$N`) also on the stack. For M1 we can use a dead-simple
-  stack-slot-per-temp allocator — no register allocation. Same as Go's
-  current codegen does.
-- `bl _fn` for calls. Before the call: stash `x19` (frame ptr for return
-  slot); after: restore.
-- Variadic C-ABI on Darwin/aarch64: all `...` args go on the stack, not
-  in registers. **The whole callsite sequence for `printf` depends on
-  this.** Getting it wrong makes test 006 print garbage instead of
-  erroring cleanly.
-- String literal pool at file end:
-  ```
-  .section __TEXT,__cstring,cstring_literals
-  .Lstr0:
-      .asciz "hello world!\n"
-  ```
-  Label names: `.Lstr<n>` where `<n>` is a per-file counter.
-- All user-visible symbols prefixed with `_` (Darwin convention).
+Common across both platforms:
+
+- Local variable slots on the stack, addressed as `[sp, offset]`.
+- Temps (`$N`) also on the stack. Dead-simple stack-slot-per-temp
+  allocator — no register allocation. Same as Go's current codegen does.
+- `bl <fn>` for internal calls. Before the call: stash `x19` (frame ptr
+  for return slot); after: restore.
+- Variadic C-ABI on aarch64: `...` args go on the stack for the
+  platforms we support (Darwin and Linux both follow AAPCS64 for this
+  path). **The whole callsite sequence for `printf` depends on this.**
+  Getting it wrong makes test 006 print garbage.
+- Label names: `.Lstr<n>` where `<n>` is a per-file counter.
+
+Platform-specific differences:
+
+| | Darwin | Linux |
+|---|---|---|
+| Symbol prefix | `_` (e.g. `_main`) | none (e.g. `main`) |
+| String section | `.section __TEXT,__cstring,cstring_literals` | `.section .rodata` |
+| Alignment | `.p2align 2` | `.align 2` |
+| Symbol visibility | `.globl` | `.global` + `.type sym, %function` |
+| Immediate syntax | `#16` or `16` (both accepted) | `16` |
+
+The string literal pool looks like:
+
+Darwin:
+```
+.section __TEXT,__cstring,cstring_literals
+.Lstr0:
+    .asciz "hello world!\n"
+```
+
+Linux:
+```
+.section .rodata
+.Lstr0:
+    .asciz "hello world!\n"
+```
 
 ### M1.7. Testing plan
 
@@ -507,34 +532,39 @@ structural divergence is a bug to fix before moving on.
 
 ### S5 — Codegen, non-variadic path (000, 001, 002, 003)  *(target: 1–2 sessions)*
 
-- `Codegen.Aarch64_darwin`.
+- `Codegen.Aarch64` — shared instruction emitter.
+- `Codegen.Aarch64_darwin` and `Codegen.Aarch64_linux` — thin formatter
+  layers handling the platform-specific differences from M1.6:
+  symbol prefix, section names, alignment and visibility directives.
 - Prologue/epilogue, stack frame.
 - Stack-slot allocator for locals + temps. Simple: iterate ops once,
   assign each distinct name an offset.
 - Lower ops: `Assign`, `Return`, `ExternalReturn`, `Call`, `ExternalCall`
   (non-variadic only — at most named-arg count from the builtin proto).
-- Symbol prefix `_`.
 - Wire the real pipeline in `bin/pirxc`: lex → parse → typecheck →
   desugar → ir-gen → codegen. Replace M0 hardcoded-asm branch entirely.
+  Detect target at runtime (see D10).
 
-**Exit criteria:** tests 000, 001, 002, 003 pass via `testrunner`. Tests
-004–006 may still fail; `testall` should show exactly 4 new passes beyond
-M0's 1.
+**Exit criteria:** tests 000, 001, 002, 003 pass via `testrunner` on
+both aarch64-linux and aarch64-darwin. Tests 004–006 may still fail;
+`testall` should show exactly 4 new passes beyond M0's 1.
 
 Time flex: if stack-frame math or the `main` wrapper gets hairy, split
 into "S5a: Return-only (tests 000, 003)" and "S5b: Call support (001, 002)."
 
 ### S6 — Codegen variadic + string slice (004, 005, 006)  *(target: 1 session)*
 
-- `.cstring` literal pool, `.Lstr<n>` labels.
+- String literal pool with `.Lstr<n>` labels, section name per platform
+  (see M1.6 table).
 - 16-byte struct returns from `PirxString` via `x0`/`x1`, stored back
   to the caller's slot for the slice.
-- Variadic C-ABI: for the `...` portion, pass args on the stack
-  (Darwin-specific). Named args still in `x0`–`x7`.
+- Variadic C-ABI: `...` args on the stack (AAPCS64, same on both
+  platforms). Named args still in `x0`–`x7`.
 - `PirxPrintf(slice, ...)` calling convention.
 
-**Exit criteria:** tests 004, 005, 006 pass. `testrunner testall` shows
-exactly 7 tests passing (000–006) and no regressions.
+**Exit criteria:** tests 004, 005, 006 pass on both platforms.
+`testrunner testall` shows exactly 7 tests passing (000–006) and no
+regressions.
 
 ### S7 — M1 wrap-up  *(target: short)*
 
@@ -552,9 +582,11 @@ exactly 7 tests passing (000–006) and no regressions.
 
 Things likely to bite. Not action items — just things to watch.
 
-- **Variadic ABI on Darwin/aarch64.** The whole `printf` path depends on
+- **Variadic ABI on aarch64.** The whole `printf` path depends on
   getting this right. Keep `go run ./cmd/pirxc -o - tests/006_printf.pirx`
-  open in another terminal for reference.
+  open in another terminal for reference. Both Darwin and Linux follow
+  AAPCS64, but verify the two platforms produce identical call sequences
+  for this test.
 - **`PirxString` 16-byte return.** Two-register return values aren't
   exotic but they're easy to get subtly wrong (swapped halves, wrong
   store size).

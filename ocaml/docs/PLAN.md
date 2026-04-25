@@ -19,7 +19,7 @@ Companion docs (to be written as we go):
 
 - No new language features.
 - No feature regressions (anything currently passing must still pass).
-- No new target platforms. **macOS/arm64 only.** The Linux and x86_64 backends
+- **Targets: aarch64-darwin and aarch64-linux only.** The x86_64 backends
   are not ported.
 - No architectural experiments during the port (no SSA, no new IR, no new
   error model beyond what OCaml naturally affords). Save those for after.
@@ -256,8 +256,7 @@ workstream. If `TODO.md` acquires new entries during the port (e.g.,
 
 ## Deferred / explicitly out-of-scope
 
-- Linux targets (aarch64 and x86_64).
-- Darwin x86_64.
+- x86_64 targets (Linux and Darwin).
 - Rewriting the stdlib in anything other than C.
 - Rewriting the `pirx` build driver.
 - Rewriting `testrunner`.

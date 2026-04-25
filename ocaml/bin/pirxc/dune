@@ -1,4 +1,4 @@
 (executable
  (name main)
- (libraries core stdio pirx_location pirx_lexer pirx_ast pirx_parser)
+ (libraries core stdio pirx_location pirx_lexer pirx_ast pirx_parser pirx_typecheck pirx_desugar)
  (preprocess (pps ppx_jane)))

@@ -196,6 +196,42 @@ Not yet addressed (deferred to S3.2+):
 - Builtins beyond M1's three — each later milestone grows the table.
 - No `is_lvalue` beyond `E_ident`; field/deref targets arrive with M4.
 
-### S3.2–S7
+### S3.2 — Desugar + `-t final_ast` ✅
+
+Done:
+- `lib/desugar/` with `Desugar.run : Ast.program -> Ast.program`.
+  - Single M1 rule: `E_string_lit s` rewritten to
+    `E_call "PirxString" [E_int_lit (byte_len s); E_string_lit s]` with
+    outer call typed `String`, inner int literal typed `Int`. Inner
+    `E_string_lit` passes through unchanged with its `typ = Type.String`
+    from S3.1.
+  - Recurses into `E_call` args, `S_var_decl` init, `S_assign` target/value,
+    `S_return` value.
+- `bin/pirxc`:
+  - Added `-t final_ast` target: lex → parse → typecheck → desugar → print.
+  - On non-empty `Diag`: prints all entries to stderr as `file:line:col: msg`,
+    then `exit 1`.
+  - Hardcoded asm updated from aarch64-darwin (`;` comments) to aarch64-linux
+    (`//` comments, no `#` on immediates, no `_` prefixes, `.type` directives).
+    Default target changed from `"aarch64-darwin"` to `"aarch64-linux"` to
+    match the actual build platform.
+- `dune runtest` green (27 tests: 13 lexer, 3 parser, 11 typecheck).
+- `./testrunner test 000` passes.
+
+Deviations from DESIGN.md:
+- **Hardcoded asm updated to aarch64-linux.** M0–S2 ran on macOS and used
+  Darwin-style assembly (`;` comments, `_` prefixes, `#` on immediates).
+  On this Linux host that assembly failed GAS. Updated to match
+  `go run ./cmd/pirxc` on aarch64-linux. S5 will replace the blob with
+  real codegen that emits the correct format per platform.
+- **Dual-target scope change.** PLAN.md originally said "macOS/arm64 only";
+  updated in this session to target both aarch64-darwin and aarch64-linux.
+  DESIGN.md M1.6 and S5/S6 updated accordingly.
+
+Not yet addressed (deferred to S4+):
+- IR generation (`-t ir`).
+- Codegen wiring (S5–S6).
+
+### S4–S7
 
 Not started.

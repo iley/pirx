@@ -1,15 +1,86 @@
 (* pirxc — OCaml port of the Pirx compiler.
-   Through M1/S2: -t ast runs lex + parse + print. Other targets still emit
-   the M0 hardcoded aarch64-darwin blob (only valid for tests/000_empty.pirx
-   — enough to keep testrunner test 000 green while later slices land). *)
+   Through M1/S3.2: -t ast runs lex + parse + print; -t final_ast adds
+   typecheck + desugar. Other targets still emit the M0 hardcoded
+   aarch64-darwin blob until S5 wires codegen. *)
 
 open Core
 module Location = Pirx_location.Location
 module Lexer = Pirx_lexer.Lexer
 module Parser = Pirx_parser.Parser
 module Ast_pp = Pirx_ast.Pp
+module Typecheck = Pirx_typecheck.Typecheck
+module Desugar = Pirx_desugar.Desugar
 
-let hardcoded_asm =
+let hardcoded_asm_linux =
+{|.arch armv8-a
+.text
+.align 2
+.global Pirx_Main
+.type Pirx_Main, %function
+Pirx_Main:
+  // frame size: 0 bytes
+  sub sp, sp, 16
+  stp x29, x30, [sp]
+  mov x29, sp
+  sub sp, sp, 0
+  // Op 0: Return4(0)
+  mov w0, 0
+  str w0, [x19]
+.LPirx_Main_exit:
+  add sp, sp, 0
+  ldp x29, x30, [sp]
+  add sp, sp, 16
+  ret
+.text
+.align 2
+.global Pirx_Init
+.type Pirx_Init, %function
+Pirx_Init:
+  // frame size: 0 bytes
+  sub sp, sp, 16
+  stp x29, x30, [sp]
+  mov x29, sp
+  sub sp, sp, 0
+  // Op 0: Return()
+.LPirx_Init_exit:
+  add sp, sp, 0
+  ldp x29, x30, [sp]
+  add sp, sp, 16
+  ret
+.text
+.align 2
+.global main
+.type main, %function
+main:
+  // frame size: 16 bytes
+  sub sp, sp, 16
+  stp x29, x30, [sp]
+  mov x29, sp
+  sub sp, sp, 16
+  // Op 0: Call(Pirx_Init())
+  str x19, [sp, -8]
+  sub sp, sp, 16
+  bl Pirx_Init
+  add sp, sp, 16
+  ldr x19, [sp, -8]
+  // Op 1: Call4($ret = Pirx_Main())
+  str x19, [sp, -8]
+  add x19, sp, 0
+  sub sp, sp, 16
+  bl Pirx_Main
+  add sp, sp, 16
+  ldr x19, [sp, -8]
+  // Op 2: ExternalReturn4($ret)
+  ldr w0, [sp]
+  sxtw x0, w0
+.Lmain_exit:
+  add sp, sp, 16
+  ldp x29, x30, [sp]
+  add sp, sp, 16
+  ret
+|}
+
+let hardcoded_asm_darwin =
 {|.globl _Pirx_Main
 .p2align 2
 _Pirx_Main:
@@ -71,7 +142,7 @@ _main:
   ret
 |}
 
-let default_target = "aarch64-darwin"
+let default_target = "aarch64-linux"
 
 let usage = "Usage: pirxc [options] <input file>..."
 
@@ -90,7 +161,7 @@ let derive_output_name target inputs =
   | [one] ->
     let base = strip_pirx_ext one in
     (match target with
-     | "ast" -> base ^ ".txt"
+     | "ast" | "final_ast" | "ir" -> base ^ ".txt"
      | _ -> base ^ ".s")
   | _ ->
     die "When more than one input file name is provided, you must specify an output file name via -o"
@@ -103,10 +174,27 @@ let read_file path =
   try In_channel.read_all path
   with Sys_error msg -> die "cannot read %s: %s" path msg
 
-let compile_ast input =
+let parse_program input =
   let source = read_file input in
   let lexer = Lexer.create ~filename:input ~source in
-  let program = Parser.parse lexer in
+  Parser.parse lexer
+
+let compile_ast input =
+  Ast_pp.string_of_program (parse_program input) ^ "\n"
+
+let typecheck_and_report program =
+  let program, diag = Typecheck.check program in
+  if not (Pirx_typecheck.Diag.is_empty diag) then begin
+    List.iter (Pirx_typecheck.Diag.entries diag) ~f:(fun e ->
+      prerr_endline (Printf.sprintf "%s: %s" (Location.to_string e.loc) e.msg));
+    exit 1
+  end;
+  program
+
+let compile_final_ast input =
+  let program = parse_program input in
+  let program = typecheck_and_report program in
+  let program = Desugar.run program in
   Ast_pp.string_of_program program ^ "\n"
 
 let () =
@@ -139,8 +227,13 @@ let () =
         (match inputs with
          | [one] -> compile_ast one
          | _ -> die "-t ast expects a single input file")
-      | "final_ast" | "ir" -> die "-t %s not implemented yet" !target
-      | "aarch64-darwin" -> hardcoded_asm
+      | "final_ast" ->
+        (match inputs with
+         | [one] -> compile_final_ast one
+         | _ -> die "-t final_ast expects a single input file")
+      | "ir" -> die "-t %s not implemented yet" !target
+      | "aarch64-linux" -> hardcoded_asm_linux
+      | "aarch64-darwin" -> hardcoded_asm_darwin
       | other -> die "unsupported target: %s" other
     in
     write_output out_spec content

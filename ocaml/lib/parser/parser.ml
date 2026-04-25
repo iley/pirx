@@ -93,7 +93,7 @@ let rec parse_expression t : Ast.expr =
     let next = peek t in
     (match next.tok with
      | Lparen -> parse_call t ~name ~loc:lx.loc
-     | _ -> Ast.make_expr ~loc:lx.loc (E_ident name))
+     | _ -> Ast.make_expr ~loc:lx.loc (E_ident { name }))
   | other -> error lx.loc "expected expression, got %s" (token_desc other)
 
 and parse_call t ~name ~loc =

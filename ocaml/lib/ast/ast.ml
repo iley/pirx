@@ -10,17 +10,20 @@ type expr = {
 and expr_kind =
   | E_int_lit of int64
   | E_string_lit of string
-  | E_ident of string
+  | E_ident of { mutable name : string }
   | E_call of { name : string; args : expr list }
 [@@deriving sexp_of]
 
+type var_decl = {
+  loc : Location.t;
+  mutable name : string;
+  typ : Type.t option;
+  init : expr option;
+}
+[@@deriving sexp_of]
+
 type stmt =
-  | S_var_decl of {
-      loc : Location.t;
-      name : string;
-      typ : Type.t option;
-      init : expr option;
-    }
+  | S_var_decl of var_decl
   | S_assign of { loc : Location.t; target : expr; value : expr }
   | S_expr of expr
   | S_return of { loc : Location.t; value : expr option }

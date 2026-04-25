@@ -10,6 +10,8 @@ module Parser = Pirx_parser.Parser
 module Ast_pp = Pirx_ast.Pp
 module Typecheck = Pirx_typecheck.Typecheck
 module Desugar = Pirx_desugar.Desugar
+module Ir_generator = Pirx_ir.Generator
+module Ir_pp = Pirx_ir.Pp
 
 let hardcoded_asm_linux =
 {|.arch armv8-a
@@ -197,6 +199,13 @@ let compile_final_ast input =
   let program = Desugar.run program in
   Ast_pp.string_of_program program ^ "\n"
 
+let compile_ir input =
+  let program = parse_program input in
+  let program = typecheck_and_report program in
+  let program = Desugar.run program in
+  let ir = Ir_generator.generate program in
+  Ir_pp.string_of_program ir
+
 let () =
   let output = ref "" in
   let no_opt = ref false in
@@ -231,7 +240,10 @@ let () =
         (match inputs with
          | [one] -> compile_final_ast one
          | _ -> die "-t final_ast expects a single input file")
-      | "ir" -> die "-t %s not implemented yet" !target
+      | "ir" ->
+        (match inputs with
+         | [one] -> compile_ir one
+         | _ -> die "-t ir expects a single input file")
       | "aarch64-linux" -> hardcoded_asm_linux
       | "aarch64-darwin" -> hardcoded_asm_darwin
       | other -> die "unsupported target: %s" other

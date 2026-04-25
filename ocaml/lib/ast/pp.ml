@@ -19,7 +19,7 @@ let rec pp_expr buf (e : Ast.expr) =
     Buffer.add_char buf '"';
     Buffer.add_string buf (escape_string s);
     Buffer.add_char buf '"'
-  | E_ident name -> Buffer.add_string buf name
+  | E_ident { name } -> Buffer.add_string buf name
   | E_call { name; args } ->
     Buffer.add_char buf '(';
     Buffer.add_string buf name;

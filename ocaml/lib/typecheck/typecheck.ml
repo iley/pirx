@@ -23,11 +23,13 @@ let rec check_expr (ctx : ctx) (e : Ast.expr) : unit =
     match e.kind with
     | E_int_lit _ -> Type.Int
     | E_string_lit _ -> Type.String
-    | E_ident name ->
-      (match Varstack.lookup ctx.vars name with
-       | Some t -> t
+    | E_ident id ->
+      (match Varstack.lookup ctx.vars id.name with
+       | Some { unique_name; typ } ->
+         id.name <- unique_name;
+         typ
        | None ->
-         Diag.pushf ctx.diag e.loc "undeclared identifier '%s'" name;
+         Diag.pushf ctx.diag e.loc "undeclared identifier '%s'" id.name;
          Type.Undefined)
     | E_call { name; args } ->
       List.iter args ~f:(check_expr ctx);
@@ -74,14 +76,14 @@ let is_lvalue (e : Ast.expr) : bool =
 
 let rec check_stmt (ctx : ctx) (s : Ast.stmt) : unit =
   match s with
-  | S_var_decl { loc; name; typ; init } -> check_var_decl ctx ~loc ~name ~typ ~init
+  | S_var_decl decl -> check_var_decl ctx decl
   | S_assign { target; value; _ } -> check_assign ctx ~target ~value
   | S_expr e -> check_expr ctx e
   | S_return { loc; value } -> check_return ctx ~loc ~value
 
-and check_var_decl ctx ~loc ~name ~typ ~init =
+and check_var_decl ctx (decl : Ast.var_decl) =
   let declared_ty =
-    match typ, init with
+    match decl.typ, decl.init with
     | Some t, Some e ->
       check_expr ctx e;
       if not (compatible e.typ t) then
@@ -94,14 +96,14 @@ and check_var_decl ctx ~loc ~name ~typ ~init =
       check_expr ctx e;
       e.typ
     | None, None ->
-      Diag.pushf ctx.diag loc
-        "variable '%s' needs either a type annotation or an initializer" name;
+      Diag.pushf ctx.diag decl.loc
+        "variable '%s' needs either a type annotation or an initializer" decl.name;
       Type.Undefined
   in
-  match Varstack.declare ctx.vars name declared_ty with
-  | `Ok -> ()
+  match Varstack.declare ctx.vars decl.name declared_ty with
+  | `Ok unique_name -> decl.name <- unique_name
   | `Duplicate_in_scope ->
-    Diag.pushf ctx.diag loc "variable '%s' is already declared in this scope" name
+    Diag.pushf ctx.diag decl.loc "variable '%s' is already declared in this scope" decl.name
 
 and check_assign ctx ~target ~value =
   check_expr ctx target;
@@ -141,7 +143,7 @@ let check_func (diag : Diag.t) (funcs : Functions.t) (f : Ast.func) : unit =
        checkBlock opens another for the body). *)
     List.iter f.args ~f:(fun (name, ty) ->
       match Varstack.declare vars name ty with
-      | `Ok -> ()
+      | `Ok _ -> ()
       | `Duplicate_in_scope ->
         Diag.pushf diag f.loc "duplicate function argument: %s" name);
     let ctx =

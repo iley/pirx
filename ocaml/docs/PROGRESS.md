@@ -232,6 +232,53 @@ Not yet addressed (deferred to S4+):
 - IR generation (`-t ir`).
 - Codegen wiring (S5–S6).
 
-### S4–S7
+### S4 — IR generation + `-t ir` ✅
+
+Done:
+- `lib/ir/` — `Ir.arg`, `Ir.call_arg`, `Ir.op`, `Ir.func`, `Ir.program` ADTs
+  matching Go's IR types (M1 subset: `Assign`, `Call`, `ExternalCall`,
+  `Return`, `ExternalReturn`).
+- `lib/ir/pp.ml` — printer matching Go's `IrProgram.Print` / `IrFunction.Print`
+  format byte-for-byte. `count_locals_and_temps` mirrors Go's logic
+  (locals = non-`$` non-`@` targets; temps = `$`-prefixed targets).
+- `lib/ir/generator.ml` — `Generator.generate : Ast.program -> Ir.program`.
+  - Builds function table via `Functions.build` (reuses typechecker infra).
+  - Per-function: tracks locals/temps, renames `main` → `Pirx_Main`, emits
+    implicit bare return if function doesn't end with `Return`/`ExternalReturn`.
+  - Expression lowering: `E_int_lit` → `Int_lit` (size 4), `E_string_lit` →
+    `String_lit` (size 8, matching Go's hardcoded literal size),
+    `E_ident` → `Var`, `E_call` → `Call` or `ExternalCall` with temp
+    allocation for non-void returns.
+  - Statement lowering: `S_var_decl` (with/without init), `S_assign` (ident
+    targets only for M1), `S_expr`, `S_return`.
+  - Emits synthetic `Pirx_Init` (empty `Return()`) and `main` wrapper
+    (`Call Pirx_Init`, `Call4($ret = Pirx_Main)`, `ExternalReturn4($ret)`).
+- `bin/pirxc` wired for `-t ir`: lex → parse → typecheck → desugar → ir-gen →
+  print. Hardcoded asm fallback still active for default target.
+- `test/ir/` — 5 alcotest cases: empty, putchar, string literal (PirxString +
+  PirxPrintf), function calls (temp allocation + Assign), swap (multiple
+  locals, no temps).
+- IR output diffed against `go run ./cmd/pirxc -O0 -t ir` for tests 000–006:
+  **all diffs empty** (exact match on op set, sizes, argument order; temp
+  naming is `$1`, `$2`, … which matches Go's `-O0` output).
+- `dune runtest` green (32 tests: 13 lexer, 3 parser, 11 typecheck, 5 ir).
+
+Deviations from DESIGN.md:
+- **No `next_label` in generator state.** M1 has no control flow, so labels
+  are unused. Field omitted to avoid unused-field warnings; will add at M2.
+- **IR generator depends on `pirx_typecheck`.** DESIGN.md D7 says one library
+  per stage. `pirx_ir` reuses `Functions` and `Proto` from `pirx_typecheck`
+  rather than duplicating the function-table builder. No cycle introduced.
+
+Environment notes for next sessions:
+- `./ocaml/_build/default/bin/pirxc/main.exe -t ir -o - tests/NNN_*.pirx`
+  now produces output identical to `go run ./cmd/pirxc -O0 -t ir` for
+  tests 000–006. This is the primary debug aid for S5/S6 codegen.
+
+Not yet addressed (deferred to S5+):
+- Codegen (real assembly emission). Default target still uses M0 hardcoded
+  blob, so `./testrunner test 000` passes but 001–006 do not yet.
+
+### S5–S7
 
 Not started.

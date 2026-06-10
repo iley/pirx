@@ -1,0 +1,5 @@
+pirxc compilation failed: exit status 1
+Output: tests/133_global_decl_errors.pirx:4:1: variable g is already declared
+tests/133_global_decl_errors.pirx:6:13: variable late is not declared before reference
+tests/133_global_decl_errors.pirx:6:18: binary operation + cannot be applied to values of types undefined and int
+Error: exit status 1

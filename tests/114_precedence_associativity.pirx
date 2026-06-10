@@ -1,0 +1,26 @@
+// Operator precedence and associativity.
+func main(): int {
+  // Multiplication binds tighter than addition.
+  printf("%d\n", 2 + 3 * 4);
+  printf("%d\n", (2 + 3) * 4);
+
+  // Same-precedence operators associate left to right.
+  printf("%d\n", 10 - 4 - 3);
+  printf("%d\n", 100 / 10 / 2);
+  printf("%d\n", 20 % 7 % 4);
+  printf("%d\n", 2 * 3 % 4);
+  printf("%d\n", 6 % 4 * 2);
+
+  // Unary minus binds tighter than binary operators.
+  printf("%d\n", -2 * 3);
+  printf("%d\n", 10 - -3);
+  printf("%d\n", -(2 + 3));
+
+  // Comparisons bind tighter than && which binds tighter than ||.
+  printf("%d\n", 2 + 3 < 4 + 4);
+  printf("%d\n", 1 + 1 == 2 && 2 * 2 == 4);
+  printf("%d\n", true || false && false);
+  printf("%d\n", !false && true);
+
+  return 0;
+}

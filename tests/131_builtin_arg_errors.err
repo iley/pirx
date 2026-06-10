@@ -1,0 +1,7 @@
+pirxc compilation failed: exit status 1
+Output: tests/131_builtin_arg_errors.pirx:3:3: argument of dispose must be either a pointer or a slice, got int
+tests/131_builtin_arg_errors.pirx:4:3: expected a list type, got int
+tests/131_builtin_arg_errors.pirx:7:3 argument of resize must be a pointer to a slice, got []int
+tests/131_builtin_arg_errors.pirx:9:17: expected a list type, got int
+tests/131_builtin_arg_errors.pirx:9:3: cannot initialize variable p of type *int with expression of type voidptr
+Error: exit status 1

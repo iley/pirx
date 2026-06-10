@@ -1,0 +1,18 @@
+// Globals are initialized in declaration order before main runs;
+// initializers can call functions and reference previously declared globals.
+var BASE = 10;
+var DERIVED = BASE * BASE + 1;
+var CALC = double(21);
+var CHAIN = CALC + 1;
+
+func double(x: int): int {
+  return x + x;
+}
+
+func main(): int {
+  printf("%d\n", BASE);
+  printf("%d\n", DERIVED);
+  printf("%d\n", CALC);
+  printf("%d\n", CHAIN);
+  return 0;
+}

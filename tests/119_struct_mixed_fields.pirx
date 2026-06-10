@@ -1,0 +1,34 @@
+// Structs with fields of different sizes: alignment and padding must not
+// corrupt neighbouring fields.
+struct Mixed {
+  n: int8;
+  f: float64;
+  b: bool;
+  s: string;
+  m: int8;
+}
+
+func main(): int {
+  var v: Mixed;
+
+  // All fields start zeroed.
+  printf("%d %.1f %d %d %d\n", int(v.n), v.f, v.b, getsize(v.s), int(v.m));
+
+  v.n = 7i8;
+  v.f = 3.25;
+  v.b = true;
+  v.s = "hello";
+  v.m = -7i8;
+
+  printf("%d %.2f %d %d\n", int(v.n), v.f, v.b, int(v.m));
+  printf("%s %d\n", cstr(v.s), getsize(v.s));
+
+  // Copying preserves all fields.
+  var w = v;
+  v.n = 0i8;
+  v.s = "bye";
+  printf("%d %.2f %d %d\n", int(w.n), w.f, w.b, int(w.m));
+  printf("%s %d\n", cstr(w.s), getsize(w.s));
+
+  return 0;
+}

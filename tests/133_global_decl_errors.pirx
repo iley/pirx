@@ -1,0 +1,11 @@
+// Globals cannot be redeclared, and an initializer can only reference
+// globals declared before it.
+var g = 1;
+var g = 2;
+
+var early = late + 1;
+var late = 2;
+
+func main(): int {
+  return 0;
+}

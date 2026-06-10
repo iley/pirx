@@ -1,0 +1,12 @@
+// Built-in functions check their argument types.
+func main(): int {
+  dispose(42);
+  getsize(42);
+
+  var s = new([]int, 2);
+  resize(s, 5); // resize needs a pointer to a slice
+
+  var p: *int = getptr(5);
+
+  return 0;
+}

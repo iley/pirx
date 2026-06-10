@@ -1,0 +1,17 @@
+// A variable declared in a for loop header is scoped to the loop and shadows
+// outer variables instead of clobbering them.
+func main(): int {
+  var i = 99;
+  for var i = 0; i < 3; i++ {
+    printf("inner %d\n", i);
+  }
+  printf("outer %d\n", i);
+
+  // The loop body can shadow the loop variable itself.
+  for var j = 0; j < 2; j++ {
+    var j = 100;
+    printf("body %d\n", j);
+  }
+
+  return 0;
+}

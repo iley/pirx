@@ -1,0 +1,24 @@
+// Character literals are int8 values; escapes and arithmetic on them.
+func main(): int {
+  printf("%d %d %d\n", int('A'), int('z'), int(' '));
+
+  // Escape sequences.
+  printf("%d %d %d %d %d\n", int('\n'), int('\t'), int('\\'), int('\''), int('\0'));
+
+  // Characters are just numbers: arithmetic works.
+  printf("%d\n", 'z' - 'a');
+  var c = 'A';
+  c = c + 1i8;
+  printf("%c %d\n", c, int(c));
+
+  // Comparing characters from a string.
+  var s = "hat";
+  if s[0] == 'h' && s[1] == 'a' && s[2] != 'x' {
+    printf("match\n");
+  }
+  if 'a' < 'b' {
+    printf("ordered\n");
+  }
+
+  return 0;
+}

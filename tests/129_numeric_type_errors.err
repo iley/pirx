@@ -1,0 +1,14 @@
+pirxc compilation failed: exit status 1
+Output: tests/129_numeric_type_errors.pirx:4:3: cannot initialize variable a of type int8 with expression of type int
+tests/129_numeric_type_errors.pirx:5:3: cannot initialize variable b of type int64 with expression of type int
+tests/129_numeric_type_errors.pirx:6:3: cannot initialize variable c of type int with expression of type int64
+tests/129_numeric_type_errors.pirx:7:3: cannot initialize variable d of type float64 with expression of type int
+tests/129_numeric_type_errors.pirx:9:13: binary operation + cannot be applied to values of types int and int64
+tests/129_numeric_type_errors.pirx:10:15: binary operation + cannot be applied to values of types int8 and int
+tests/129_numeric_type_errors.pirx:11:15: binary operation + cannot be applied to values of types float64 and int
+tests/129_numeric_type_errors.pirx:14:13: binary operation < cannot be applied to values of types float64 and int
+tests/129_numeric_type_errors.pirx:17:8: binary operation < cannot be applied to values of types bool and bool
+tests/129_numeric_type_errors.pirx:18:7: binary operation < cannot be applied to values of types string and string
+tests/129_numeric_type_errors.pirx:21:9: binary operation < cannot be applied to values of types bool and int
+tests/129_numeric_type_errors.pirx:24:3 argument of int must be of a numeric type, got bool
+Error: exit status 1

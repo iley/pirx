@@ -1,0 +1,18 @@
+// Assignments are expressions: they evaluate to the assigned value.
+func main(): int {
+  // Plain assignment used as a value in a condition.
+  var x = 0;
+  while (x = x + 1) < 4 {
+    printf("%d\n", x);
+  }
+
+  // Compound assignment also evaluates to the new value.
+  var y = 1;
+  var z = (y += 5);
+  printf("%d %d\n", y, z);
+
+  var w = (y -= 2);
+  printf("%d %d\n", y, w);
+
+  return 0;
+}

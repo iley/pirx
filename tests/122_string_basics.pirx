@@ -1,0 +1,36 @@
+// Strings as values: lengths, passing, returning, globals and struct fields.
+var GREETING = "global hello";
+
+struct Named {
+  name: string;
+}
+
+func greet(): string {
+  return "hi there";
+}
+
+func shout(s: string) {
+  printf("%s!\n", cstr(s));
+}
+
+func main(): int {
+  printf("%d %d\n", getsize("hello"), getsize(""));
+
+  var g = greet();
+  printf("%s %d\n", cstr(g), getsize(g));
+
+  printf("%s %d\n", cstr(GREETING), getsize(GREETING));
+
+  var n: Named;
+  n.name = "pirx";
+  printf("%s %d\n", cstr(n.name), getsize(n.name));
+
+  shout(n.name);
+
+  // Reassignment.
+  var s = "first";
+  s = "second";
+  printf("%s\n", cstr(s));
+
+  return 0;
+}

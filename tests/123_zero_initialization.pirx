@@ -1,0 +1,39 @@
+// Variables declared without an initializer are zero-initialized.
+struct Point {
+  x: int;
+  y: int;
+}
+
+func main(): int {
+  var i: int;
+  var i8: int8;
+  var i64: int64;
+  var b: bool;
+  var f: float64;
+  printf("%d %d %lld %d %.1f\n", i, int(i8), i64, b, f);
+
+  // The zero value of a pointer is null.
+  var p: *int;
+  printf("%d\n", p == null);
+
+  // The zero value of a slice has size 0.
+  var s: []int;
+  printf("%d\n", getsize(s));
+
+  // The zero value of a string is empty.
+  var str: string;
+  printf("%d\n", getsize(str));
+
+  // Struct fields are zeroed too.
+  var pt: Point;
+  printf("%d %d\n", pt.x, pt.y);
+
+  // A declaration inside a loop body re-zeroes the variable on every iteration.
+  for var k = 0; k < 3; k++ {
+    var x: int;
+    x = x + 1;
+    printf("%d\n", x);
+  }
+
+  return 0;
+}

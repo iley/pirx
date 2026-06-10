@@ -1,0 +1,27 @@
+// There are no implicit numeric conversions: mixing int, int8, int64 and
+// float64 is an error, even for literals.
+func main(): int {
+  var a: int8 = 5;
+  var b: int64 = 5;
+  var c: int = 5l;
+  var d: float64 = 5;
+
+  var e = 1 + 1l;
+  var f = 1i8 + 1;
+  var g = 1.0 + 1;
+
+  var h: float64 = 2.5;
+  var i = h < 2;
+
+  // Ordering comparisons require numeric operands.
+  true < false;
+  "a" < "b";
+
+  // Comparisons cannot be chained: 1 < 2 yields a bool.
+  1 < 2 < 3;
+
+  // Casts only accept numeric values.
+  int(true);
+
+  return 0;
+}

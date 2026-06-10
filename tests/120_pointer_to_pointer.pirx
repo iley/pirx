@@ -1,0 +1,22 @@
+// Pointers to pointers: reading and writing through double indirection.
+func main(): int {
+  var x = 5;
+  var y = 10;
+
+  var p = &x;
+  var pp = &p;
+
+  printf("%d\n", **pp);
+
+  // Write through double indirection.
+  **pp = 42;
+  printf("%d %d\n", x, **pp);
+
+  // Re-point the inner pointer through the outer one.
+  *pp = &y;
+  printf("%d\n", **pp);
+  **pp = 11;
+  printf("%d %d\n", x, y);
+
+  return 0;
+}

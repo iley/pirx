@@ -1,0 +1,19 @@
+// A function without a return type can use a bare `return;` to exit early.
+func describe(x: int) {
+  if x > 0 {
+    printf("positive\n");
+    return;
+  }
+  if x == 0 {
+    printf("zero\n");
+    return;
+  }
+  printf("negative\n");
+}
+
+func main(): int {
+  describe(5);
+  describe(0);
+  describe(-5);
+  return 0;
+}

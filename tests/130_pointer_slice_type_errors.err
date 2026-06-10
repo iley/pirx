@@ -1,0 +1,8 @@
+pirxc compilation failed: exit status 1
+Output: tests/130_pointer_slice_type_errors.pirx:9:5: cannot assign value of type *int to lvalue of type *int8
+tests/130_pointer_slice_type_errors.pirx:11:9: binary operation + cannot be applied to values of types *int and int
+tests/130_pointer_slice_type_errors.pirx:11:5: cannot assign value of type int to lvalue of type *int
+tests/130_pointer_slice_type_errors.pirx:13:3: unary operation * cannot be applied to a value of type int
+tests/130_pointer_slice_type_errors.pirx:16:5: cannot assign value of type []int8 to lvalue of type []int
+tests/130_pointer_slice_type_errors.pirx:18:3: unary operation - cannot be applied to a value of type bool
+Error: exit status 1

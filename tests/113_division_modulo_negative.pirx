@@ -1,0 +1,19 @@
+// Division truncates toward zero and modulo takes the sign of the dividend
+// (C semantics), for all integer sizes.
+func main(): int {
+  printf("%d %d %d %d\n", -7 / 2, 7 / -2, -7 / -2, 7 / 2);
+  printf("%d %d %d %d\n", -7 % 3, 7 % -3, -7 % -3, 7 % 3);
+
+  // The identity (a/b)*b + a%b == a must hold.
+  var a = -17;
+  var b = 5;
+  printf("%d\n", (a / b) * b + a % b);
+
+  var x: int64 = -9000000000l;
+  printf("%lld %lld\n", x / 7l, x % 7l);
+
+  var c: int8 = -100i8;
+  printf("%d %d\n", int(c / 7i8), int(c % 7i8));
+
+  return 0;
+}

@@ -1,0 +1,21 @@
+// Pointers and slices of different element types are incompatible,
+// there is no pointer arithmetic, and only pointers can be dereferenced.
+func main(): int {
+  var x = 5;
+  var p: *int = &x;
+
+  var b: int8 = 1i8;
+  var q: *int8 = &b;
+  q = p;
+
+  p = p + 1;
+
+  *x;
+
+  var s = new([]int, 2);
+  s = new([]int8, 2);
+
+  -true;
+
+  return 0;
+}

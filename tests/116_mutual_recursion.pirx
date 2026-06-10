@@ -1,0 +1,21 @@
+// Functions can call functions defined later in the file, including mutual recursion.
+func isEven(n: int): bool {
+  if n == 0 {
+    return true;
+  }
+  return isOdd(n - 1);
+}
+
+func isOdd(n: int): bool {
+  if n == 0 {
+    return false;
+  }
+  return isEven(n - 1);
+}
+
+func main(): int {
+  printf("%d %d\n", isEven(10), isOdd(10));
+  printf("%d %d\n", isEven(7), isOdd(7));
+  printf("%d %d\n", isEven(0), isOdd(0));
+  return 0;
+}

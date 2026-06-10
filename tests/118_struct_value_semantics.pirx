@@ -1,0 +1,43 @@
+// Structs are values: assignment, argument passing and returning all copy.
+struct Point {
+  x: int;
+  y: int;
+}
+
+struct Rect {
+  topLeft: Point;
+  bottomRight: Point;
+}
+
+func moved(p: Point): Point {
+  p.x = p.x + 100;
+  p.y = p.y + 100;
+  return p;
+}
+
+func main(): int {
+  // Assignment copies; modifying the copy leaves the original intact.
+  var a: Point;
+  a.x = 1;
+  a.y = 2;
+  var b = a;
+  b.x = 99;
+  printf("a=(%d,%d) b=(%d,%d)\n", a.x, a.y, b.x, b.y);
+
+  // Passing by value: the callee modifies its own copy.
+  var m = moved(a);
+  printf("a=(%d,%d) m=(%d,%d)\n", a.x, a.y, m.x, m.y);
+
+  // Nested structs are copied as part of the outer struct.
+  var r: Rect;
+  r.topLeft.x = 1;
+  r.topLeft.y = 2;
+  r.bottomRight.x = 3;
+  r.bottomRight.y = 4;
+  var r2 = r;
+  r2.topLeft.x = 77;
+  printf("r=(%d,%d)-(%d,%d)\n", r.topLeft.x, r.topLeft.y, r.bottomRight.x, r.bottomRight.y);
+  printf("r2=(%d,%d)-(%d,%d)\n", r2.topLeft.x, r2.topLeft.y, r2.bottomRight.x, r2.bottomRight.y);
+
+  return 0;
+}

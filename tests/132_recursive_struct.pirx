@@ -1,0 +1,9 @@
+// A struct cannot contain itself by value (only via a pointer).
+struct Node {
+  value: int;
+  next: Node;
+}
+
+func main(): int {
+  return 0;
+}

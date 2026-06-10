@@ -1,0 +1,22 @@
+// Integer arithmetic wraps around (two's complement) for all integer sizes.
+func main(): int {
+  var maxInt: int = 2147483647;
+  printf("%d\n", maxInt + 1);
+
+  var nearMin: int = -2147483647;
+  printf("%d\n", nearMin - 2);
+
+  printf("%d\n", 65536 * 65536);
+  printf("%d\n", 65535 * 65537);
+
+  var maxI8: int8 = 127i8;
+  printf("%d\n", int(maxI8 + 1i8));
+
+  var nearMinI8: int8 = -127i8;
+  printf("%d\n", int(nearMinI8 - 2i8));
+
+  var maxI64: int64 = 9223372036854775807l;
+  printf("%lld\n", maxI64 + 1l);
+
+  return 0;
+}

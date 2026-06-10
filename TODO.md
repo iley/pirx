@@ -1,11 +1,5 @@
 # TODO
 
-## Bugs
-
-### printf reads garbage for any argument after a %s
-
-`printf("%s %lld\n", "hi", 99l)` prints `hi 12884901890` instead of `hi 99`. A string argument is passed to `PirxPrintf` as a full 16-byte slice (data pointer, size, cap), but `PirxPrintf` forwards the varargs straight to C's `vprintf`, whose `%s` consumes only the 8-byte data pointer. All subsequent arguments are then read 8 bytes off (the first one gets the string's size/cap words). Fix options: make `PirxPrintf` interpret the format string itself, or pass strings as plain `char*` and the length separately.
-
 ## Missing Features
 
 ### Initializer lists only work in variable declarations

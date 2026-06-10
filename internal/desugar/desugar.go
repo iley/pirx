@@ -280,8 +280,28 @@ func desugarFunctionCall(dc *desugarContext, call *ast.FunctionCall) ast.Express
 		return desugarSizeof(dc, &result)
 	case "int":
 		return desugarIntCast(&result)
+	case "printf":
+		return desugarPrintf(&result)
 	}
 	return &result
+}
+
+// desugarPrintf wraps string varargs in cstr(). C varargs cannot carry a 16-byte
+// Pirx string: vprintf's %s would consume only the data pointer, leaving all
+// subsequent arguments misaligned. The format string itself stays a slice because
+// it's a named argument of PirxPrintf.
+func desugarPrintf(call *ast.FunctionCall) *ast.FunctionCall {
+	for i, arg := range call.Args[1:] {
+		if ast.String.Equals(arg.GetType()) {
+			call.Args[i+1] = &ast.FunctionCall{
+				Loc:          arg.GetLocation(),
+				FunctionName: "cstr",
+				Args:         []ast.Expression{arg},
+				Type:         &ast.PointerType{ElementType: ast.Int8},
+			}
+		}
+	}
+	return call
 }
 
 func desugarSizeof(dc *desugarContext, call *ast.FunctionCall) ast.Expression {

@@ -1,0 +1,22 @@
+// Strings passed to printf's %s directly, including arguments following them.
+
+struct Named {
+  name: string;
+}
+
+func main(): int {
+  // The original bug: the int64 after the string was read 8 bytes off.
+  printf("%s %lld\n", "hi", 99l);
+
+  var s = "world";
+  printf("%s %d %s %d\n", "hello", 1, s, 2);
+
+  var n: Named;
+  n.name = "pirx";
+  printf("%d %s %.2f\n", 42, n.name, 3.5);
+
+  // cstr() still works for %s as well.
+  printf("%s %d\n", cstr(s), getsize(s));
+
+  return 0;
+}

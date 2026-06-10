@@ -338,10 +338,10 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 		}
 	} else if assign.Value.LiteralInt != nil {
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
-		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Target)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Size, assign.Target)...)
 	} else if assign.Value.LiteralFloat != nil {
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
-		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Target)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, assign.Size), assign.Size, assign.Target)...)
 	} else if assign.Value.Zero {
 		if ir.IsGlobal(assign.Target) {
 			// Do nothing.
@@ -691,7 +691,7 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 
 	// Attention! This can be an implicit size cast!
 	// A typical example where this happens is "boolean = (int64 == int64)".
-	lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+	lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Size, binop.Result)...)
 	return lines, nil
 }
 
@@ -703,21 +703,21 @@ func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) ([]asm.Line, error) {
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
 		lines = append(lines, asm.Op2("cmp", asm.X0, asm.Imm(0)))
 		lines = append(lines, asm.Op2("cset", asm.X0, asm.Ref("eq")))
-		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Size, op.Result)...)
 	case "-":
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
 		reg := asm.Reg(registerByIndex(0, op.Size))
 		lines = append(lines, asm.Op2("neg", reg, reg))
-		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Size, op.Result)...)
 	case "-.":
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, op.Size), op.Size, op.Value)...)
 		lines = append(lines, asm.Op2("fmov", asm.Reg("d0"), asm.Reg(registerByIndex(0, op.Size))))
 		lines = append(lines, asm.Op2("fneg", asm.Reg("d0"), asm.Reg("d0")))
 		lines = append(lines, asm.Op2("fmov", asm.Reg(registerByIndex(0, op.Size)), asm.Reg("d0")))
-		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Size, op.Result)...)
 	case "&":
 		lines = append(lines, generateAddressLoad(cc, "x0", op.Value)...)
-		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Result)...)
+		lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, op.Size), op.Size, op.Result)...)
 	case "*":
 		lines = append(lines, generateMemoryCopyFromRef(cc, op.Value, op.Size, op.Result)...)
 	default:
@@ -816,7 +816,7 @@ func generateExternalResultStore(cc *CodegenContext, size int, target string) []
 			}
 		} else {
 			// Copy one byte at a time as we don't support half-word access currently.
-			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(retReg, 1), target, offset)...)
+			lines = append(lines, generateStoreToLocalWithOffsetSized(cc, registerByIndex(retReg, 1), 1, target, offset)...)
 			offset += 1
 			if size > offset {
 				lines = append(lines, asm.Op3("lsr", asm.Reg(fmt.Sprintf("x%d", retReg)), asm.Reg(fmt.Sprintf("x%d", retReg)), asm.Imm(8)))
@@ -953,7 +953,9 @@ func generateAddressLoad(cc *CodegenContext, reg string, arg ir.Arg) []asm.Line 
 
 // TODO: Store set of currently used registers in the context.
 // Trashes X1 and X9.
-func generateStoreToVariable(cc *CodegenContext, reg string, target string) []asm.Line {
+// Takes an explicit size because the register name alone cannot express byte-sized
+// stores: w registers are used for both 4-byte and 1-byte values.
+func generateStoreToVariable(cc *CodegenContext, reg string, regSize int, target string) []asm.Line {
 	var lines []asm.Line
 
 	if ir.IsGlobal(target) {
@@ -961,9 +963,9 @@ func generateStoreToVariable(cc *CodegenContext, reg string, target string) []as
 			panic("cannot do generateStoreToVariable for x1")
 		}
 		lines = append(lines, generateAddressLoad(cc, "x1", ir.Arg{Variable: target})...)
-		lines = append(lines, generateRegisterStore(reg, "x1", 0)...)
+		lines = append(lines, generateRegisterStoreSized(reg, regSize, "x1", 0)...)
 	} else {
-		lines = append(lines, generateStoreToLocalWithOffset(cc, reg, target, 0)...)
+		lines = append(lines, generateStoreToLocalWithOffsetSized(cc, reg, regSize, target, 0)...)
 	}
 
 	return lines

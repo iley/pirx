@@ -1,0 +1,12 @@
+// int8 multiplication, including negative operands and overflow wrap-around.
+func main(): int {
+  var a: int8 = 10i8;
+  var b: int8 = -7i8;
+  printf("%d\n", int(a * b));
+
+  // 10 * 13 = 130 wraps to -126 in two's complement.
+  var c: int8 = 13i8;
+  printf("%d\n", int(a * c));
+
+  return 0;
+}

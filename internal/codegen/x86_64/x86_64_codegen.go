@@ -559,25 +559,19 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 	case "-":
 		lines = append(lines, asm.Op2("sub"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
 	case "*":
-		lines = append(lines, asm.Op2("imul"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+		if binop.OperandSize == 1 {
+			// Two-operand imul has no byte form; widen to 32 bits, the wrapped product is in al.
+			lines = append(lines, asm.Op2("movsbl", asm.Reg("al"), asm.Reg("eax")))
+			lines = append(lines, asm.Op2("movsbl", asm.Reg("cl"), asm.Reg("ecx")))
+			lines = append(lines, asm.Op2("imull", asm.Reg("ecx"), asm.Reg("eax")))
+		} else {
+			lines = append(lines, asm.Op2("imul"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
+		}
 	case "/":
-		// Sign-extend dividend into rdx:rax, then divide by r1, quotient goes to rax
-		switch binop.OperandSize {
-		case 4:
-			lines = append(lines, asm.Op0("cltd"))
-		case 8:
-			lines = append(lines, asm.Op0("cqo"))
-		}
-		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
+		lines = append(lines, generateIntegerDivision(binop.OperandSize)...)
 	case "%":
-		// Same as division, but remainder is in rdx instead of quotient in rax
-		switch binop.OperandSize {
-		case 4:
-			lines = append(lines, asm.Op0("cltd"))
-		case 8:
-			lines = append(lines, asm.Op0("cqo"))
-		}
-		lines = append(lines, asm.Op1("idiv"+sizeToSuffix(binop.OperandSize), asm.Reg(r1)))
+		// Same as division, but the remainder ends up in dl/edx/rdx instead of the quotient in al/eax/rax.
+		lines = append(lines, generateIntegerDivision(binop.OperandSize)...)
 		lines = append(lines, asm.Op2("mov"+sizeToSuffix(binop.OperandSize), asm.Reg(registerByIndex(3, binop.OperandSize)), asm.Reg(r0)))
 	case "==":
 		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
@@ -611,6 +605,29 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 	lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
 
 	return lines, nil
+}
+
+// generateIntegerDivision emits a signed division of rax by rcx: quotient goes to rax, remainder to rdx.
+// Byte division in hardware divides AX and puts the remainder in AH; we widen bytes to 32 bits
+// instead so that the quotient and remainder land in al/dl just like for the larger sizes.
+func generateIntegerDivision(size int) []asm.Line {
+	var lines []asm.Line
+	switch size {
+	case 1:
+		lines = append(lines, asm.Op2("movsbl", asm.Reg("al"), asm.Reg("eax")))
+		lines = append(lines, asm.Op2("movsbl", asm.Reg("cl"), asm.Reg("ecx")))
+		lines = append(lines, asm.Op0("cltd"))
+		lines = append(lines, asm.Op1("idivl", asm.Reg("ecx")))
+	case 4:
+		lines = append(lines, asm.Op0("cltd"))
+		lines = append(lines, asm.Op1("idivl", asm.Reg("ecx")))
+	case 8:
+		lines = append(lines, asm.Op0("cqo"))
+		lines = append(lines, asm.Op1("idivq", asm.Reg("rcx")))
+	default:
+		panic(fmt.Errorf("unsupported division operand size: %d", size))
+	}
+	return lines
 }
 
 func generateUnaryOp(cc *CodegenContext, op ir.UnaryOp) ([]asm.Line, error) {
@@ -1068,7 +1085,7 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, reg string, regSize int,
 		}
 		return generateStringLiteralLoad(cc, reg, *arg.LiteralString)
 	} else if arg.Zero {
-		return []asm.Line{asm.Op2("movq", asm.Imm(0), asm.Reg(reg))}
+		return generateLiteralLoad(reg, regSize, 0)
 	} else {
 		panic(fmt.Errorf("invalid arg in code generation: %v", arg))
 	}
@@ -1338,6 +1355,8 @@ func generateFloatLoad(cc *CodegenContext, reg string, regSize int, arg ir.Arg) 
 				panic(fmt.Errorf("unsupported float load size: %d", regSize))
 			}
 		}
+	} else if arg.Zero {
+		lines = append(lines, asm.Op2("xorpd", asm.Reg(reg), asm.Reg(reg)))
 	} else {
 		panic(fmt.Errorf("unsupported float load argument: %v", arg))
 	}

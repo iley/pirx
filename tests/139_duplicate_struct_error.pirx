@@ -1,0 +1,12 @@
+// Duplicate struct declarations are rejected.
+struct Foo {
+  x: int;
+}
+
+struct Foo {
+  y: int;
+}
+
+func main(): int {
+  return 0;
+}

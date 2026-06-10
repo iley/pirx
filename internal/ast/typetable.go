@@ -30,6 +30,11 @@ func (tt *TypeTable) GetType(name string) TypeDescriptor {
 	return tt.types[name]
 }
 
+func (tt *TypeTable) HasType(name string) bool {
+	_, ok := tt.types[name]
+	return ok
+}
+
 func (tt *TypeTable) GetSize(typ Type) (int, error) {
 	if _, ok := typ.(*PointerType); ok {
 		// TODO: Validate the type we're pointing to.
@@ -150,6 +155,10 @@ func MakeTypeTable(declarations []TypeDeclaration) (*TypeTable, error) {
 
 	// Put nils into the map as placeholders so that we're aware of all types ahead-of-time in case we use a pointer.
 	for _, decl := range declarations {
+		// This also catches structs named after primitive types.
+		if tt.HasType(decl.GetTypeName()) {
+			return nil, fmt.Errorf("%s: type %s is already declared", decl.GetLocation(), decl.GetTypeName())
+		}
 		tt.ForwardDeclare(decl.GetTypeName())
 	}
 

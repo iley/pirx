@@ -1,0 +1,21 @@
+// Float return values must come back in the float register per the C ABI.
+extern func atof(s: *int8): float64;
+
+// A Pirx function with the C ABI returning a float.
+extern func threeHalves(): float64 {
+  return 1.5;
+}
+
+func main(): int {
+  printf("%.2f\n", atof(cstr("3.25")));
+
+  var r = atof(cstr("0.5"));
+  printf("%.2f\n", r);
+
+  printf("%.2f\n", threeHalves());
+
+  var t = threeHalves() + 0.25;
+  printf("%.2f\n", t);
+
+  return 0;
+}

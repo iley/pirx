@@ -2,6 +2,7 @@ package typechecker
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/iley/pirx/internal/ast"
 )
@@ -29,13 +30,13 @@ func NewTypeChecker(program *ast.Program) *TypeChecker {
 }
 
 func (c *TypeChecker) Check() (*ast.Program, []error) {
-	// TODO: Check that function declarations use valid types.
-
 	// Gather function prototypes so we can check arguments and types later.
 	protos := ast.GetFunctionTable(c.program)
 	for _, proto := range protos {
 		c.declaredFuncs[proto.Name] = proto
 	}
+
+	c.checkDuplicateFunctions()
 
 	types, err := ast.MakeTypeTable(c.program.TypeDeclarations)
 	if err != nil {
@@ -43,6 +44,16 @@ func (c *TypeChecker) Check() (*ast.Program, []error) {
 		return &ast.Program{}, c.errors
 	}
 	c.types = types
+
+	// MakeTypeTable validates field types it needs the size of, but types behind a pointer
+	// (or a slice element) are never sized, so validate all field types explicitly.
+	for _, decl := range c.program.TypeDeclarations {
+		if structDecl, ok := decl.(*ast.StructDeclaration); ok {
+			for _, field := range structDecl.Fields {
+				c.validateType(field.Loc, field.Type)
+			}
+		}
+	}
 
 	c.vars.startScope()
 
@@ -68,6 +79,55 @@ func (c *TypeChecker) Check() (*ast.Program, []error) {
 	}, c.errors
 }
 
+func (c *TypeChecker) checkDuplicateFunctions() {
+	builtins := make(map[string]bool)
+	declared := make(map[string]ast.FuncProto)
+	for _, proto := range ast.GetBuiltins() {
+		builtins[proto.Name] = true
+		declared[proto.Name] = proto
+	}
+
+	defined := make(map[string]bool)
+	for _, fn := range c.program.Functions {
+		if fn.Body != nil {
+			if builtins[fn.Name] {
+				c.errorf("%s: function %s conflicts with a builtin function", fn.Loc, fn.Name)
+				continue
+			}
+			if defined[fn.Name] {
+				c.errorf("%s: function %s is already defined", fn.Loc, fn.Name)
+				continue
+			}
+			defined[fn.Name] = true
+		}
+
+		// A function can be declared multiple times (e.g. re-declaring a builtin as an extern,
+		// or a declaration followed by the definition), but the signatures must agree.
+		proto := ast.MakeFuncProto(fn)
+		if prev, ok := declared[fn.Name]; ok {
+			if !proto.SameSignature(prev) {
+				c.errorf("%s: declaration of function %s conflicts with a previous declaration", fn.Loc, fn.Name)
+			}
+		} else {
+			declared[fn.Name] = proto
+		}
+	}
+}
+
+// validateType reports an error if the type (or any type it is built from) is not declared.
+func (c *TypeChecker) validateType(loc ast.Location, typ ast.Type) {
+	switch t := typ.(type) {
+	case *ast.PointerType:
+		c.validateType(loc, t.ElementType)
+	case *ast.SliceType:
+		c.validateType(loc, t.ElementType)
+	case *ast.BaseType:
+		if !c.types.HasType(t.Name) {
+			c.errorf("%s: unknown type %s", loc, t.Name)
+		}
+	}
+}
+
 func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 	c.currentFunc = c.declaredFuncs[fn.Name]
 	c.nestedLoops = 0
@@ -77,10 +137,15 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 	defer c.vars.endScope()
 
 	for _, arg := range fn.Args {
+		c.validateType(arg.Loc, arg.Type)
 		ok := c.vars.declare(arg.Name, arg.Type /*global=*/, false /*constant=*/, false)
 		if !ok {
 			c.errorf("%s: duplicate function argument: %s", fn.Loc, arg.Name)
 		}
+	}
+
+	if fn.ReturnType != nil {
+		c.validateType(fn.Loc, fn.ReturnType)
 	}
 
 	var checkedBody *ast.Block
@@ -170,8 +235,28 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Expression {
 		return c.checkPostfixOperator(po)
 	} else if pre, ok := expr.(*ast.PrefixOperator); ok {
 		return c.checkPrefixOperator(pre)
+	} else if il, ok := expr.(*ast.InitializerList); ok {
+		// TODO: Implement initializer lists.
+		c.errorf("%s: initializer lists are not supported", il.Loc)
+		result := *il
+		result.Type = ast.Undefined
+		return &result
 	}
 	panic(fmt.Sprintf("Invalid expression type: %v", expr))
+}
+
+// checkValueExpression checks an expression that is required to produce a value,
+// e.g. an operand, an initializer or a call argument.
+func (c *TypeChecker) checkValueExpression(expr ast.Expression) ast.Expression {
+	checked := c.checkExpression(expr)
+	if checked.GetType() == nil {
+		// The only expression without a type is a call of a function that doesn't return anything.
+		if call, ok := checked.(*ast.FunctionCall); ok {
+			c.errorf("%s: function %s does not return a value", call.Loc, call.FunctionName)
+			call.Type = ast.Undefined
+		}
+	}
+	return checked
 }
 
 func (c *TypeChecker) checkLiteral(lit *ast.Literal) *ast.Literal {
@@ -205,8 +290,12 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration, gl
 	var checkedInitializer ast.Expression
 	typ := decl.Type
 
+	if typ != nil {
+		c.validateType(decl.Loc, typ)
+	}
+
 	if decl.Initializer != nil {
-		checkedInitializer = c.checkExpression(decl.Initializer)
+		checkedInitializer = c.checkValueExpression(decl.Initializer)
 
 		if typ != nil && !areCompatibleTypes(decl.Type, checkedInitializer.GetType()) {
 			c.errorf("%s: cannot initialize variable %s of type %s with expression of type %s",
@@ -271,11 +360,15 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 		c.errorf("%s: function %s has %d arguments but %d were provided", call.Loc, call.FunctionName, len(proto.Args), len(call.Args))
 	}
 
+	// Variadic functions still require all of the declared (non-variadic) arguments.
+	if declared && proto.Variadic && len(call.Args) < len(proto.Args) {
+		c.errorf("%s: function %s requires at least %d arguments but %d were provided", call.Loc, call.FunctionName, len(proto.Args), len(call.Args))
+	}
+
 	checkedArgs := make([]ast.Expression, len(call.Args))
 	for i, expr := range call.Args {
-		checkedArgs[i] = c.checkExpression(expr)
+		checkedArgs[i] = c.checkValueExpression(expr)
 		actualArgType := checkedArgs[i].GetType()
-		// TODO: Check that the type is valid!
 
 		if !declared || i >= len(proto.Args) {
 			continue
@@ -328,11 +421,15 @@ func (c *TypeChecker) checkExpressionStatement(e *ast.ExpressionStatement) *ast.
 }
 
 func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignment {
-	checkedTarget := c.checkExpression(assignment.Target)
+	checkedTarget := c.checkValueExpression(assignment.Target)
 	targetType := checkedTarget.GetType()
 
-	checkedValue := c.checkExpression(assignment.Value)
+	checkedValue := c.checkValueExpression(assignment.Value)
 	valueType := checkedValue.GetType()
+
+	if !isAddressable(checkedTarget) {
+		c.errorf("%s: invalid assignment target", assignment.Loc)
+	}
 
 	if valueType != nil && targetType != nil {
 		isValidNullAssignment := ast.IsPointerType(targetType) && valueType.Equals(ast.NullPtr)
@@ -342,10 +439,19 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 				valueType,
 				targetType,
 			)
+		} else if assignment.Operator != "" && assignment.Operator != "=" {
+			// A compound assignment is only valid if the underlying binary operation is.
+			binaryOperator := strings.TrimSuffix(assignment.Operator, "=")
+			if _, ok := binaryOperationResult(binaryOperator, targetType, valueType); !ok {
+				c.errorf("%s: binary operation %s cannot be applied to values of types %s and %s",
+					assignment.Loc, binaryOperator, targetType, valueType)
+			}
 		}
 	}
 
-	if varRef, ok := checkedTarget.(*ast.VariableReference); ok {
+	// Look up the target in the original AST node: checkExpression renames variables,
+	// and renamed (shadowed) variables can no longer be looked up by name.
+	if varRef, ok := assignment.Target.(*ast.VariableReference); ok {
 		if vd, ok := c.vars.lookup(varRef.Name); ok {
 			if vd.constant {
 				c.errorf("%s: cannot assign value to constant %s", assignment.Loc, varRef.Name)
@@ -363,6 +469,25 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 	result.Value = checkedValue
 	result.Type = targetType
 	return &result
+}
+
+// isAddressable reports whether an expression denotes a memory location that can be written to
+// or have its address taken. Notably, field access only produces a location when its base does
+// (or when the base is a pointer): f().x is not assignable when f returns a struct by value.
+func isAddressable(expr ast.Expression) bool {
+	switch e := expr.(type) {
+	case *ast.VariableReference:
+		return true
+	case *ast.UnaryOperation:
+		return e.Operator == "*"
+	case *ast.IndexExpression:
+		// Slice elements live behind the slice's data pointer, so even an rvalue slice is fine.
+		return true
+	case *ast.FieldAccess:
+		return ast.IsPointerType(e.Object.GetType()) || isAddressable(e.Object)
+	default:
+		return false
+	}
 }
 
 func (c *TypeChecker) checkVariableReference(ref *ast.VariableReference) *ast.VariableReference {
@@ -388,7 +513,7 @@ func (c *TypeChecker) checkReturnStatement(stmt *ast.ReturnStatement) *ast.Retur
 
 	var checkedValue ast.Expression
 	if stmt.Value != nil {
-		checkedValue = c.checkExpression(stmt.Value)
+		checkedValue = c.checkValueExpression(stmt.Value)
 		typ := checkedValue.GetType()
 		if c.currentFunc.ReturnType == nil {
 			c.errorf("%s: function %s does not have a return type but a value was provided",
@@ -407,8 +532,8 @@ func (c *TypeChecker) checkReturnStatement(stmt *ast.ReturnStatement) *ast.Retur
 }
 
 func (c *TypeChecker) checkBinaryOperation(binOp *ast.BinaryOperation) *ast.BinaryOperation {
-	leftExpr := c.checkExpression(binOp.Left)
-	rightExpr := c.checkExpression(binOp.Right)
+	leftExpr := c.checkValueExpression(binOp.Left)
+	rightExpr := c.checkValueExpression(binOp.Right)
 	leftType := leftExpr.GetType()
 	rightType := rightExpr.GetType()
 	resultType, ok := binaryOperationResult(binOp.Operator, leftType, rightType)
@@ -429,7 +554,7 @@ func (c *TypeChecker) checkBinaryOperation(binOp *ast.BinaryOperation) *ast.Bina
 }
 
 func (c *TypeChecker) checkUnaryOperation(unaryOp *ast.UnaryOperation) *ast.UnaryOperation {
-	operandExpr := c.checkExpression(unaryOp.Operand)
+	operandExpr := c.checkValueExpression(unaryOp.Operand)
 	operandType := operandExpr.GetType()
 	resultType, ok := c.unaryOperationResult(unaryOp.Operator, operandType)
 	if !ok {
@@ -447,7 +572,7 @@ func (c *TypeChecker) checkUnaryOperation(unaryOp *ast.UnaryOperation) *ast.Unar
 }
 
 func (c *TypeChecker) checkIfStatement(stmt *ast.IfStatement) *ast.IfStatement {
-	checkedCondition := c.checkExpression(stmt.Condition)
+	checkedCondition := c.checkValueExpression(stmt.Condition)
 	exprType := checkedCondition.GetType()
 	if exprType != ast.Bool {
 		c.errorf("%s: expected an expression of type bool in if condition, got type %s",
@@ -469,7 +594,7 @@ func (c *TypeChecker) checkIfStatement(stmt *ast.IfStatement) *ast.IfStatement {
 }
 
 func (c *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) *ast.WhileStatement {
-	checkedCondition := c.checkExpression(stmt.Condition)
+	checkedCondition := c.checkValueExpression(stmt.Condition)
 	exprType := checkedCondition.GetType()
 	if exprType != ast.Bool {
 		c.errorf("%s: expected an expression of type bool in while condition, got type %s",
@@ -501,7 +626,7 @@ func (c *TypeChecker) checkForLoop(forLoop *ast.ForStatement) *ast.ForStatement 
 
 	var checkedCond ast.Expression
 	if forLoop.Condition != nil {
-		checkedCond = c.checkExpression(forLoop.Condition)
+		checkedCond = c.checkValueExpression(forLoop.Condition)
 		condType := checkedCond.GetType()
 		if condType != ast.Bool {
 			c.errorf("%s: expected an expression of type bool in for condition, got type %s",
@@ -549,7 +674,7 @@ func (c *TypeChecker) checkBlockStatement(stmt *ast.BlockStatement) *ast.BlockSt
 }
 
 func (c *TypeChecker) checkFieldAccess(fa *ast.FieldAccess) *ast.FieldAccess {
-	objectExpr := c.checkExpression(fa.Object)
+	objectExpr := c.checkValueExpression(fa.Object)
 	fieldType := c.getFieldType(fa.Loc, objectExpr, fa.FieldName)
 	result := *fa
 	result.Object = objectExpr
@@ -591,7 +716,7 @@ func (c *TypeChecker) getFieldType(loc ast.Location, objectExpr ast.Expression, 
 }
 
 func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpression {
-	// TODO: Check that TypeExpr is a valid type.
+	c.validateType(n.Loc, n.TypeExpr)
 	if _, ok := n.TypeExpr.(*ast.SliceType); ok {
 		if n.Count == nil {
 			c.errorf("%s: when allocating a slice via new(), an element count must be specified", n.Loc)
@@ -601,9 +726,12 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 		}
 		result := *n
 		result.Type = n.TypeExpr
-		result.Count = c.checkExpression(n.Count)
+		result.Count = c.checkValueExpression(n.Count)
 		return &result
 	} else {
+		if n.Count != nil {
+			c.errorf("%s: an element count can only be specified when allocating a slice via new()", n.Loc)
+		}
 		result := *n
 		result.Type = &ast.PointerType{ElementType: n.TypeExpr}
 		return &result
@@ -613,7 +741,7 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 func (c *TypeChecker) checkPostfixOperator(po *ast.PostfixOperator) *ast.PostfixOperator {
 	// TODO: Make postfix operators valid only in the expression statement context.
 	var operandType ast.Type
-	checkedOperand := c.checkExpression(po.Operand)
+	checkedOperand := c.checkValueExpression(po.Operand)
 	// The only postfix operators currently supported (++ and --) work on integers.
 	if ast.IsIntegerType(checkedOperand.GetType()) {
 		operandType = checkedOperand.GetType()
@@ -621,6 +749,7 @@ func (c *TypeChecker) checkPostfixOperator(po *ast.PostfixOperator) *ast.Postfix
 		operandType = ast.Undefined
 		c.errorf("%s: postfix %s can only be applied to an integer type", po.Loc, po.Operator)
 	}
+	c.checkIncDecOperand(po.Loc, po.Operand, checkedOperand, po.Operator)
 	result := *po
 	result.Operand = checkedOperand
 	result.Type = operandType
@@ -629,7 +758,7 @@ func (c *TypeChecker) checkPostfixOperator(po *ast.PostfixOperator) *ast.Postfix
 
 func (c *TypeChecker) checkPrefixOperator(po *ast.PrefixOperator) *ast.PrefixOperator {
 	var operandType ast.Type
-	checkedOperand := c.checkExpression(po.Operand)
+	checkedOperand := c.checkValueExpression(po.Operand)
 	// The only prefix operators currently supported (++ and --) work on integers.
 	if ast.IsIntegerType(checkedOperand.GetType()) {
 		operandType = checkedOperand.GetType()
@@ -637,15 +766,30 @@ func (c *TypeChecker) checkPrefixOperator(po *ast.PrefixOperator) *ast.PrefixOpe
 		operandType = ast.Undefined
 		c.errorf("%s: prefix %s can only be applied to an integer type", po.Loc, po.Operator)
 	}
+	c.checkIncDecOperand(po.Loc, po.Operand, checkedOperand, po.Operator)
 	result := *po
 	result.Operand = checkedOperand
 	result.Type = operandType
 	return &result
 }
 
+// checkIncDecOperand checks that the operand of ++/-- is a modifiable location.
+// It needs both the original operand (for looking up variables by their source name)
+// and the checked one (for type information).
+func (c *TypeChecker) checkIncDecOperand(loc ast.Location, operand, checkedOperand ast.Expression, operator string) {
+	if varRef, ok := operand.(*ast.VariableReference); ok {
+		if vd, ok := c.vars.lookup(varRef.Name); ok && vd.constant {
+			c.errorf("%s: cannot apply %s to constant %s", loc, operator, varRef.Name)
+		}
+	}
+	if !isAddressable(checkedOperand) {
+		c.errorf("%s: invalid operand for %s", loc, operator)
+	}
+}
+
 func (c *TypeChecker) checkIndexExpression(indexExpr *ast.IndexExpression) *ast.IndexExpression {
-	arrayExpr := c.checkExpression(indexExpr.Array)
-	indexExprChecked := c.checkExpression(indexExpr.Index)
+	arrayExpr := c.checkValueExpression(indexExpr.Array)
+	indexExprChecked := c.checkValueExpression(indexExpr.Index)
 
 	arrayType := arrayExpr.GetType()
 	indexType := indexExprChecked.GetType()
@@ -678,9 +822,9 @@ func (c *TypeChecker) checkIndexExpression(indexExpr *ast.IndexExpression) *ast.
 }
 
 func (c *TypeChecker) checkRangeExpression(rangeExpr *ast.RangeExpression) *ast.RangeExpression {
-	arrayExpr := c.checkExpression(rangeExpr.Array)
-	startExpr := c.checkExpression(rangeExpr.Start)
-	endExpr := c.checkExpression(rangeExpr.End)
+	arrayExpr := c.checkValueExpression(rangeExpr.Array)
+	startExpr := c.checkValueExpression(rangeExpr.Start)
+	endExpr := c.checkValueExpression(rangeExpr.End)
 
 	arrayType := arrayExpr.GetType()
 	startType := startExpr.GetType()
@@ -769,12 +913,17 @@ func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 	}
 
 	if op == "==" || op == "!=" {
-		// Equality is supported for all types.
-		return ast.Bool, true
+		// Equality is only supported for register-sized scalar values.
+		// TODO: Implement content equality for strings and structs.
+		return ast.Bool, isComparableType(left) && isComparableType(right)
 	}
 
-	if op == "+" || op == "-" || op == "/" || op == "*" || op == "%" {
-		// These are (currently) supproted for integers only.
+	if op == "%" {
+		// No fmod() semantics for now, so % works on integers only.
+		return left, ast.IsIntegerType(left)
+	}
+
+	if op == "+" || op == "-" || op == "/" || op == "*" {
 		return left, ast.IsNumericType(left)
 	}
 
@@ -787,6 +936,11 @@ func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 	}
 
 	panic(fmt.Sprintf("unknown binary operation %s", op))
+}
+
+func isComparableType(typ ast.Type) bool {
+	return ast.IsNumericType(typ) || typ == ast.Bool || typ == ast.File ||
+		ast.IsPointerType(typ) || typ == ast.NullPtr
 }
 
 func areCompatibleTypes(left, right ast.Type) bool {

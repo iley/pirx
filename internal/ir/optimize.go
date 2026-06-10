@@ -270,23 +270,11 @@ func evalBinaryOp(oc *optimizationContext, operation string, left, right Arg, op
 	}
 
 	// We assume types are correct at this point.
+	// Note that && and || never appear as BinaryOps: they are generated as control flow
+	// for short-circuit evaluation.
 	switch operation {
 	case "+", "-", "*", "/":
 		return performArithmetic(operation, leftConst, rightConst, operandSize), true
-	case "&&":
-		result := argBoolValue(leftConst) && argBoolValue(rightConst)
-		intResult := int64(0)
-		if result {
-			intResult = 1
-		}
-		return Arg{LiteralInt: &intResult}, true
-	case "||":
-		result := argBoolValue(leftConst) || argBoolValue(rightConst)
-		intResult := int64(0)
-		if result {
-			intResult = 1
-		}
-		return Arg{LiteralInt: &intResult}, true
 	}
 	return Arg{}, false
 }

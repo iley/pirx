@@ -79,8 +79,6 @@ var singleCharTokens = map[rune]TokenType{
 	',': LEX_PUNCTUATION,
 	':': LEX_PUNCTUATION,
 	'.': LEX_PUNCTUATION,
-	'*': LEX_OPERATOR,
-	'%': LEX_OPERATOR,
 }
 
 type Location struct {
@@ -269,14 +267,17 @@ func (l *Lexer) Next() (Lexeme, error) {
 			}
 			return Lexeme{Type: LEX_EOF}, err
 		}
-		if nextR == '/' {
+		switch nextR {
+		case '/':
 			// It's a comment, skip to end of line
 			if err := l.skipComment(); err != nil {
 				return Lexeme{Type: LEX_EOF}, err
 			}
 			// Recursively call Next to get the next token after the comment
 			return l.Next()
-		} else {
+		case '=':
+			return l.makeLexeme(LEX_OPERATOR, "/=", startLine, startCol), nil
+		default:
 			// It's just a division operator, put back the second character
 			l.unreadRune()
 			return l.makeLexeme(LEX_OPERATOR, "/", startLine, startCol), nil
@@ -385,6 +386,21 @@ func (l *Lexer) Next() (Lexeme, error) {
 			l.unreadRune()
 			return Lexeme{}, fmt.Errorf("%s: unexpected character '|'", l.loc(startLine, startCol))
 		}
+	case r == '*' || r == '%':
+		// Check for *= and %=.
+		op := string(r)
+		nextR, _, err := l.readRune()
+		if err != nil {
+			if err == io.EOF {
+				return l.makeLexeme(LEX_OPERATOR, op, startLine, startCol), nil
+			}
+			return Lexeme{Type: LEX_EOF}, err
+		}
+		if nextR == '=' {
+			return l.makeLexeme(LEX_OPERATOR, op+"=", startLine, startCol), nil
+		}
+		l.unreadRune()
+		return l.makeLexeme(LEX_OPERATOR, op, startLine, startCol), nil
 	case r == '+':
 		// Check for ++ and +=.
 		nextR, _, err := l.readRune()
@@ -501,9 +517,10 @@ func (l *Lexer) lexString(startLine, startCol int) (Lexeme, error) {
 				str += "\""
 			case '\'':
 				str += "'"
+			case '0':
+				str += "\000"
 			default:
-				// Unknown escape sequence - treat as literal character (remove backslash)
-				str += string(nextR)
+				return Lexeme{}, fmt.Errorf("%s: invalid escape sequence '\\%c' in string literal", l.loc(startLine, startCol), nextR)
 			}
 			continue
 		}

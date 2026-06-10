@@ -17,25 +17,49 @@ type FuncArg struct {
 
 func GetFunctionTable(program *Program) []FuncProto {
 	protos := []FuncProto{}
-	protos = append(protos, getBuiltins()...)
+	protos = append(protos, GetBuiltins()...)
 
 	for _, fn := range program.Functions {
-		proto := FuncProto{
-			Name:       fn.Name,
-			Args:       []FuncArg{},
-			ReturnType: fn.ReturnType,
-			External:   fn.External,
-		}
-		for _, p := range fn.Args {
-			proto.Args = append(proto.Args, FuncArg{p.Name, p.Type})
-		}
-		protos = append(protos, proto)
+		protos = append(protos, MakeFuncProto(fn))
 	}
 
 	return protos
 }
 
-func getBuiltins() []FuncProto {
+func MakeFuncProto(fn Function) FuncProto {
+	proto := FuncProto{
+		Name:       fn.Name,
+		Args:       []FuncArg{},
+		ReturnType: fn.ReturnType,
+		External:   fn.External,
+	}
+	for _, p := range fn.Args {
+		proto.Args = append(proto.Args, FuncArg{p.Name, p.Type})
+	}
+	return proto
+}
+
+// SameSignature reports whether two prototypes could refer to the same function.
+// Argument names don't matter, everything else does.
+func (p FuncProto) SameSignature(other FuncProto) bool {
+	if p.ExternalName != other.ExternalName || p.External != other.External || p.Variadic != other.Variadic {
+		return false
+	}
+	if len(p.Args) != len(other.Args) {
+		return false
+	}
+	for i := range p.Args {
+		if !p.Args[i].Typ.Equals(other.Args[i].Typ) {
+			return false
+		}
+	}
+	if p.ReturnType == nil || other.ReturnType == nil {
+		return p.ReturnType == nil && other.ReturnType == nil
+	}
+	return p.ReturnType.Equals(other.ReturnType)
+}
+
+func GetBuiltins() []FuncProto {
 	return []FuncProto{
 		{
 			Name:       "PirxString",
@@ -70,8 +94,9 @@ func getBuiltins() []FuncProto {
 		},
 		{
 			// This is not really a function, but we need a definition to make type checker happy.
-			Name: "sizeof",
-			Args: []FuncArg{{"expr", Any}},
+			Name:       "sizeof",
+			Args:       []FuncArg{{"expr", Any}},
+			ReturnType: Int,
 		},
 		{
 			Name:         "resize",

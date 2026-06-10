@@ -1,0 +1,15 @@
+// Duplicate function definitions are rejected, as are functions that shadow builtins.
+func foo(): int {
+  return 1;
+}
+
+func foo(): int {
+  return 2;
+}
+
+func printf(fmt: string) {
+}
+
+func main(): int {
+  return 0;
+}

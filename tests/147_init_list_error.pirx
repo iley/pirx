@@ -1,0 +1,10 @@
+// Initializer lists parse but are not implemented yet; they must produce a proper error.
+struct Point {
+  x: int;
+  y: int;
+}
+
+func main(): int {
+  var p: Point = {1, 2};
+  return 0;
+}

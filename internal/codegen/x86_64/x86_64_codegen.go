@@ -523,22 +523,6 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Reg(r1), asm.Reg(r0)))
 		lines = append(lines, asm.Op1("setge", asm.Reg("al")))
 		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
-	case "&&":
-		// Logical AND: result is 1 if both operands are non-zero
-		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Imm(0), asm.Reg(r0)))
-		lines = append(lines, asm.Op1("setne", asm.Reg("al")))
-		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Imm(0), asm.Reg(r1)))
-		lines = append(lines, asm.Op1("setne", asm.Reg("cl")))
-		lines = append(lines, asm.Op2("andb", asm.Reg("cl"), asm.Reg("al")))
-		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
-	case "||":
-		// Logical OR: result is 1 if either operand is non-zero
-		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Imm(0), asm.Reg(r0)))
-		lines = append(lines, asm.Op1("setne", asm.Reg("al")))
-		lines = append(lines, asm.Op2("cmp"+sizeToSuffix(binop.OperandSize), asm.Imm(0), asm.Reg(r1)))
-		lines = append(lines, asm.Op1("setne", asm.Reg("cl")))
-		lines = append(lines, asm.Op2("orb", asm.Reg("cl"), asm.Reg("al")))
-		lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
 	default:
 		return lines, fmt.Errorf("unsupported binary operation: %v", binop.Operation)
 	}
@@ -833,7 +817,12 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 
 	// Store result if needed
 	if call.Result != "" {
-		lines = append(lines, generateExternalResultStore(cc, call.Size, call.Result)...)
+		if call.IsFloat {
+			// The C ABI returns floats in xmm0 rather than rax.
+			lines = append(lines, generateStoreFloatToVariable(cc, "xmm0", call.Size, call.Result)...)
+		} else {
+			lines = append(lines, generateExternalResultStore(cc, call.Size, call.Result)...)
+		}
 	}
 
 	return lines, nil
@@ -932,6 +921,13 @@ func generateExternalReturn(cc *CodegenContext, ret ir.ExternalReturn) ([]asm.Li
 	var lines []asm.Line
 
 	if ret.Value == nil {
+		lines = append(lines, asm.Op1("jmp", asm.Ref(fmt.Sprintf(".L%s_exit", cc.functionName))))
+		return lines, nil
+	}
+
+	if ret.IsFloat {
+		// The C ABI returns floats in xmm0 rather than rax.
+		lines = append(lines, generateFloatLoad(cc, "xmm0", ret.Size, *ret.Value)...)
 		lines = append(lines, asm.Op1("jmp", asm.Ref(fmt.Sprintf(".L%s_exit", cc.functionName))))
 		return lines, nil
 	}

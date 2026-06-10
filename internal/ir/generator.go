@@ -146,7 +146,11 @@ func (g *Generator) generateStatementOps(node ast.Statement) []Op {
 			ops = append(ops, exprOps...)
 			// TODO: Maybe factor this out into a function that creates the right type of return?
 			if g.isExternalFunction {
-				ops = append(ops, ExternalReturn{Size: resultSize, Value: &resultArg})
+				ops = append(ops, ExternalReturn{
+					Size:    resultSize,
+					Value:   &resultArg,
+					IsFloat: ast.IsFloatingPointType(retStmt.Value.GetType()),
+				})
 			} else {
 				ops = append(ops, Return{Size: resultSize, Value: &resultArg})
 			}
@@ -206,6 +210,9 @@ func (g *Generator) generateExpressionOps(node ast.Expression) ([]Op, Arg, int) 
 }
 
 func (g *Generator) generateBinaryOperationOps(binOp *ast.BinaryOperation) ([]Op, Arg, int) {
+	if binOp.Operator == "&&" || binOp.Operator == "||" {
+		return g.generateShortCircuitOps(binOp)
+	}
 	leftOps, leftArg, leftSize := g.generateExpressionOps(binOp.Left)
 	rightOps, rightArg, rightSize := g.generateExpressionOps(binOp.Right)
 	if leftSize != rightSize {
@@ -228,6 +235,34 @@ func (g *Generator) generateBinaryOperationOps(binOp *ast.BinaryOperation) ([]Op
 		OperandSize: leftSize,
 	})
 	return ops, Arg{Variable: temp}, resultSize
+}
+
+// generateShortCircuitOps generates ops for && and || with short-circuit semantics:
+// the right operand is only evaluated when the left one doesn't determine the result.
+func (g *Generator) generateShortCircuitOps(binOp *ast.BinaryOperation) ([]Op, Arg, int) {
+	leftOps, leftArg, _ := g.generateExpressionOps(binOp.Left)
+	rightOps, rightArg, _ := g.generateExpressionOps(binOp.Right)
+
+	result := g.allocTemp(ast.BOOL_SIZE)
+	endLabel := g.allocLabel()
+
+	ops := leftOps
+	ops = append(ops, Assign{Target: result, Value: leftArg, Size: ast.BOOL_SIZE})
+	if binOp.Operator == "&&" {
+		// A false left operand determines the result.
+		ops = append(ops, JumpUnless{Condition: Arg{Variable: result}, Goto: endLabel, Size: ast.BOOL_SIZE})
+	} else {
+		// A true left operand determines the result.
+		rightLabel := g.allocLabel()
+		ops = append(ops, JumpUnless{Condition: Arg{Variable: result}, Goto: rightLabel, Size: ast.BOOL_SIZE})
+		ops = append(ops, Jump{Goto: endLabel})
+		ops = append(ops, Anchor{Label: rightLabel})
+	}
+	ops = append(ops, rightOps...)
+	ops = append(ops, Assign{Target: result, Value: rightArg, Size: ast.BOOL_SIZE})
+	ops = append(ops, Anchor{Label: endLabel})
+
+	return ops, Arg{Variable: result}, ast.BOOL_SIZE
 }
 
 func (g *Generator) generateUnaryOperationOps(op *ast.UnaryOperation) ([]Op, Arg, int) {
@@ -489,6 +524,7 @@ func (g *Generator) generateExternalCall(funcProto ast.FuncProto, resultVar stri
 		Args:      callArgs,
 		NamedArgs: len(funcProto.Args),
 		Size:      size,
+		IsFloat:   ast.IsFloatingPointType(funcProto.ReturnType),
 	}
 }
 

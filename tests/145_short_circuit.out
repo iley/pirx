@@ -1,0 +1,8 @@
+calls: 0
+|| taken
+calls: 0
+&& taken
+calls: 1
+calls: 2
+guard ok
+calls: 2

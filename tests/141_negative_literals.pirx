@@ -1,0 +1,21 @@
+// The most negative value of each integer type can be written as a literal.
+func main(): int {
+  var a: int = -2147483648;
+  printf("%d\n", a);
+
+  var b: int8 = -128i8;
+  printf("%d\n", b);
+
+  var c: int64 = -9223372036854775808l;
+  printf("%ld\n", c);
+
+  var d = -0x80000000;
+  printf("%d\n", d);
+
+  var f = -2.5;
+  printf("%.2f\n", f);
+
+  printf("%d\n", 10 - -5);
+
+  return 0;
+}

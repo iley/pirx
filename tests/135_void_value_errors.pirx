@@ -1,0 +1,10 @@
+// Using the result of a function that doesn't return a value is an error.
+func voidFunc() {
+}
+
+func main(): int {
+  var v = voidFunc();
+  var w = 1 + voidFunc();
+  printf("%d\n", voidFunc());
+  return 0;
+}

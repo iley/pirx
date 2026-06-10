@@ -1,0 +1,15 @@
+// All type names must be declared, including those used behind pointers and slices.
+struct Node {
+  next: *Missing;
+  items: []Gone;
+}
+
+func takesUnknown(a: Mystery): int {
+  return 0;
+}
+
+func main(): int {
+  var x: Undeclared;
+  var p = new(int, 5);
+  return 0;
+}

@@ -1,0 +1,36 @@
+// *=, /= and %= work like their +=/-= counterparts.
+struct Counter {
+  value: int;
+}
+
+func main(): int {
+  var x = 7;
+  x *= 3;
+  printf("%d\n", x);
+  x /= 2;
+  printf("%d\n", x);
+  x %= 4;
+  printf("%d\n", x);
+
+  var y: int64 = 1000l;
+  y *= 3l;
+  y /= 7l;
+  printf("%ld\n", y);
+
+  var c: Counter;
+  c.value = 6;
+  c.value *= 7;
+  printf("%d\n", c.value);
+
+  var xs = new([]int, 2);
+  xs[0] = 9;
+  xs[0] %= 5;
+  printf("%d\n", xs[0]);
+
+  var p: *int = &x;
+  *p *= 50;
+  printf("%d\n", x);
+
+  dispose(xs);
+  return 0;
+}

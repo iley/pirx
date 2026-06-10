@@ -2,6 +2,7 @@ package desugar
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/util"
@@ -354,14 +355,11 @@ func desugarAssignment(dc *desugarContext, expr *ast.Assignment) ast.Expression 
 			Operator: "=",
 			Type:     expr.Type,
 		}
-	case "+=", "-=":
+	case "+=", "-=", "*=", "/=", "%=":
 		// Desugar the target a second time to get an independent copy for the read side,
 		// avoiding double-evaluation of a shared AST node.
 		readTarget := desugarExpression(dc, expr.Target)
-		op := "+"
-		if expr.Operator == "-=" {
-			op = "-"
-		}
+		op := strings.TrimSuffix(expr.Operator, "=")
 		return &ast.Assignment{
 			Loc:    expr.Loc,
 			Target: target,

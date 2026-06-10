@@ -1,0 +1,7 @@
+pirxc compilation failed: exit status 1
+Output: tests/135_void_value_errors.pirx:6:11: function voidFunc does not return a value
+tests/135_void_value_errors.pirx:6:3: invalid initializer for variable v, cannot infer type
+tests/135_void_value_errors.pirx:7:15: function voidFunc does not return a value
+tests/135_void_value_errors.pirx:7:13: binary operation + cannot be applied to values of types int and undefined
+tests/135_void_value_errors.pirx:8:18: function voidFunc does not return a value
+Error: exit status 1

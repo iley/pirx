@@ -1,0 +1,42 @@
+// && and || must not evaluate the right operand when the left one determines the result.
+var calls = 0;
+
+func sideEffect(ret: bool): bool {
+  calls++;
+  return ret;
+}
+
+func main(): int {
+  if false && sideEffect(true) {
+    printf("unexpected &&\n");
+  }
+  printf("calls: %d\n", calls);
+
+  if true || sideEffect(true) {
+    printf("|| taken\n");
+  }
+  printf("calls: %d\n", calls);
+
+  if true && sideEffect(true) {
+    printf("&& taken\n");
+  }
+  printf("calls: %d\n", calls);
+
+  if false || sideEffect(false) {
+    printf("unexpected ||\n");
+  }
+  printf("calls: %d\n", calls);
+
+  // The classic null guard.
+  var p: *int = null;
+  if p != null && *p == 0 {
+    printf("unexpected deref\n");
+  }
+  printf("guard ok\n");
+
+  // Short-circuiting also applies when the result is used as a value.
+  var b: bool = false && sideEffect(true);
+  printf("calls: %d\n", calls);
+
+  return 0;
+}

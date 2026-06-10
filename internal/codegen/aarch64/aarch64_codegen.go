@@ -503,6 +503,17 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 	}
 
 	if call.Result != "" {
+		if call.IsFloat {
+			// The C ABI returns floats in s0/d0; move the bits to the integer register the store expects.
+			switch call.Size {
+			case 4:
+				lines = append(lines, asm.Op2("fmov", asm.Reg("w0"), asm.Reg("s0")))
+			case 8:
+				lines = append(lines, asm.Op2("fmov", asm.Reg("x0"), asm.Reg("d0")))
+			default:
+				return lines, fmt.Errorf("unsupported float return size %d", call.Size)
+			}
+		}
 		// Store the result.
 		lines = append(lines, generateExternalResultStore(cc, call.Size, call.Result)...)
 	}
@@ -595,14 +606,6 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 	case ">=.":
 		lines = append(lines, asm.Op2("fcmp", asm.Reg("d0"), asm.Reg("d1")))
 		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ge")))
-	case "&&":
-		lines = append(lines, asm.Op2("cmp", r0, asm.Imm(0)))
-		lines = append(lines, asm.Op4("ccmp", r1, asm.Imm(0), asm.Imm(4), asm.Ref("ne")))
-		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ne")))
-	case "||":
-		lines = append(lines, asm.Op2("cmp", r0, asm.Imm(0)))
-		lines = append(lines, asm.Op4("ccmp", r1, asm.Imm(0), asm.Imm(0), asm.Ref("eq")))
-		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ne")))
 	default:
 		return lines, fmt.Errorf("unsupported binary operation in aarch64-darwin codegen: %v", binop.Operation)
 	}
@@ -668,7 +671,21 @@ func generateExternalReturn(cc *CodegenContext, ret ir.ExternalReturn) ([]asm.Li
 		return lines, nil
 	}
 
-	// TODO: Support floats in non-variadic calls.
+	if ret.IsFloat {
+		// The C ABI returns floats in s0/d0.
+		switch ret.Size {
+		case 4:
+			lines = append(lines, generateRegisterLoad(cc, "w0", ret.Size, *ret.Value)...)
+			lines = append(lines, asm.Op2("fmov", asm.Reg("s0"), asm.Reg("w0")))
+		case 8:
+			lines = append(lines, generateRegisterLoad(cc, "x0", ret.Size, *ret.Value)...)
+			lines = append(lines, asm.Op2("fmov", asm.Reg("d0"), asm.Reg("x0")))
+		default:
+			return lines, fmt.Errorf("unsupported float return value size: %d", ret.Size)
+		}
+		lines = append(lines, exitBranch)
+		return lines, nil
+	}
 
 	switch ret.Size {
 	case 4:

@@ -1,0 +1,22 @@
+// Like in C, relational operators bind tighter than equality.
+func main(): int {
+  if true == 1 < 2 {
+    printf("r1 true\n");
+  } else {
+    printf("r1 false\n");
+  }
+
+  if false == 2 < 1 {
+    printf("r2 true\n");
+  } else {
+    printf("r2 false\n");
+  }
+
+  if 1 < 2 == 2 < 1 {
+    printf("r3 true\n");
+  } else {
+    printf("r3 false\n");
+  }
+
+  return 0;
+}

@@ -1,0 +1,20 @@
+// Constants cannot be modified and rvalues cannot be assigned to.
+struct Point {
+  x: int;
+  y: int;
+}
+
+func getPoint(): Point {
+  var p: Point;
+  return p;
+}
+
+func main(): int {
+  val c = 1;
+  c++;
+  --c;
+  c += 1;
+  getPoint().x = 5;
+  getPoint().x++;
+  return 0;
+}

@@ -1,0 +1,5 @@
+// Unknown escape sequences in string literals are lexing errors.
+func main(): int {
+  printf("bad \q escape\n");
+  return 0;
+}

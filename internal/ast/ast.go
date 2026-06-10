@@ -495,7 +495,7 @@ type Assignment struct {
 	Target   Expression
 	Value    Expression
 	Type     Type
-	Operator string // "=", "+=", or "-="
+	Operator string // "=" or a compound assignment operator: "+=", "-=", "*=", "/=", "%="
 }
 
 func (a *Assignment) GetLocation() Location {

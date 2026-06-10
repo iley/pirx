@@ -1,0 +1,4 @@
+pirxc compilation failed: exit status 1
+Output: tests/138_duplicate_function_errors.pirx:6:1: function foo is already defined
+tests/138_duplicate_function_errors.pirx:10:1: function printf conflicts with a builtin function
+Error: exit status 1

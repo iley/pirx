@@ -609,7 +609,7 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 		// For right-associative operators, use precedence
 		// Assignment and compound assignment are right-associative, so use same precedence
 		nextMinPrecedence := precedence + 1
-		if operator == "=" || operator == "+=" || operator == "-=" {
+		if isAssignmentOperator(operator) {
 			nextMinPrecedence = precedence
 		}
 
@@ -618,7 +618,7 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 			return nil, err
 		}
 
-		if operator == "=" || operator == "+=" || operator == "-=" {
+		if isAssignmentOperator(operator) {
 			// Validate that left side is a valid assignment target
 			if !p.isValidAssignmentTarget(left) {
 				return nil, fmt.Errorf("%s: invalid assignment target: %s", left.GetLocation(), left.String())
@@ -645,23 +645,30 @@ func (p *Parser) parseExpressionWithPrecedence(minPrecedence int) (ast.Expressio
 func isBinaryOperator(op string) bool {
 	return op == "+" || op == "-" || op == "*" || op == "/" || op == "%" ||
 		op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=" ||
-		op == "&&" || op == "||" || op == "=" || op == "+=" || op == "-="
+		op == "&&" || op == "||" || isAssignmentOperator(op)
+}
+
+func isAssignmentOperator(op string) bool {
+	return op == "=" || op == "+=" || op == "-=" || op == "*=" || op == "/=" || op == "%="
 }
 
 func getOperatorPrecedence(op string) int {
 	switch op {
-	case "=", "+=", "-=":
+	case "=", "+=", "-=", "*=", "/=", "%=":
 		return 1
 	case "||":
 		return 2
 	case "&&":
 		return 3
-	case "==", "!=", "<", ">", "<=", ">=":
+	case "==", "!=":
 		return 4
-	case "+", "-":
+	// Like in C, relational operators bind tighter than equality.
+	case "<", ">", "<=", ">=":
 		return 5
-	case "*", "/", "%":
+	case "+", "-":
 		return 6
+	case "*", "/", "%":
+		return 7
 	default:
 		return 0
 	}
@@ -701,12 +708,12 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 			return nil, err
 		}
 	case lexer.LEX_NUMBER:
-		expr, err = p.parseIntegerLiteral()
+		expr, err = p.parseIntegerLiteral(false)
 		if err != nil {
 			return nil, err
 		}
 	case lexer.LEX_FLOAT:
-		expr, err = p.parseFloatLiteral()
+		expr, err = p.parseFloatLiteral(false)
 		if err != nil {
 			return nil, err
 		}
@@ -953,7 +960,9 @@ func (p *Parser) parseFunctionCall() (ast.Expression, error) {
 	return &ast.FunctionCall{Loc: callLoc, FunctionName: name, Args: args}, nil
 }
 
-func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
+// parseIntegerLiteral parses an integer literal. When negate is true the value is negated;
+// the sign has to be part of the literal so that the most negative values (e.g. -2147483648) parse.
+func (p *Parser) parseIntegerLiteral(negate bool) (ast.Expression, error) {
 	lex, err := p.consume()
 	if err != nil {
 		return nil, err
@@ -978,6 +987,10 @@ func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 	if strings.HasPrefix(str, "0x") || strings.HasPrefix(str, "0X") {
 		base = 16
 		str = str[2:] // Remove "0x" or "0X" prefix
+	}
+
+	if negate {
+		str = "-" + str
 	}
 
 	if is64Bit {
@@ -1007,7 +1020,7 @@ func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 	return literal, nil
 }
 
-func (p *Parser) parseFloatLiteral() (ast.Expression, error) {
+func (p *Parser) parseFloatLiteral(negate bool) (ast.Expression, error) {
 	lex, err := p.consume()
 	if err != nil {
 		return nil, err
@@ -1018,6 +1031,9 @@ func (p *Parser) parseFloatLiteral() (ast.Expression, error) {
 	val, err := strconv.ParseFloat(lex.Str, 64)
 	if err != nil {
 		return nil, fmt.Errorf("%s: could not parse floating point number: %w", lex.Loc, err)
+	}
+	if negate {
+		val = -val
 	}
 
 	// Default to float64, but we could extend this later to support float32 suffix
@@ -1093,6 +1109,28 @@ func (p *Parser) parseUnaryExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("%s: expected '!', '-', or '*', got %v", lex.Loc, lex)
 	}
 	unaryLoc := locationFromLexeme(lex)
+
+	// Fold unary minus into numeric literals so that the most negative values parse.
+	if lex.IsOperator("-") {
+		next, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if next.Type == lexer.LEX_NUMBER || next.Type == lexer.LEX_FLOAT {
+			var literal ast.Expression
+			if next.Type == lexer.LEX_NUMBER {
+				literal, err = p.parseIntegerLiteral(true)
+			} else {
+				literal, err = p.parseFloatLiteral(true)
+			}
+			if err != nil {
+				return nil, err
+			}
+			// The expression starts at the minus sign.
+			literal.(*ast.Literal).Loc = unaryLoc
+			return literal, nil
+		}
+	}
 
 	// parse the operand
 	operand, err := p.parsePrimaryExpression()

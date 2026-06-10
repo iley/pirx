@@ -1,0 +1,7 @@
+pirxc compilation failed: exit status 1
+Output: tests/137_unknown_type_errors.pirx:3:3: unknown type Missing
+tests/137_unknown_type_errors.pirx:4:3: unknown type Gone
+tests/137_unknown_type_errors.pirx:7:19: unknown type Mystery
+tests/137_unknown_type_errors.pirx:12:3: unknown type Undeclared
+tests/137_unknown_type_errors.pirx:13:11: an element count can only be specified when allocating a slice via new()
+Error: exit status 1

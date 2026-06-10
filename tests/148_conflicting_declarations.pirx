@@ -1,0 +1,20 @@
+// All declarations of a function must agree on the signature.
+extern func bar(): int;
+extern func bar(): float64;
+
+func baz(x: int): int;
+
+func baz(): int {
+  return 1;
+}
+
+// A declaration followed by a matching definition is fine.
+func ok(x: int): int;
+
+func ok(x: int): int {
+  return x;
+}
+
+func main(): int {
+  return 0;
+}

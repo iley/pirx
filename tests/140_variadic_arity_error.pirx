@@ -1,0 +1,5 @@
+// Variadic functions still require all of their fixed arguments.
+func main(): int {
+  printf();
+  return 0;
+}

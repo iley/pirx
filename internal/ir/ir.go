@@ -216,8 +216,9 @@ type ExternalCall struct {
 	Result    string
 	Function  string
 	Args      []CallArg
-	NamedArgs int // How many of the provided arguments correspond to named arguments. Everything else are variadic args.
-	Size      int // Result size.
+	NamedArgs int  // How many of the provided arguments correspond to named arguments. Everything else are variadic args.
+	Size      int  // Result size.
+	IsFloat   bool // Whether the result is a float (the C ABI returns floats in a different register).
 }
 
 func (c ExternalCall) String() string {
@@ -225,7 +226,11 @@ func (c ExternalCall) String() string {
 	for _, arg := range c.Args {
 		args = append(args, arg.String())
 	}
-	return fmt.Sprintf("ExternalCall%d(%s = %s(%s))", c.Size, c.Result, c.Function, strings.Join(args, ", "))
+	suffix := ""
+	if c.IsFloat {
+		suffix = "f"
+	}
+	return fmt.Sprintf("ExternalCall%d%s(%s = %s(%s))", c.Size, suffix, c.Result, c.Function, strings.Join(args, ", "))
 }
 
 func (c ExternalCall) GetTarget() string {
@@ -273,13 +278,18 @@ func (r Return) GetSize() int {
 }
 
 type ExternalReturn struct {
-	Value *Arg // nil for bare returns
-	Size  int
+	Value   *Arg // nil for bare returns
+	Size    int
+	IsFloat bool // Whether the value is a float (the C ABI returns floats in a different register).
 }
 
 func (r ExternalReturn) String() string {
 	if r.Value != nil {
-		return fmt.Sprintf("ExternalReturn%d(%s)", r.Size, r.Value)
+		suffix := ""
+		if r.IsFloat {
+			suffix = "f"
+		}
+		return fmt.Sprintf("ExternalReturn%d%s(%s)", r.Size, suffix, r.Value)
 	}
 	return "ExternalReturn()"
 }

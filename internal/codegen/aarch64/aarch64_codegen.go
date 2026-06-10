@@ -919,6 +919,12 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, reg string, regSize int,
 		}
 		return generateStringLiteralLoad(cc, reg, *arg.LiteralString)
 	} else if arg.Zero {
+		// GNU as rejects "mov dN, 0"; zero float registers via fmov from the zero register.
+		if strings.HasPrefix(reg, "d") {
+			return []asm.Line{asm.Op2("fmov", asm.Reg(reg), asm.Reg("xzr"))}
+		} else if strings.HasPrefix(reg, "s") && reg != "sp" {
+			return []asm.Line{asm.Op2("fmov", asm.Reg(reg), asm.Reg("wzr"))}
+		}
 		return []asm.Line{asm.Op2("mov", asm.Reg(reg), asm.Imm(0))}
 	} else {
 		panic(fmt.Errorf("invalid arg in code generation: %v", arg))

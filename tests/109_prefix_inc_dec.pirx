@@ -1,0 +1,40 @@
+// Prefix ++/-- modify the operand and evaluate to the new value.
+func main(): int {
+  // As statements.
+  var i = 10;
+  ++i;
+  printf("i = %d\n", i);
+  --i;
+  --i;
+  printf("i = %d\n", i);
+
+  // Inside larger expressions: must yield the value after the modification.
+  var a = ++i;
+  printf("a = %d i = %d\n", a, i);
+
+  var b = --i;
+  printf("b = %d i = %d\n", b, i);
+
+  var c = ++i * 2;
+  printf("c = %d i = %d\n", c, i);
+
+  // As a function call argument.
+  printf("i = %d\n", ++i);
+
+  // Through a pointer.
+  var p = &i;
+  ++*p;
+  printf("i = %d\n", i);
+
+  // 64-bit operand.
+  var j: int64 = 100l;
+  var d = --j;
+  printf("d = %lld j = %lld\n", d, j);
+
+  // 8-bit operand.
+  var k: int8 = 5i8;
+  var e = ++k;
+  printf("e = %d k = %d\n", e, k);
+
+  return 0;
+}

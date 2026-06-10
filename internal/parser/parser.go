@@ -727,6 +727,9 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 		if lex.Str == "&" {
 			return p.parseAddressOfExpression()
 		}
+		if lex.Str == "++" || lex.Str == "--" {
+			return p.parsePrefixOperator()
+		}
 		return nil, fmt.Errorf("%s: unknown expression: %v", lex.Loc, lex)
 	case lexer.LEX_PUNCTUATION:
 		switch lex.Str {
@@ -1128,6 +1131,31 @@ func (p *Parser) parseAddressOfExpression() (ast.Expression, error) {
 	}, nil
 }
 
+func (p *Parser) parsePrefixOperator() (ast.Expression, error) {
+	// consume '++' or '--'
+	opLex, err := p.consume()
+	if err != nil {
+		return nil, err
+	}
+	opLoc := locationFromLexeme(opLex)
+
+	operand, err := p.parsePrimaryExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate that operand is a valid assignment target
+	if !p.isValidAssignmentTarget(operand) {
+		return nil, fmt.Errorf("%s: invalid operand for prefix %s: %s", operand.GetLocation(), opLex.Str, operand.String())
+	}
+
+	return &ast.PrefixOperator{
+		Loc:      opLoc,
+		Operator: opLex.Str,
+		Operand:  operand,
+	}, nil
+}
+
 func (p *Parser) parseVariableDeclaration() (*ast.VariableDeclaration, error) {
 	// consume 'var' or 'val'
 	varLex, err := p.consume()
@@ -1294,8 +1322,8 @@ func (p *Parser) isValidAssignmentTarget(expr ast.Expression) bool {
 		return true
 	case *ast.IndexExpression:
 		return true
-	case *ast.PostfixOperator:
-		return false // postfix operators can't be assignment targets
+	case *ast.PostfixOperator, *ast.PrefixOperator:
+		return false // increment/decrement expressions can't be assignment targets
 	default:
 		return false
 	}

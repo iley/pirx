@@ -714,7 +714,28 @@ func (p *PostfixOperator) GetType() Type {
 func (p *PostfixOperator) isExpression() {}
 
 func (p *PostfixOperator) String() string {
-	return fmt.Sprintf("(%s %s)", p.Operator, p.Operand.String())
+	return fmt.Sprintf("(post%s %s)", p.Operator, p.Operand.String())
+}
+
+type PrefixOperator struct {
+	Loc      Location
+	Operator string
+	Operand  Expression
+	Type     Type
+}
+
+func (p *PrefixOperator) GetLocation() Location {
+	return p.Loc
+}
+
+func (p *PrefixOperator) GetType() Type {
+	return p.Type
+}
+
+func (p *PrefixOperator) isExpression() {}
+
+func (p *PrefixOperator) String() string {
+	return fmt.Sprintf("(pre%s %s)", p.Operator, p.Operand.String())
 }
 
 type InitializerList struct {

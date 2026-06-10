@@ -199,6 +199,8 @@ func (g *Generator) generateExpressionOps(node ast.Expression) ([]Op, Arg, int) 
 		return g.generateIndexOps(index)
 	} else if po, ok := node.(*ast.PostfixOperator); ok {
 		return g.generatePostfixOperatorOps(po)
+	} else if pre, ok := node.(*ast.PrefixOperator); ok {
+		return g.generatePrefixOperatorOps(pre)
 	}
 	panic(fmt.Errorf("unknown expression type: %v", node))
 }
@@ -699,20 +701,28 @@ func (g *Generator) generateIndexOps(indexExpr *ast.IndexExpression) ([]Op, Arg,
 }
 
 func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op, Arg, int) {
+	// Postfix semantics: the expression evaluates to the value before the modification.
+	return g.generateIncDecOps(expr.Operand, expr.Operator, false)
+}
+
+func (g *Generator) generatePrefixOperatorOps(expr *ast.PrefixOperator) ([]Op, Arg, int) {
+	// Prefix semantics: the expression evaluates to the value after the modification.
+	return g.generateIncDecOps(expr.Operand, expr.Operator, true)
+}
+
+func (g *Generator) generateIncDecOps(operand ast.Expression, operator string, returnNew bool) ([]Op, Arg, int) {
 	// TODO: Generate more optimial IR. Perhaps make the increment an unary op?
-	var operator string
-	switch expr.Operator {
+	var binaryOperator string
+	switch operator {
 	case "++":
-		operator = "+"
+		binaryOperator = "+"
 	case "--":
-		operator = "-"
+		binaryOperator = "-"
 	default:
-		panic(fmt.Errorf("%s: unsupported postfix operator %s", expr.Loc, expr.Operator))
+		panic(fmt.Errorf("%s: unsupported increment/decrement operator %s", operand.GetLocation(), operator))
 	}
-	operandSize := g.types.GetSizeNoError(expr.GetType())
-	ops, operandArg := g.generateExpressionAddrOps(expr.Operand)
-	// Postfix semantics: the expression evaluates to the value before the
-	// modification, so keep the old value in its own temp and return it.
+	operandSize := g.types.GetSizeNoError(operand.GetType())
+	ops, operandArg := g.generateExpressionAddrOps(operand)
 	oldValue := g.allocTemp(operandSize)
 	newValue := g.allocTemp(operandSize)
 	ops = append(ops,
@@ -725,7 +735,7 @@ func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op,
 		BinaryOp{
 			Result:      newValue,
 			Left:        Arg{Variable: oldValue},
-			Operation:   operator,
+			Operation:   binaryOperator,
 			Right:       Arg{LiteralInt: util.Int64Ptr(1)},
 			Size:        operandSize,
 			OperandSize: operandSize,
@@ -736,7 +746,11 @@ func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op,
 			Size:   operandSize,
 		},
 	)
-	return ops, Arg{Variable: oldValue}, operandSize
+	result := oldValue
+	if returnNew {
+		result = newValue
+	}
+	return ops, Arg{Variable: result}, operandSize
 }
 
 func (g *Generator) generateMain() IrFunction {

@@ -168,6 +168,8 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Expression {
 		return c.checkNewExpression(newEx)
 	} else if po, ok := expr.(*ast.PostfixOperator); ok {
 		return c.checkPostfixOperator(po)
+	} else if pre, ok := expr.(*ast.PrefixOperator); ok {
+		return c.checkPrefixOperator(pre)
 	}
 	panic(fmt.Sprintf("Invalid expression type: %v", expr))
 }
@@ -618,6 +620,22 @@ func (c *TypeChecker) checkPostfixOperator(po *ast.PostfixOperator) *ast.Postfix
 	} else {
 		operandType = ast.Undefined
 		c.errorf("%s: postfix %s can only be applied to an integer type", po.Loc, po.Operator)
+	}
+	result := *po
+	result.Operand = checkedOperand
+	result.Type = operandType
+	return &result
+}
+
+func (c *TypeChecker) checkPrefixOperator(po *ast.PrefixOperator) *ast.PrefixOperator {
+	var operandType ast.Type
+	checkedOperand := c.checkExpression(po.Operand)
+	// The only prefix operators currently supported (++ and --) work on integers.
+	if ast.IsIntegerType(checkedOperand.GetType()) {
+		operandType = checkedOperand.GetType()
+	} else {
+		operandType = ast.Undefined
+		c.errorf("%s: prefix %s can only be applied to an integer type", po.Loc, po.Operator)
 	}
 	result := *po
 	result.Operand = checkedOperand

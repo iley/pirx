@@ -1,0 +1,5 @@
+// Prefix ++ requires an assignable operand.
+func main(): int {
+  ++5;
+  return 0;
+}

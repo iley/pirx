@@ -562,8 +562,14 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 	case "==":
 		lines = append(lines, asm.Op2("cmp", r0, r1))
 		lines = append(lines, asm.Op2("cset", r0, asm.Ref("eq")))
+	case "==.":
+		lines = append(lines, asm.Op2("fcmp", asm.Reg("d0"), asm.Reg("d1")))
+		lines = append(lines, asm.Op2("cset", r0, asm.Ref("eq")))
 	case "!=":
 		lines = append(lines, asm.Op2("cmp", r0, r1))
+		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ne")))
+	case "!=.":
+		lines = append(lines, asm.Op2("fcmp", asm.Reg("d0"), asm.Reg("d1")))
 		lines = append(lines, asm.Op2("cset", r0, asm.Ref("ne")))
 	case "<":
 		lines = append(lines, asm.Op2("cmp", r0, r1))

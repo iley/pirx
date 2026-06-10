@@ -1,0 +1,27 @@
+func main(): int {
+  var a: float64 = 1.5;
+  var b: float64 = 1.5;
+  var c: float64 = 2.0;
+
+  if a == b {
+    printf("a == b\n");
+  }
+
+  if a != c {
+    printf("a != c\n");
+  }
+
+  if a == c {
+    printf("unexpected: a == c\n");
+  }
+
+  if a != b {
+    printf("unexpected: a != b\n");
+  }
+
+  if 0.1 + 0.2 != 0.3 {
+    printf("rounding error\n");
+  }
+
+  return 0;
+}

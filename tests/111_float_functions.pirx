@@ -1,0 +1,27 @@
+// Passing floats to and returning floats from Pirx functions, including literals.
+func addHalf(x: float64): float64 {
+  return x + 0.5;
+}
+
+func mul(a: float64, b: float64): float64 {
+  return a * b;
+}
+
+func half(): float64 {
+  return 0.5;
+}
+
+func main(): int {
+  printf("%.2f\n", addHalf(1.25));
+  printf("%.2f\n", mul(2.0, 3.5));
+  printf("%.2f\n", half());
+
+  var x: float64 = 4.0;
+  printf("%.2f\n", addHalf(x));
+
+  var p: *float64 = &x;
+  *p = 1.5;
+  printf("%.2f\n", x);
+
+  return 0;
+}

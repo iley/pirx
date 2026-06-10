@@ -412,6 +412,25 @@ func generateBinaryOp(cc *CodegenContext, binop ir.BinaryOp) ([]asm.Line, error)
 			lines = append(lines, asm.Op2("mulsd", asm.Reg("xmm1"), asm.Reg("xmm0")))
 		case "/.":
 			lines = append(lines, asm.Op2("divsd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+		case "==.":
+			// ucomisd sets ZF both for "equal" and "unordered" (NaN operands).
+			// PF distinguishes the two: it is set only when the result is unordered.
+			lines = append(lines, asm.Op2("ucomisd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+			lines = append(lines, asm.Op1("setnp", asm.Reg("al")))
+			lines = append(lines, asm.Op1("sete", asm.Reg("cl")))
+			lines = append(lines, asm.Op2("andb", asm.Reg("cl"), asm.Reg("al")))
+			lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+			lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+			return lines, nil
+		case "!=.":
+			// NaN compares unequal to everything, so "unordered" (PF set) also counts as "not equal".
+			lines = append(lines, asm.Op2("ucomisd", asm.Reg("xmm1"), asm.Reg("xmm0")))
+			lines = append(lines, asm.Op1("setp", asm.Reg("al")))
+			lines = append(lines, asm.Op1("setne", asm.Reg("cl")))
+			lines = append(lines, asm.Op2("orb", asm.Reg("cl"), asm.Reg("al")))
+			lines = append(lines, asm.Op2("movzbl", asm.Reg("al"), asm.Reg("eax")))
+			lines = append(lines, generateStoreToVariable(cc, registerByIndex(0, binop.Size), binop.Result)...)
+			return lines, nil
 		case "<.":
 			lines = append(lines, asm.Op2("ucomisd", asm.Reg("xmm0"), asm.Reg("xmm1")))
 			lines = append(lines, asm.Op1("seta", asm.Reg("al")))
@@ -947,6 +966,23 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, reg string, regSize int,
 			panic("cannot load a literal int64 with offset")
 		}
 		return generateLiteralLoad(reg, regSize, *arg.LiteralInt)
+	} else if arg.LiteralFloat != nil {
+		if offset != 0 {
+			panic("cannot load a literal float with offset")
+		}
+		// Load the raw bits of the float literal into a general-purpose register.
+		// This happens when floats are copied via memory, e.g. for Pirx function calls and returns.
+		ensureFloatLiteral(cc, *arg.LiteralFloat)
+		label := cc.floatLiterals[*arg.LiteralFloat]
+		labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
+		switch regSize {
+		case 4:
+			return []asm.Line{asm.Op2("movl", labelArg, asm.Reg(reg))}
+		case 8:
+			return []asm.Line{asm.Op2("movq", labelArg, asm.Reg(reg))}
+		default:
+			panic(fmt.Errorf("unsupported register size for float literal: %d", regSize))
+		}
 	} else if arg.LiteralString != nil {
 		if offset != 0 {
 			panic("cannot load a literal string with offset")

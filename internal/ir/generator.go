@@ -711,17 +711,20 @@ func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op,
 	}
 	operandSize := g.types.GetSizeNoError(expr.GetType())
 	ops, operandArg := g.generateExpressionAddrOps(expr.Operand)
-	temp := g.allocTemp(operandSize)
+	// Postfix semantics: the expression evaluates to the value before the
+	// modification, so keep the old value in its own temp and return it.
+	oldValue := g.allocTemp(operandSize)
+	newValue := g.allocTemp(operandSize)
 	ops = append(ops,
 		UnaryOp{
-			Result:    temp,
+			Result:    oldValue,
 			Operation: "*",
 			Value:     operandArg,
 			Size:      operandSize,
 		},
 		BinaryOp{
-			Result:      temp,
-			Left:        Arg{Variable: temp},
+			Result:      newValue,
+			Left:        Arg{Variable: oldValue},
 			Operation:   operator,
 			Right:       Arg{LiteralInt: util.Int64Ptr(1)},
 			Size:        operandSize,
@@ -729,11 +732,11 @@ func (g *Generator) generatePostfixOperatorOps(expr *ast.PostfixOperator) ([]Op,
 		},
 		AssignByAddr{
 			Target: operandArg,
-			Value:  Arg{Variable: temp},
+			Value:  Arg{Variable: newValue},
 			Size:   operandSize,
 		},
 	)
-	return ops, Arg{Variable: temp}, operandSize
+	return ops, Arg{Variable: oldValue}, operandSize
 }
 
 func (g *Generator) generateMain() IrFunction {

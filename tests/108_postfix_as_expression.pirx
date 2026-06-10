@@ -1,0 +1,30 @@
+// Postfix ++/-- used inside larger expressions must evaluate to the value
+// before the modification.
+func main(): int {
+  var i = 10;
+  var a = i++;
+  printf("a = %d i = %d\n", a, i);
+
+  var b = i--;
+  printf("b = %d i = %d\n", b, i);
+
+  // Inside arithmetic.
+  var c = i++ * 2;
+  printf("c = %d i = %d\n", c, i);
+
+  // As a function call argument.
+  printf("i = %d\n", i++);
+  printf("i = %d\n", i);
+
+  // 64-bit operand.
+  var j: int64 = 100l;
+  var d = j--;
+  printf("d = %lld j = %lld\n", d, j);
+
+  // 8-bit operand.
+  var k: int8 = 5i8;
+  var e = k++;
+  printf("e = %d k = %d\n", e, k);
+
+  return 0;
+}

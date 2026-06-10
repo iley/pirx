@@ -236,8 +236,9 @@ func (c *TypeChecker) checkExpression(expr ast.Expression) ast.Expression {
 	} else if pre, ok := expr.(*ast.PrefixOperator); ok {
 		return c.checkPrefixOperator(pre)
 	} else if il, ok := expr.(*ast.InitializerList); ok {
-		// TODO: Implement initializer lists.
-		c.errorf("%s: initializer lists are not supported", il.Loc)
+		// Initializer lists have no type of their own, so they can only appear where
+		// the expected type is known from the context. See checkInitializerList.
+		c.errorf("%s: initializer lists are only allowed in variable declarations", il.Loc)
 		result := *il
 		result.Type = ast.Undefined
 		return &result
@@ -294,7 +295,16 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration, gl
 		c.validateType(decl.Loc, typ)
 	}
 
-	if decl.Initializer != nil {
+	if il, ok := decl.Initializer.(*ast.InitializerList); ok {
+		// Initializer lists take their type from the declaration, so the type annotation is required.
+		if typ == nil {
+			c.errorf("%s: cannot infer the type of variable %s from an initializer list, type annotation required",
+				decl.Loc, decl.Name)
+			typ = ast.Undefined
+		} else {
+			checkedInitializer = c.checkInitializerList(il, typ)
+		}
+	} else if decl.Initializer != nil {
 		checkedInitializer = c.checkValueExpression(decl.Initializer)
 
 		if typ != nil && !areCompatibleTypes(decl.Type, checkedInitializer.GetType()) {
@@ -327,6 +337,46 @@ func (c *TypeChecker) checkVariableDeclaration(decl *ast.VariableDeclaration, gl
 	result.Initializer = checkedInitializer
 	result.Name = varDesc.uniqueName
 	result.Type = typ
+	return &result
+}
+
+// checkInitializerList checks an initializer list against the expected type that comes
+// from the context (the variable declaration's type annotation). The elements are matched
+// positionally against the struct's fields.
+func (c *TypeChecker) checkInitializerList(il *ast.InitializerList, expected ast.Type) *ast.InitializerList {
+	result := *il
+	result.Type = expected
+
+	structDesc, err := c.types.GetStruct(expected)
+	if err != nil {
+		c.errorf("%s: cannot initialize a value of type %s with an initializer list, only structs are supported",
+			il.Loc, expected)
+		result.Type = ast.Undefined
+		return &result
+	}
+
+	if len(il.Elements) != len(structDesc.Fields) {
+		c.errorf("%s: struct %s has %d fields but the initializer list has %d elements",
+			il.Loc, structDesc.Name, len(structDesc.Fields), len(il.Elements))
+		result.Type = ast.Undefined
+		return &result
+	}
+
+	checkedElements := make([]ast.Expression, len(il.Elements))
+	for i, elem := range il.Elements {
+		field := structDesc.Fields[i]
+		if nested, ok := elem.(*ast.InitializerList); ok {
+			checkedElements[i] = c.checkInitializerList(nested, field.Type)
+			continue
+		}
+		checked := c.checkValueExpression(elem)
+		if !areCompatibleTypes(field.Type, checked.GetType()) {
+			c.errorf("%s: cannot initialize field %s of type %s with expression of type %s",
+				elem.GetLocation(), field.Name, field.Type, checked.GetType())
+		}
+		checkedElements[i] = checked
+	}
+	result.Elements = checkedElements
 	return &result
 }
 

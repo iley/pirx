@@ -1,4 +1,8 @@
 pirxc compilation failed: exit status 1
-Output: tests/147_init_list_error.pirx:8:18: initializer lists are not supported
-tests/147_init_list_error.pirx:8:3: cannot initialize variable p of type Point with expression of type undefined
+Output: tests/147_init_list_error.pirx:9:18: struct Point has 2 fields but the initializer list has 1 elements
+tests/147_init_list_error.pirx:11:22: cannot initialize field y of type int with expression of type bool
+tests/147_init_list_error.pirx:13:16: cannot initialize a value of type int with an initializer list, only structs are supported
+tests/147_init_list_error.pirx:15:3: cannot infer the type of variable v from an initializer list, type annotation required
+tests/147_init_list_error.pirx:17:7: initializer lists are only allowed in variable declarations
+tests/147_init_list_error.pirx:17:5: cannot assign value of type undefined to lvalue of type Point
 Error: exit status 1

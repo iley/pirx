@@ -1,10 +1,19 @@
-// Initializer lists parse but are not implemented yet; they must produce a proper error.
+// Invalid uses of initializer lists must produce proper errors.
 struct Point {
   x: int;
   y: int;
 }
 
 func main(): int {
-  var p: Point = {1, 2};
+  // Element count must match the number of struct fields.
+  var p: Point = {1};
+  // Element types must match the field types.
+  var q: Point = {1, true};
+  // Initializer lists only work for structs.
+  var i: int = {1};
+  // The type cannot be inferred from an initializer list.
+  var v = {1, 2};
+  // Initializer lists are not allowed outside of variable declarations.
+  p = {3, 4};
   return 0;
 }

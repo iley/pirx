@@ -257,6 +257,13 @@ func desugarExpression(dc *desugarContext, originalExpr ast.Expression) ast.Expr
 		result := *expr
 		result.Operand = desugarExpression(dc, expr.Operand)
 		return &result
+	case *ast.InitializerList:
+		result := *expr
+		result.Elements = make([]ast.Expression, len(expr.Elements))
+		for i, elem := range expr.Elements {
+			result.Elements[i] = desugarExpression(dc, elem)
+		}
+		return &result
 	}
 	panic(fmt.Errorf("%s: unknown expression type: %v", originalExpr.GetLocation(), originalExpr))
 }

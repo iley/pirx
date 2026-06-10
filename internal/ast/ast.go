@@ -482,12 +482,12 @@ func NewStringLiteral(value string) *Literal {
 	return &Literal{StringValue: &value}
 }
 
-func NewBoolLiteral(value bool) *Literal {
-	return &Literal{BoolValue: &value}
+func NewBoolLiteral(loc Location, value bool) *Literal {
+	return &Literal{Loc: loc, BoolValue: &value}
 }
 
-func NewNullLiteral() *Literal {
-	return &Literal{NullValue: true}
+func NewNullLiteral(loc Location) *Literal {
+	return &Literal{Loc: loc, NullValue: true}
 }
 
 type Assignment struct {

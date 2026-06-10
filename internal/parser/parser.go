@@ -686,13 +686,13 @@ func (p *Parser) parsePrimaryExpression() (ast.Expression, error) {
 	case lexer.LEX_KEYWORD:
 		if lex.IsKeyword("true") {
 			p.consume()
-			expr = ast.NewBoolLiteral(true)
+			expr = ast.NewBoolLiteral(locationFromLexeme(lex), true)
 		} else if lex.IsKeyword("false") {
 			p.consume()
-			expr = ast.NewBoolLiteral(false)
+			expr = ast.NewBoolLiteral(locationFromLexeme(lex), false)
 		} else if lex.IsKeyword("null") {
 			p.consume()
-			expr = ast.NewNullLiteral()
+			expr = ast.NewNullLiteral(locationFromLexeme(lex))
 		} else if lex.IsKeyword("new") {
 			expr, err = p.parseNewExpression()
 			if err != nil {

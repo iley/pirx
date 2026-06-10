@@ -1,10 +1,16 @@
 # TODO
 
+## Bugs
+
+### printf reads garbage for any argument after a %s
+
+`printf("%s %lld\n", "hi", 99l)` prints `hi 12884901890` instead of `hi 99`. A string argument is passed to `PirxPrintf` as a full 16-byte slice (data pointer, size, cap), but `PirxPrintf` forwards the varargs straight to C's `vprintf`, whose `%s` consumes only the 8-byte data pointer. All subsequent arguments are then read 8 bytes off (the first one gets the string's size/cap words). Fix options: make `PirxPrintf` interpret the format string itself, or pass strings as plain `char*` and the length separately.
+
 ## Missing Features
 
-### Initializer lists are not implemented beyond the parser
+### Initializer lists only work in variable declarations
 
-The parser accepts `var p: Point = {1, 2};` and the typechecker reports a proper "initializer lists are not supported" error. The actual feature (typechecking and IR generation) is not implemented.
+`var p: Point = {1, 2};` works (including nested structs and globals), but initializer lists are not allowed in other contexts such as assignments, function arguments or return values. They also only work for struct types, not slices.
 
 ### Equality on strings and structs is rejected rather than implemented
 

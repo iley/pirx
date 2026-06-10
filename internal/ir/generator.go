@@ -128,15 +128,20 @@ func (g *Generator) generateBlockOps(block ast.Block) []Op {
 func (g *Generator) generateStatementOps(node ast.Statement) []Op {
 	ops := []Op{}
 	if varDecl, ok := node.(*ast.VariableDeclaration); ok {
-		initArg := Arg{Zero: true}
-		if varDecl.Initializer != nil {
-			var initOps []Op
-			initOps, initArg, _ = g.generateExpressionOps(varDecl.Initializer)
-			ops = append(ops, initOps...)
+		if il, ok := varDecl.Initializer.(*ast.InitializerList); ok {
+			g.localVars[varDecl.Name] = g.types.GetSizeNoError(varDecl.Type)
+			ops = append(ops, g.generateInitializerListOps(varDecl.Name, varDecl.Type, il)...)
+		} else {
+			initArg := Arg{Zero: true}
+			if varDecl.Initializer != nil {
+				var initOps []Op
+				initOps, initArg, _ = g.generateExpressionOps(varDecl.Initializer)
+				ops = append(ops, initOps...)
+			}
+			size := g.types.GetSizeNoError(varDecl.Type)
+			g.localVars[varDecl.Name] = size
+			ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: initArg})
 		}
-		size := g.types.GetSizeNoError(varDecl.Type)
-		g.localVars[varDecl.Name] = size
-		ops = append(ops, Assign{Size: size, Target: varDecl.Name, Value: initArg})
 	} else if exprStmt, ok := node.(*ast.ExpressionStatement); ok {
 		// We ignore the result of the expression.
 		exprOps, _, _ := g.generateExpressionOps(exprStmt.Expression)
@@ -177,6 +182,52 @@ func (g *Generator) generateStatementOps(node ast.Statement) []Op {
 		ops = append(ops, blockOps...)
 	} else {
 		panic(fmt.Errorf("unknown statement type %v", node))
+	}
+	return ops
+}
+
+// generateInitializerListOps generates ops that initialize a struct variable from an initializer list.
+// The variable is zeroed with a regular assignment first; this also makes its full size known
+// to the code generator which infers variable sizes from assignment targets.
+func (g *Generator) generateInitializerListOps(varName string, typ ast.Type, il *ast.InitializerList) []Op {
+	size := g.types.GetSizeNoError(typ)
+	ops := []Op{Assign{Size: size, Target: varName, Value: Arg{Zero: true}}}
+	addr := g.allocTemp(ast.WORD_SIZE)
+	ops = append(ops, UnaryOp{Result: addr, Operation: "&", Value: Arg{Variable: varName}, Size: ast.WORD_SIZE})
+	ops = append(ops, g.generateFieldStoreOps(Arg{Variable: addr}, 0, typ, il)...)
+	return ops
+}
+
+// generateFieldStoreOps generates stores of the initializer list's elements into the struct's fields
+// located at baseOffset relative to baseAddr. Recurses into nested initializer lists so that
+// nested structs are initialized in place.
+func (g *Generator) generateFieldStoreOps(baseAddr Arg, baseOffset int, typ ast.Type, il *ast.InitializerList) []Op {
+	structDesc, err := g.types.GetStruct(typ)
+	if err != nil {
+		// The typechecker only allows initializer lists for struct types.
+		panic(fmt.Errorf("%s: initializer list for non-struct type %s", il.Loc, typ))
+	}
+
+	ops := []Op{}
+	for i, elem := range il.Elements {
+		field := structDesc.Fields[i]
+		offset := baseOffset + field.Offset
+		if nested, ok := elem.(*ast.InitializerList); ok {
+			ops = append(ops, g.generateFieldStoreOps(baseAddr, offset, field.Type, nested)...)
+			continue
+		}
+		valueOps, valueArg, valueSize := g.generateExpressionOps(elem)
+		ops = append(ops, valueOps...)
+		fieldAddr := g.allocTemp(ast.WORD_SIZE)
+		ops = append(ops, BinaryOp{
+			Result:      fieldAddr,
+			Left:        baseAddr,
+			Operation:   "+",
+			Right:       Arg{LiteralInt: util.Int64Ptr(int64(offset))},
+			Size:        ast.WORD_SIZE,
+			OperandSize: ast.WORD_SIZE,
+		})
+		ops = append(ops, AssignByAddr{Target: Arg{Variable: fieldAddr}, Value: valueArg, Size: valueSize})
 	}
 	return ops
 }
@@ -825,6 +876,8 @@ func (g *Generator) generateInit(globalDeclarations []ast.VariableDeclaration) I
 		if decl.Initializer == nil {
 			size := g.types.GetSizeNoError(decl.Type)
 			ops = append(ops, Assign{Size: size, Target: decl.Name, Value: Arg{Zero: true}})
+		} else if il, ok := decl.Initializer.(*ast.InitializerList); ok {
+			ops = append(ops, g.generateInitializerListOps(decl.Name, decl.Type, il)...)
 		} else {
 			initOps, initArg, initSize := g.generateExpressionOps(decl.Initializer)
 			ops = append(ops, initOps...)

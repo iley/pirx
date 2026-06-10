@@ -1,0 +1,57 @@
+// Initializer lists for struct variables: basic, nested, mixed field types, and globals.
+struct Point {
+  x: int;
+  y: int;
+}
+
+struct Rect {
+  topleft: Point;
+  bottomright: Point;
+}
+
+struct Mixed {
+  name: string;
+  count: int64;
+  flag: bool;
+}
+
+struct Bytes {
+  a: int8;
+  b: int8;
+}
+
+var origin: Point = {10, 20};
+var screen: Rect = {{0, 0}, {640, 480}};
+
+func double(n: int): int {
+  return n * 2;
+}
+
+func main(): int {
+  var p: Point = {1, 2};
+  printf("p = (%d, %d)\n", p.x, p.y);
+
+  var r: Rect = {{3, 4}, {5, 6}};
+  printf("r = (%d, %d)-(%d, %d)\n", r.topleft.x, r.topleft.y, r.bottomright.x, r.bottomright.y);
+
+  // Elements can be arbitrary expressions, and a trailing comma is allowed.
+  var q: Point = {double(p.y), p.x + 100,};
+  printf("q = (%d, %d)\n", q.x, q.y);
+
+  // A struct-typed element doesn't have to be an initializer list itself.
+  var inner: Point = {7, 8};
+  var s: Rect = {inner, {9, 10}};
+  printf("s = (%d, %d)-(%d, %d)\n", s.topleft.x, s.topleft.y, s.bottomright.x, s.bottomright.y);
+
+  var m: Mixed = {"hello", 99l, true};
+  printf("m.name = %s\n", m.name);
+  printf("m.count = %lld\n", m.count);
+  printf("m.flag = %d\n", m.flag);
+
+  var b: Bytes = {1i8, 2i8};
+  printf("b = (%d, %d)\n", int(b.a), int(b.b));
+
+  printf("origin = (%d, %d)\n", origin.x, origin.y);
+  printf("screen = (%d, %d)-(%d, %d)\n", screen.topleft.x, screen.topleft.y, screen.bottomright.x, screen.bottomright.y);
+  return 0;
+}

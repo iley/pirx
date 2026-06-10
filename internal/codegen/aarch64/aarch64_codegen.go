@@ -113,6 +113,15 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 	// Map from local variable name to its size in bytes.
 	lsizes := make(map[string]int)
 
+	// External functions receive their arguments in registers per the C ABI,
+	// so the arguments live in the frame like regular locals.
+	// The prologue below spills the registers into those slots.
+	if irfn.External {
+		for i, arg := range irfn.Args {
+			lsizes[arg] = irfn.ArgSizes[i]
+		}
+	}
+
 	// We need to know how many unique locals we have in total so we can allocate space on the stack below.
 	for _, op := range irfn.Ops {
 		if target := op.GetTarget(); target != "" {
@@ -163,22 +172,24 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 	// * x19 is used by Pirx for the return value address.
 	savedRegisters := 16
 
-	// Calculate the size of the arguments block on the stack.
-	argsBlockSize := 0
-	for _, argSize := range irfn.ArgSizes {
-		argsBlockSize += argSize
-	}
-	// Add one word for the saved x19.
-	argsBlockSize += ast.WORD_SIZE
-	// Include SP padding.
-	argsBlockSize = alignSP(argsBlockSize)
+	if !irfn.External {
+		// Calculate the size of the arguments block on the stack.
+		argsBlockSize := 0
+		for _, argSize := range irfn.ArgSizes {
+			argsBlockSize += argSize
+		}
+		// Add one word for the saved x19.
+		argsBlockSize += ast.WORD_SIZE
+		// Include SP padding.
+		argsBlockSize = alignSP(argsBlockSize)
 
-	// Function arguments are already on the stack above our frame.
-	// Calculate offsets for those.
-	argOffset := frameSize + savedRegisters + argsBlockSize
-	for i, arg := range irfn.Args {
-		argOffset -= irfn.ArgSizes[i]
-		locals[arg] = argOffset
+		// Function arguments are already on the stack above our frame.
+		// Calculate offsets for those.
+		argOffset := frameSize + savedRegisters + argsBlockSize
+		for i, arg := range irfn.Args {
+			argOffset -= irfn.ArgSizes[i]
+			locals[arg] = argOffset
+		}
 	}
 
 	result.Lines = append(result.Lines,
@@ -193,6 +204,14 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 	cc.locals = locals
 	cc.frameSize = frameSize
 	cc.functionName = irfn.Name
+
+	if irfn.External {
+		spill, err := generateExternalPrologue(cc, irfn)
+		if err != nil {
+			return result, err
+		}
+		result.Lines = append(result.Lines, spill...)
+	}
 
 	for i, op := range irfn.Ops {
 		result.Lines = append(result.Lines,
@@ -211,6 +230,66 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 		asm.Op3("add", asm.SP, asm.SP, asm.Imm(savedRegisters)),
 		asm.Op0("ret"))
 	return result, nil
+}
+
+// Spill the incoming register arguments of an external (C ABI) function into the stack slots
+// where the function body expects to find them. Mirrors generateExternalFunctionCall.
+func generateExternalPrologue(cc *CodegenContext, irfn ir.IrFunction) ([]asm.Line, error) {
+	var lines []asm.Line
+	nextIntRegister := 0
+	nextFloatRegister := 0
+
+	for i, arg := range irfn.Args {
+		argSize := irfn.ArgSizes[i]
+
+		needRegisters := 1
+		if argSize > 8 {
+			needRegisters = 2
+		}
+		if irfn.ArgFloats[i] {
+			if nextFloatRegister+needRegisters > FUNC_CALL_REGISTERS {
+				return lines, fmt.Errorf("external function %s has too many arguments: receiving arguments on the stack is not supported", irfn.Name)
+			}
+		} else {
+			if nextIntRegister+needRegisters > FUNC_CALL_REGISTERS {
+				return lines, fmt.Errorf("external function %s has too many arguments: receiving arguments on the stack is not supported", irfn.Name)
+			}
+		}
+
+		switch argSize {
+		case 1:
+			lines = append(lines, generateStoreToLocalWithOffsetSized(cc, registerByIndex(nextIntRegister, 4), 1, arg, 0)...)
+			nextIntRegister++
+		case 4:
+			if irfn.ArgFloats[i] {
+				lines = append(lines, generateStoreToLocalWithOffsetSized(cc, fmt.Sprintf("s%d", nextFloatRegister), 4, arg, 0)...)
+				nextFloatRegister++
+			} else {
+				lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister, 4), arg, 0)...)
+				nextIntRegister++
+			}
+		case 8:
+			if irfn.ArgFloats[i] {
+				lines = append(lines, generateStoreToLocalWithOffsetSized(cc, fmt.Sprintf("d%d", nextFloatRegister), 8, arg, 0)...)
+				nextFloatRegister++
+			} else {
+				lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister, 8), arg, 0)...)
+				nextIntRegister++
+			}
+		case 12:
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister, 8), arg, 0)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister+1, 4), arg, 8)...)
+			nextIntRegister += 2
+		case 16:
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister, 8), arg, 0)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister+1, 8), arg, 8)...)
+			nextIntRegister += 2
+		default:
+			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
+		}
+	}
+
+	return lines, nil
 }
 
 func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {

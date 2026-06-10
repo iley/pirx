@@ -14,9 +14,9 @@ The parser accepts `var p: Point = {1, 2};` and the typechecker reports a proper
 
 `%` only works on integers. Implementing fmod semantics for floats is an option.
 
-### External functions with bodies don't receive their parameters
+### External functions with bodies only accept register arguments
 
-An `extern func` *defined in Pirx* compiles, but the function reads its parameters from the Pirx-internal stack locations while callers pass them in registers per the C ABI, so the parameters contain garbage. Affects both integer and float parameters on both backends. Fixing this requires a C-ABI prologue that spills the incoming register arguments into the function's stack slots (the IR also doesn't track which args are floats, see `ir.IrFunction`).
+An `extern func` *defined in Pirx* receives its parameters via a C-ABI prologue that spills the incoming registers into the function's stack slots. Arguments that the C ABI passes on the stack (i.e. beyond 8 integer/float registers on aarch64, 6 integer/8 float registers on x86_64) are not supported and cause a compile-time error.
 
 ### Address-of only works on plain variables
 

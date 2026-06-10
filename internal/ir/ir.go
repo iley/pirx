@@ -37,10 +37,12 @@ func (irp IrProgram) Print(writer io.Writer) {
 }
 
 type IrFunction struct {
-	Name     string
-	Args     []string
-	ArgSizes []int
-	Ops      []Op
+	Name      string
+	Args      []string
+	ArgSizes  []int
+	ArgFloats []bool // Which args are floats; the C ABI passes them in separate registers.
+	External  bool   // External functions receive arguments and return values per the C ABI.
+	Ops       []Op
 }
 
 func (irf IrFunction) countLocalsAndTemps() (int, int) {

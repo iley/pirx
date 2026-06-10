@@ -1,0 +1,61 @@
+// External functions defined in Pirx must receive their arguments per the C ABI.
+
+struct Pair {
+  a: int64;
+  b: int64;
+}
+
+struct Vec3 {
+  x: int;
+  y: int;
+  z: int;
+}
+
+extern func addInts(a: int, b: int, c: int): int {
+  return a + b + c;
+}
+
+extern func addBytes(a: int8, b: int8): int {
+  return int(a) + int(b);
+}
+
+extern func addLongs(a: int64, b: int64): int64 {
+  return a + b;
+}
+
+extern func addFloats(x: float64, y: float64): float64 {
+  return x + y;
+}
+
+extern func mixed(a: int, x: float64, b: int64, y: float64, c: int8) {
+  printf("%d %.2f %lld %.2f %d\n", a, x, b, y, int(c));
+}
+
+extern func pairSum(p: Pair, scale: int64): int64 {
+  return (p.a + p.b) * scale;
+}
+
+extern func vecSum(v: Vec3): int {
+  return v.x + v.y + v.z;
+}
+
+func main(): int {
+  printf("%d\n", addInts(1, 2, 3));
+  printf("%d\n", addBytes(10i8, 20i8));
+  printf("%lld\n", addLongs(100000000000l, 23l));
+  printf("%.2f\n", addFloats(1.25, 2.5));
+  mixed(7, 0.5, 1000000000000l, 0.25, -3i8);
+
+  var p: Pair;
+  p.a = 6l;
+  p.b = 7l;
+  printf("%lld\n", pairSum(p, 2l));
+
+  var v: Vec3;
+  v.x = 10;
+  v.y = 20;
+  v.z = 30;
+  printf("%d\n", vecSum(v));
+
+  return 0;
+}

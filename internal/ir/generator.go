@@ -72,6 +72,7 @@ func (g *Generator) generateFunction(node ast.Function) IrFunction {
 		Name:     name,
 		Args:     []string{},
 		ArgSizes: []int{},
+		External: node.External,
 		Ops:      []Op{},
 	}
 
@@ -83,6 +84,7 @@ func (g *Generator) generateFunction(node ast.Function) IrFunction {
 		g.localVars[arg.Name] = g.types.GetSizeNoError(arg.Type)
 		irfunc.Args = append(irfunc.Args, arg.Name)
 		irfunc.ArgSizes = append(irfunc.ArgSizes, g.types.GetSizeNoError(arg.Type))
+		irfunc.ArgFloats = append(irfunc.ArgFloats, ast.IsFloatingPointType(arg.Type))
 	}
 
 	// It's safe to dereference body here because we check the function has a body before generateFunction() is called.
@@ -811,6 +813,7 @@ func (g *Generator) generateMain() IrFunction {
 		Name:     "main",
 		Args:     []string{},
 		ArgSizes: []int{},
+		External: true,
 		Ops:      ops,
 	}
 }

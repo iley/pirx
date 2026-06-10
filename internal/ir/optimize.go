@@ -17,10 +17,12 @@ func Optimize(program IrProgram) IrProgram {
 		ops = coalesceVariables(ops, fn.Args)
 
 		optFn := IrFunction{
-			Name:     fn.Name,
-			Args:     fn.Args,
-			ArgSizes: fn.ArgSizes,
-			Ops:      ops,
+			Name:      fn.Name,
+			Args:      fn.Args,
+			ArgSizes:  fn.ArgSizes,
+			ArgFloats: fn.ArgFloats,
+			External:  fn.External,
+			Ops:       ops,
 		}
 		optProgram.Functions[i] = optFn
 	}

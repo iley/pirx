@@ -68,6 +68,17 @@ PirxSlice PirxString(int32_t len, const char *str) {
   return slice;
 }
 
+int32_t PirxStringEq(PirxSlice a, PirxSlice b) {
+  if (a.size != b.size) {
+    return 0;
+  }
+  if (a.size == 0) {
+    // Empty strings may have NULL data which memcmp doesn't accept.
+    return 1;
+  }
+  return memcmp(a.data, b.data, a.size) == 0;
+}
+
 void PirxPrintf(PirxSlice fmt, ...) {
   static char static_buffer[PIRX_PRINTF_BUFFER_SIZE];
   char *buffer;

@@ -1,21 +1,17 @@
-// Equality is only supported for scalar values; % only works on integers.
-struct Point {
-  x: int;
-  y: int;
+// Equality is not supported for slices or structs containing them; % only works on integers.
+struct Buffer {
+  data: []int;
+  len: int;
 }
 
 func main(): int {
-  var s1 = "abc";
-  var s2 = "abc";
-  var seq = s1 == s2;
-
-  var p1: Point;
-  var p2: Point;
-  var peq = p1 != p2;
-
   var a = new([]int, 3);
   var b = new([]int, 3);
   var aeq = a == b;
+
+  var b1: Buffer;
+  var b2: Buffer;
+  var beq = b1 != b2;
 
   var m = 1.5 % 0.5;
 

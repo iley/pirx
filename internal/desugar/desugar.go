@@ -10,8 +10,9 @@ import (
 
 func Run(program *ast.Program) (*ast.Program, []error) {
 	dc := &desugarContext{
-		types:  program.TypeTable,
-		errors: []error{},
+		types:   program.TypeTable,
+		errors:  []error{},
+		eqFuncs: map[string]bool{},
 	}
 	result := desugarProgram(dc, program)
 	return result, dc.errors
@@ -20,6 +21,9 @@ func Run(program *ast.Program) (*ast.Program, []error) {
 type desugarContext struct {
 	types  *ast.TypeTable
 	errors []error
+	// Functions generated during desugaring (struct equality), appended to the program.
+	eqFuncs        map[string]bool
+	generatedFuncs []ast.Function
 }
 
 func (dc *desugarContext) errorf(format string, args ...any) {
@@ -38,6 +42,7 @@ func desugarProgram(dc *desugarContext, program *ast.Program) *ast.Program {
 	for i := range program.Functions {
 		result.Functions[i] = *desugarFunction(dc, &program.Functions[i])
 	}
+	result.Functions = append(result.Functions, dc.generatedFuncs...)
 	return &result
 }
 
@@ -227,6 +232,9 @@ func desugarExpression(dc *desugarContext, originalExpr ast.Expression) ast.Expr
 		result := *expr
 		result.Left = desugarExpression(dc, expr.Left)
 		result.Right = desugarExpression(dc, expr.Right)
+		if result.Operator == "==" || result.Operator == "!=" {
+			return desugarEquality(dc, &result)
+		}
 		return &result
 	case *ast.UnaryOperation:
 		result := *expr
@@ -402,4 +410,77 @@ func desugarAssignment(dc *desugarContext, expr *ast.Assignment) ast.Expression 
 		}
 	}
 	panic(fmt.Errorf("unsupported assignment operator %s", expr.Operator))
+}
+
+// desugarEquality lowers ==/!= on strings and structs, which have no direct machine
+// representation, into function calls: PirxStringEq for strings and a generated
+// field-by-field comparison function for structs. Scalar comparisons are kept as-is.
+// The operands of binOp must already be desugared.
+func desugarEquality(dc *desugarContext, binOp *ast.BinaryOperation) ast.Expression {
+	typ := binOp.Left.GetType()
+
+	var eqFuncName string
+	if ast.String.Equals(typ) {
+		eqFuncName = "PirxStringEq"
+	} else if _, err := dc.types.GetStruct(typ); err == nil {
+		eqFuncName = ensureStructEqFunc(dc, typ)
+	} else {
+		return binOp
+	}
+
+	var result ast.Expression = &ast.FunctionCall{
+		Loc:          binOp.Loc,
+		FunctionName: eqFuncName,
+		Args:         []ast.Expression{binOp.Left, binOp.Right},
+		Type:         ast.Bool,
+	}
+	if binOp.Operator == "!=" {
+		result = &ast.UnaryOperation{Loc: binOp.Loc, Operator: "!", Operand: result, Type: ast.Bool}
+	}
+	return result
+}
+
+// ensureStructEqFunc generates a function comparing two values of the given struct
+// type field by field (at most once per type) and returns the function's name.
+func ensureStructEqFunc(dc *desugarContext, typ ast.Type) string {
+	sd, err := dc.types.GetStruct(typ)
+	if err != nil {
+		panic(err) // The caller has already checked that typ is a struct.
+	}
+
+	name := "PirxEq_" + sd.Name
+	if dc.eqFuncs[name] {
+		return name
+	}
+	dc.eqFuncs[name] = true
+
+	a := &ast.VariableReference{Name: "a", Type: typ}
+	b := &ast.VariableReference{Name: "b", Type: typ}
+
+	// An empty struct is always equal to another one.
+	var cmp ast.Expression = &ast.Literal{BoolValue: util.BoolPtr(true), Type: ast.Bool}
+	for i, field := range sd.Fields {
+		fieldCmp := desugarEquality(dc, &ast.BinaryOperation{
+			Left:     &ast.FieldAccess{Object: a, FieldName: field.Name, Type: field.Type},
+			Operator: "==",
+			Right:    &ast.FieldAccess{Object: b, FieldName: field.Name, Type: field.Type},
+			Type:     ast.Bool,
+		})
+		if i == 0 {
+			cmp = fieldCmp
+		} else {
+			cmp = &ast.BinaryOperation{Left: cmp, Operator: "&&", Right: fieldCmp, Type: ast.Bool}
+		}
+	}
+
+	dc.generatedFuncs = append(dc.generatedFuncs, ast.Function{
+		Name:       name,
+		Args:       []ast.Arg{{Name: "a", Type: typ}, {Name: "b", Type: typ}},
+		ReturnType: ast.Bool,
+		Body: &ast.Block{
+			Statements: []ast.Statement{&ast.ReturnStatement{Value: cmp}},
+		},
+	})
+
+	return name
 }

@@ -1,0 +1,44 @@
+// Structs are compared field by field, including nested structs and strings.
+struct Point {
+  x: int;
+  y: int;
+}
+
+struct Person {
+  name: string;
+  age: int;
+  home: Point;
+  active: bool;
+}
+
+func makePoint(x: int, y: int): Point {
+  var p: Point = {x, y};
+  return p;
+}
+
+func main(): int {
+  var p1: Point = {1, 2};
+  var p2: Point = {1, 2};
+  var p3: Point = {1, 3};
+
+  printf("%d %d\n", p1 == p2, p1 == p3);
+  printf("%d %d\n", p1 != p2, p1 != p3);
+
+  // Function results are compared by value.
+  printf("%d %d\n", makePoint(4, 5) == makePoint(4, 5), makePoint(4, 5) != makePoint(5, 4));
+
+  var a: Person = {"ijon", 30, {1, 2}, true};
+  var b: Person = {"ijon", 30, {1, 2}, true};
+  printf("%d %d\n", a == b, a != b);
+
+  // A single differing field anywhere makes the structs unequal.
+  var c = b;
+  c.name = "tichy";
+  var d = b;
+  d.home.y = 7;
+  var e = b;
+  e.active = false;
+  printf("%d %d %d\n", a == c, a == d, a == e);
+
+  return 0;
+}

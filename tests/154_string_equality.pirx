@@ -1,0 +1,27 @@
+// Strings are compared by content, not by identity.
+func first3(s: string): string {
+  return s[0:3];
+}
+
+func main(): int {
+  var s1 = "hello";
+  var s2 = "hello";
+  var s3 = "world";
+
+  printf("%d %d %d\n", s1 == s2, s1 == s3, s1 == "hello");
+  printf("%d %d %d\n", s1 != s2, s1 != s3, s1 != "hell");
+
+  // Same content coming from different memory.
+  printf("%d\n", first3("help me") == first3("helsinki"));
+
+  // Empty strings are equal regardless of where they point.
+  var empty = "";
+  printf("%d %d\n", empty == "", empty == s1);
+
+  // Equality works in conditions and with && / ||.
+  if s1 == s2 && s1 != s3 {
+    printf("ok\n");
+  }
+
+  return 0;
+}

@@ -492,7 +492,7 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 		} else if assignment.Operator != "" && assignment.Operator != "=" {
 			// A compound assignment is only valid if the underlying binary operation is.
 			binaryOperator := strings.TrimSuffix(assignment.Operator, "=")
-			if _, ok := binaryOperationResult(binaryOperator, targetType, valueType); !ok {
+			if _, ok := c.binaryOperationResult(binaryOperator, targetType, valueType); !ok {
 				c.errorf("%s: binary operation %s cannot be applied to values of types %s and %s",
 					assignment.Loc, binaryOperator, targetType, valueType)
 			}
@@ -586,7 +586,7 @@ func (c *TypeChecker) checkBinaryOperation(binOp *ast.BinaryOperation) *ast.Bina
 	rightExpr := c.checkValueExpression(binOp.Right)
 	leftType := leftExpr.GetType()
 	rightType := rightExpr.GetType()
-	resultType, ok := binaryOperationResult(binOp.Operator, leftType, rightType)
+	resultType, ok := c.binaryOperationResult(binOp.Operator, leftType, rightType)
 	if !ok {
 		c.errorf("%s: binary operation %s cannot be applied to values of types %s and %s",
 			binOp.Loc,
@@ -957,15 +957,13 @@ func (c *TypeChecker) errorf(format string, args ...any) {
 	c.errors = append(c.errors, fmt.Errorf(format, args...))
 }
 
-func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
+func (c *TypeChecker) binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 	if !areCompatibleTypes(left, right) {
 		return nil, false
 	}
 
 	if op == "==" || op == "!=" {
-		// Equality is only supported for register-sized scalar values.
-		// TODO: Implement content equality for strings and structs.
-		return ast.Bool, isComparableType(left) && isComparableType(right)
+		return ast.Bool, c.isComparableType(left) && c.isComparableType(right)
 	}
 
 	if op == "%" {
@@ -988,9 +986,23 @@ func binaryOperationResult(op string, left, right ast.Type) (ast.Type, bool) {
 	panic(fmt.Sprintf("unknown binary operation %s", op))
 }
 
-func isComparableType(typ ast.Type) bool {
-	return ast.IsNumericType(typ) || typ == ast.Bool || typ == ast.File ||
-		ast.IsPointerType(typ) || typ == ast.NullPtr
+// isComparableType reports whether ==/!= are supported for the type.
+// Scalars are compared by value, strings by content, and structs field by field.
+// Slices (and structs containing them) are not comparable.
+func (c *TypeChecker) isComparableType(typ ast.Type) bool {
+	if ast.IsNumericType(typ) || typ == ast.Bool || typ == ast.File ||
+		ast.IsPointerType(typ) || typ == ast.NullPtr || ast.String.Equals(typ) {
+		return true
+	}
+	if sd, err := c.types.GetStruct(typ); err == nil {
+		for _, field := range sd.Fields {
+			if !c.isComparableType(field.Type) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func areCompatibleTypes(left, right ast.Type) bool {

@@ -6,9 +6,9 @@
 
 `var p: Point = {1, 2};` works (including nested structs and globals), but initializer lists are not allowed in other contexts such as assignments, function arguments or return values. They also only work for struct types, not slices.
 
-### Equality on strings and structs is rejected rather than implemented
+### Equality on slices is rejected rather than implemented
 
-`==`/`!=` only work on scalar values (numbers, booleans, pointers, files); comparing strings, structs or slices is a typechecker error. Content equality could be implemented instead.
+`==`/`!=` work on scalar values, strings (by content) and structs (field by field), but comparing slices, or structs containing slice fields, is a typechecker error.
 
 ### `%` on floats is rejected rather than implemented
 

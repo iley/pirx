@@ -68,6 +68,12 @@ func GetBuiltins() []FuncProto {
 			ReturnType: String,
 		},
 		{
+			Name:       "PirxStringEq",
+			Args:       []FuncArg{{"a", String}, {"b", String}},
+			External:   true,
+			ReturnType: Bool,
+		},
+		{
 			Name:         "cstr",
 			ExternalName: "PirxCStr",
 			Args:         []FuncArg{{"str", String}},

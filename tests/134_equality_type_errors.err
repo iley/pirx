@@ -1,6 +1,5 @@
 pirxc compilation failed: exit status 1
-Output: tests/134_equality_type_errors.pirx:10:16: binary operation == cannot be applied to values of types string and string
-tests/134_equality_type_errors.pirx:14:16: binary operation != cannot be applied to values of types Point and Point
-tests/134_equality_type_errors.pirx:18:15: binary operation == cannot be applied to values of types []int and []int
-tests/134_equality_type_errors.pirx:20:15: binary operation % cannot be applied to values of types float64 and float64
+Output: tests/134_equality_type_errors.pirx:10:15: binary operation == cannot be applied to values of types []int and []int
+tests/134_equality_type_errors.pirx:14:16: binary operation != cannot be applied to values of types Buffer and Buffer
+tests/134_equality_type_errors.pirx:16:15: binary operation % cannot be applied to values of types float64 and float64
 Error: exit status 1

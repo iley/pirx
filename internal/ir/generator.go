@@ -319,11 +319,15 @@ func (g *Generator) generateShortCircuitOps(binOp *ast.BinaryOperation) ([]Op, A
 }
 
 func (g *Generator) generateUnaryOperationOps(op *ast.UnaryOperation) ([]Op, Arg, int) {
+	if op.Operator == "&" {
+		// Taking an address works for any lvalue, not just variables, so it is
+		// handled by the lvalue address machinery rather than as a value operation.
+		ops, arg := g.generateExpressionAddrOps(op.Operand)
+		return ops, arg, ast.WORD_SIZE
+	}
 	ops, arg, operandSize := g.generateExpressionOps(op.Operand)
 	var resultSize int
 	switch op.Operator {
-	case "&":
-		resultSize = ast.WORD_SIZE
 	case "*":
 		pointerType, ok := op.Operand.GetType().(*ast.PointerType)
 		if !ok {

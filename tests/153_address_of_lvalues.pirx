@@ -1,0 +1,45 @@
+struct Point {
+  x: int;
+  y: int;
+}
+
+struct Line {
+  a: Point;
+  b: Point;
+}
+
+func main(): int {
+  // Address of a struct field.
+  var p: Point = {1, 2};
+  var px: *int = &p.x;
+  *px = 10;
+  printf("p.x = %d\n", p.x);
+
+  // Address of a nested field and of a whole inner struct.
+  var l: Line = {{1, 2}, {3, 4}};
+  var pb: *Point = &l.b;
+  var pby: *int = &l.b.y;
+  (*pb).x = 30;
+  *pby = 40;
+  printf("l.b = (%d, %d)\n", l.b.x, l.b.y);
+
+  // Address of a field accessed through a pointer.
+  var lp: *Line = &l;
+  var pax: *int = &lp.a.x;
+  *pax = 100;
+  printf("l.a.x = %d\n", l.a.x);
+
+  // Address of a slice element.
+  var s: []int = new([]int, 3);
+  var pe: *int = &s[1];
+  *pe = 99;
+  printf("s[1] = %d\n", s[1]);
+
+  // Address of a struct field of a slice element.
+  var points: []Point = new([]Point, 2);
+  var py: *int = &points[1].y;
+  *py = 7;
+  printf("points[1].y = %d\n", points[1].y);
+
+  return 0;
+}

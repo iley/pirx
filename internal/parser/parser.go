@@ -1156,10 +1156,13 @@ func (p *Parser) parseAddressOfExpression() (ast.Expression, error) {
 	}
 	addrLoc := locationFromLexeme(lex)
 
-	// parse the operand - must be an lvalue (variable reference)
-	operand, err := p.parseVariableReference()
+	// parse the operand - must be an lvalue (variable, field access, index expression or dereference)
+	operand, err := p.parsePrimaryExpression()
 	if err != nil {
 		return nil, err
+	}
+	if !p.isValidAssignmentTarget(operand) {
+		return nil, fmt.Errorf("%s: cannot take address of %s", operand.GetLocation(), operand.String())
 	}
 
 	return &ast.UnaryOperation{

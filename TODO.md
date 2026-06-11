@@ -18,10 +18,6 @@
 
 An `extern func` *defined in Pirx* receives its parameters via a C-ABI prologue that spills the incoming registers into the function's stack slots. Arguments that the C ABI passes on the stack (i.e. beyond 8 integer/float registers on aarch64, 6 integer/8 float registers on x86_64) are not supported and cause a compile-time error.
 
-### Address-of only works on plain variables
-
-`&s.field` and `&arr[i]` are parse errors; `parseAddressOfExpression` only accepts a variable reference. Slices have `getptr` as a workaround, struct fields have none.
-
 ### float32 is not fully supported
 
 There is no syntax for float32 literals (the lexer never produces `ast.Literal.Float32Value`), and both code generators use double-precision instructions for all float arithmetic regardless of operand size.

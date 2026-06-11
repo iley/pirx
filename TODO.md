@@ -4,6 +4,8 @@
 
 ### Initializer lists only work in variable declarations
 
+NOTE: This is not planned for now.
+
 `var p: Point = {1, 2};` works (including nested structs and globals), but initializer lists are not allowed in other contexts such as assignments, function arguments or return values. They also only work for struct types, not slices.
 
 ### Equality on slices is rejected rather than implemented

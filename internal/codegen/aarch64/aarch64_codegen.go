@@ -17,8 +17,6 @@ import (
 
 const (
 	FUNC_CALL_REGISTERS = 8
-	MAX_SP_OFFSET_X     = 504 // maximum offset from SP for 64-bit load/store instructions
-	MAX_SP_OFFSET_WB    = 255 // maximum offset from SP for 32-bit/byte load/store instructions
 )
 
 type Features struct {
@@ -40,6 +38,10 @@ type CodegenContext struct {
 	locals       map[string]int // name -> size
 	frameSize    int
 	functionName string
+	// spBias is the extra distance between SP and the frame base while SP is
+	// temporarily lowered for an outgoing call's argument area. Local offsets
+	// are relative to the frame base, so they must be shifted by this amount.
+	spBias int
 }
 
 // mustLocalOffset returns the stack offset of a local variable.
@@ -50,7 +52,7 @@ func (cc *CodegenContext) mustLocalOffset(name string) int {
 	if !ok {
 		panic(fmt.Errorf("variable %s has no stack slot in function %s", name, cc.functionName))
 	}
-	return offset
+	return offset + cc.spBias
 }
 
 func Generate(irp ir.IrProgram, features Features) (asm.Program, error) {
@@ -214,9 +216,9 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 		asm.Op3("sub", asm.SP, asm.SP, asm.Imm(savedRegisters)),
 		asm.Op3("stp", asm.X29, asm.X30, asm.SP.AsDeref()),
 		// Save frame start in X29.
-		asm.Op2("mov", asm.X29, asm.SP),
-		// Shift SP.
-		asm.Op3("sub", asm.SP, asm.SP, asm.Imm(frameSize)))
+		asm.Op2("mov", asm.X29, asm.SP))
+	// Shift SP. Large frames exceed the 12-bit add/sub immediate.
+	result.Lines = append(result.Lines, generateAddSubImm("sub", asm.SP, asm.SP, frameSize)...)
 
 	cc.locals = locals
 	cc.frameSize = frameSize
@@ -240,9 +242,9 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 		result.Lines = append(result.Lines, lines...)
 	}
 
+	result.Lines = append(result.Lines, asm.Label(fmt.Sprintf(".L%s_exit", irfn.Name)))
+	result.Lines = append(result.Lines, generateAddSubImm("add", asm.SP, asm.SP, cc.frameSize)...)
 	result.Lines = append(result.Lines,
-		asm.Label(fmt.Sprintf(".L%s_exit", irfn.Name)),
-		asm.Op3("add", asm.SP, asm.SP, asm.Imm(cc.frameSize)),
 		asm.Op3("ldp", asm.X29, asm.X30, asm.SP.AsDeref()),
 		asm.Op3("add", asm.SP, asm.SP, asm.Imm(savedRegisters)),
 		asm.Op0("ret"))
@@ -473,20 +475,30 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 	//  * Caller always allocates space for the return value.
 	//  * The return value's address is passed in via x19.
 
+	// The argument area: all arguments, then a slot for the saved x19, then SP padding.
+	argsSize := 0
+	for _, arg := range call.Args {
+		argsSize += arg.Size
+	}
+	savedX19Offset := argsSize + ast.WORD_SIZE
+	spShift := alignSP(savedX19Offset)
+
 	var lines []asm.Line
+
+	// Allocate the argument area up front so the stores below use positive offsets:
+	// offsets below -256 are unencodable, and data below SP may be clobbered by
+	// signal delivery (macOS does not guarantee a red zone).
+	lines = append(lines, generateAddSubImm("sub", asm.SP, asm.SP, spShift)...)
+	cc.spBias += spShift
+
 	offset := 0
 	for _, arg := range call.Args {
 		offset += arg.Size
-		lines = append(lines, generateMemoryCopyToReg(cc, arg.Arg, arg.Size, "sp", -offset)...)
+		lines = append(lines, generateMemoryCopyToReg(cc, arg.Arg, arg.Size, "sp", spShift-offset)...)
 	}
 
 	// Save x19 to the stack because it currently holds this function's result address.
-	offset += ast.WORD_SIZE
-	savedX19Offset := offset
-	lines = append(lines, generateRegisterStore("x19", "sp", -offset)...)
-
-	// Don't forget about stack alignment.
-	offset = alignSP(offset)
+	lines = append(lines, generateRegisterStore("x19", "sp", spShift-savedX19Offset)...)
 
 	if call.Result != "" {
 		// Store the result address in x19.
@@ -498,14 +510,14 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 		label = "_" + label
 	}
 
-	lines = append(
-		lines, asm.Op3("sub", asm.SP, asm.SP, asm.Imm(offset)),
-		asm.Op1("bl", asm.Ref(label)),
-		asm.Op3("add", asm.SP, asm.SP, asm.Imm(offset)))
+	lines = append(lines, asm.Op1("bl", asm.Ref(label)))
 
-	// Restore x19.
-	x19Arg := asm.Arg{Reg: "sp", Offset: -savedX19Offset, Deref: true}
+	// Restore x19. The offset is the alignment padding, always in 0..15.
+	x19Arg := asm.Arg{Reg: "sp", Offset: spShift - savedX19Offset, Deref: true}
 	lines = append(lines, asm.Op2("ldr", asm.Reg("x19"), x19Arg))
+
+	cc.spBias -= spShift
+	lines = append(lines, generateAddSubImm("add", asm.SP, asm.SP, spShift)...)
 
 	return lines
 }
@@ -530,6 +542,14 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 	spShift := alignSP(stackSize)
 
 	var lines []asm.Line
+
+	// Allocate the stack-argument area up front so the stores below use positive
+	// offsets; local loads are rebased via spBias. Offsets below -256 are
+	// unencodable, and macOS does not guarantee a red zone below SP.
+	if spShift > 0 {
+		lines = append(lines, generateAddSubImm("sub", asm.SP, asm.SP, spShift)...)
+		cc.spBias += spShift
+	}
 
 	for i, callArg := range call.Args {
 		arg := callArg.Arg
@@ -567,8 +587,6 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 	}
 
-	// Stack arguments are stored below the current SP; SP itself is adjusted just before
-	// the call so that the loads above can still address locals at their usual offsets.
 	// The stores use x10/w10 as scratch to keep the already-loaded argument registers intact.
 	for i, callArg := range call.Args {
 		if locations[i].Reg >= 0 {
@@ -576,7 +594,7 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 		arg := callArg.Arg
 		argSize := callArg.Size
-		offset := locations[i].StackOffset - spShift
+		offset := locations[i].StackOffset
 
 		switch {
 		case argSize > 8:
@@ -599,11 +617,6 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 		}
 	}
 
-	// Adjust SP just before making the call if we have arguments on the stack.
-	if spShift > 0 {
-		lines = append(lines, asm.Op3("sub", asm.SP, asm.SP, asm.Imm(spShift)))
-	}
-
 	label := call.Function
 	if cc.features.FuncLabelsUnderscore {
 		label = "_" + label
@@ -612,9 +625,10 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 	// Finally, call the function.
 	lines = append(lines, asm.Op1("bl", asm.Ref(label)))
 
-	// Don't forget to clean up if we put have arguments on the stack.
+	// Don't forget to clean up if we put arguments on the stack.
 	if spShift > 0 {
-		lines = append(lines, asm.Op3("add", asm.SP, asm.SP, asm.Imm(spShift)))
+		cc.spBias -= spShift
+		lines = append(lines, generateAddSubImm("add", asm.SP, asm.SP, spShift)...)
 	}
 
 	if call.Result != "" {
@@ -879,8 +893,8 @@ func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable stri
 		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPageOff()))
 	} else {
 		// TODO: We could do a single operatation here instead of two: add x9, x9, label@PAGEOFF + offset
-		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPageOff()),
-			asm.Op3("add", asm.X9, asm.X9, asm.Imm(offset)))
+		lines = append(lines, asm.Op3("add", asm.X9, asm.X9, asm.Ref(label).WithPageOff()))
+		lines = append(lines, generateAddSubImm("add", asm.X9, asm.X9, offset)...)
 	}
 
 	if regSize == 1 {
@@ -894,22 +908,17 @@ func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable stri
 
 func generateLocalVariableLoadWithOffset(cc *CodegenContext, reg string, regSize int, variable string, offset int) []asm.Line {
 	var lines []asm.Line
-	fullOffset := int64(cc.mustLocalOffset(variable)) + int64(offset)
+	fullOffset := cc.mustLocalOffset(variable) + offset
 
-	maxOffset := MAX_SP_OFFSET_X
-	if regSize == 4 || regSize == 1 {
-		maxOffset = MAX_SP_OFFSET_WB
-	}
-
-	if fullOffset <= int64(maxOffset) {
-		spArg := asm.Arg{Reg: "sp", Offset: int(fullOffset), Deref: true}
+	if offsetEncodable(fullOffset, regSize) {
+		spArg := asm.Arg{Reg: "sp", Offset: fullOffset, Deref: true}
 		if regSize == 1 {
 			lines = append(lines, asm.Op2("ldrsb", asm.Reg(reg), spArg))
 		} else {
 			lines = append(lines, asm.Op2("ldr", asm.Reg(reg), spArg))
 		}
 	} else {
-		lines = append(lines, generateLiteralLoad("x9", 8, fullOffset)...)
+		lines = append(lines, generateLiteralLoad("x9", 8, int64(fullOffset))...)
 		lines = append(lines, asm.Op3("add", asm.X9, asm.SP, asm.X9))
 		if regSize == 1 {
 			lines = append(lines, asm.Op2("ldrsb", asm.Reg(reg), asm.X9.AsDeref()))
@@ -981,7 +990,7 @@ func generateAddressLoad(cc *CodegenContext, reg string, arg ir.Arg) []asm.Line 
 		lines = append(lines, asm.Op3("add", regArg, regArg, asm.Ref(label).WithPageOff()))
 	} else {
 		offset := cc.mustLocalOffset(arg.Variable)
-		lines = append(lines, asm.Op3("add", regArg, asm.SP, asm.Imm(offset)))
+		lines = append(lines, generateAddSubImm("add", regArg, asm.SP, offset)...)
 	}
 
 	return lines
@@ -1027,26 +1036,7 @@ func generateRegisterStore(reg string, baseReg string, offset int) []asm.Line {
 // generateStoreByAddr generates code for storing a register through a pointer.
 // Loads the pointer address into a register and stores the value through it.
 func generateStoreByAddr(cc *CodegenContext, reg string, target ir.Arg, offset int) []asm.Line {
-	var lines []asm.Line
-
-	// Load the destination address.
-	lines = append(lines, generateRegisterLoad(cc, "x1", ast.WORD_SIZE, target)...)
-	addrReg := asm.Reg("x1")
-	srcReg := asm.Reg(reg)
-	regSize := registerSizeFromName(reg)
-
-	// Add offset to the address.
-	if offset != 0 {
-		lines = append(lines, asm.Op3("add", addrReg, addrReg, asm.Imm(offset)))
-	}
-
-	if regSize == 1 {
-		lines = append(lines, asm.Op2("strb", srcReg, addrReg.AsDeref()))
-	} else {
-		lines = append(lines, asm.Op2("str", srcReg, addrReg.AsDeref()))
-	}
-
-	return lines
+	return generateStoreByAddrSized(cc, reg, registerSizeFromName(reg), target, offset)
 }
 
 // generateStoreByAddrSized is like generateStoreByAddr but uses an explicit size
@@ -1058,8 +1048,9 @@ func generateStoreByAddrSized(cc *CodegenContext, reg string, regSize int, targe
 	addrReg := asm.Reg("x1")
 	srcReg := asm.Reg(reg)
 
+	// Add offset to the address.
 	if offset != 0 {
-		lines = append(lines, asm.Op3("add", addrReg, addrReg, asm.Imm(offset)))
+		lines = append(lines, generateAddSubImm("add", addrReg, addrReg, offset)...)
 	}
 
 	if regSize == 1 {
@@ -1140,17 +1131,44 @@ func generateMemoryCopyFromRef(cc *CodegenContext, sourceRef ir.Arg, size int, t
 	offset := 0
 	for offset < size {
 		if size-offset >= 8 {
-			lines = append(lines, asm.Op2("ldr", asm.X0, asm.DerefWithOffset(asm.X1, offset)))
+			lines = append(lines, generateDerefLoad("x0", 8, "x1", offset)...)
 			lines = append(lines, store("x0", 8, offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
-			lines = append(lines, asm.Op2("ldr", asm.W0, asm.DerefWithOffset(asm.X1, offset)))
+			lines = append(lines, generateDerefLoad("w0", 4, "x1", offset)...)
 			lines = append(lines, store("w0", 4, offset)...)
 			offset += 4
 		} else {
-			lines = append(lines, asm.Op2("ldrb", asm.W0, asm.DerefWithOffset(asm.X1, offset)))
+			lines = append(lines, generateDerefLoad("w0", 1, "x1", offset)...)
 			lines = append(lines, store("w0", 1, offset)...)
 			offset += 1
+		}
+	}
+
+	return lines
+}
+
+// generateDerefLoad loads regSize bytes from [baseReg + offset], falling back to
+// x9-based addressing when the offset is not encodable as an immediate.
+// Uses ldrb (not ldrsb) for bytes: it serves memory copies, where no sign
+// extension is wanted.
+func generateDerefLoad(reg string, regSize int, baseReg string, offset int) []asm.Line {
+	var lines []asm.Line
+
+	if offsetEncodable(offset, regSize) {
+		addr := asm.Arg{Reg: baseReg, Offset: offset, Deref: true}
+		if regSize == 1 {
+			lines = append(lines, asm.Op2("ldrb", asm.Reg(reg), addr))
+		} else {
+			lines = append(lines, asm.Op2("ldr", asm.Reg(reg), addr))
+		}
+	} else {
+		lines = append(lines, generateLiteralLoad("x9", 8, int64(offset))...)
+		lines = append(lines, asm.Op3("add", asm.X9, asm.Reg(baseReg), asm.X9))
+		if regSize == 1 {
+			lines = append(lines, asm.Op2("ldrb", asm.Reg(reg), asm.X9.AsDeref()))
+		} else {
+			lines = append(lines, asm.Op2("ldr", asm.Reg(reg), asm.X9.AsDeref()))
 		}
 	}
 
@@ -1244,14 +1262,7 @@ func generateRegisterStoreSized(reg string, regSize int, baseReg string, offset 
 	var lines []asm.Line
 	regArg := asm.Reg(reg)
 
-	// Different instruction types have different offset limits
-	maxOffset := MAX_SP_OFFSET_X
-	if regSize == 4 || regSize == 1 {
-		// str w0 and strb instructions have smaller offset range
-		maxOffset = MAX_SP_OFFSET_WB
-	}
-
-	if offset <= maxOffset {
+	if offsetEncodable(offset, regSize) {
 		// Easy case: offset from base register.
 		baseArg := asm.Arg{Reg: baseReg, Offset: offset, Deref: true}
 		if regSize == 1 {
@@ -1269,6 +1280,38 @@ func generateRegisterStoreSized(reg string, regSize int, baseReg string, offset 
 		}
 	}
 
+	return lines
+}
+
+// offsetEncodable reports whether a load/store of the given size can encode the
+// immediate offset: either the unscaled form (ldur/stur, which the assembler
+// substitutes automatically) covering -256..255 at any alignment, or the scaled
+// unsigned form covering size-aligned offsets up to size*4095.
+func offsetEncodable(offset, size int) bool {
+	if -256 <= offset && offset <= 255 {
+		return true
+	}
+	return offset >= 0 && offset%size == 0 && offset <= size*4095
+}
+
+// generateAddSubImm emits op (add/sub) dst = src ± imm. Immediates beyond the
+// 12-bit encoding are split into a high part (imm12 shifted by 12, which the
+// assembler encodes automatically) and a low part. Covers imm up to 2^24-1,
+// which is plenty for any realistic frame.
+func generateAddSubImm(op string, dst, src asm.Arg, imm int) []asm.Line {
+	if imm < 0 || imm > 0xFFFFFF {
+		panic(fmt.Errorf("add/sub immediate out of range: %d", imm))
+	}
+
+	var lines []asm.Line
+	hi, lo := imm&^0xFFF, imm&0xFFF
+	if hi != 0 {
+		lines = append(lines, asm.Op3(op, dst, src, asm.Imm(hi)))
+		src = dst
+	}
+	if lo != 0 || len(lines) == 0 {
+		lines = append(lines, asm.Op3(op, dst, src, asm.Imm(lo)))
+	}
 	return lines
 }
 

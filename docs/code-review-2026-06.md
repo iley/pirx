@@ -408,7 +408,7 @@ and `PirxSliceResize` now zeroes the region exposed by growth (old cap to new
 cap) so grown elements read as 0, matching `new`. Regression test:
 `tests/165_resize_zero_cap.pirx`.
 
-#### 2.4 aarch64 emits unencodable assembly for large frames/arg areas — CONFIRMED, medium
+#### 2.4 aarch64 emits unencodable assembly for large frames/arg areas — FIXED
 
 Build failures (assembler errors), not silent corruption. One immediate-range
 family:
@@ -433,6 +433,28 @@ positive offsets (also removes the latent below-SP signal-clobber hazard —
 macOS does not guarantee a red zone); add encodability checks
 (`off <= 255 || (off%8 == 0 && off <= 504)`) with an x9 fallback; split large
 SP adjustments.
+
+**Fixed 2026-06-12**: all sub-failures still reproduced except the 12-byte
+struct stack argument, which the 1.6/1.7 `classifyExternalArgs` rewrite had
+already fixed (covered by `tests/167_extern_abi_args/` and
+`tests/169_extern_abi_floats/`). The fix follows the suggestion: both native
+and external calls now allocate the argument area with `sub sp` *before*
+staging arguments at positive offsets (no more writes below SP, which also
+removes the red-zone hazard); a new `spBias` field in `CodegenContext` rebases
+local offsets in `mustLocalOffset` while SP is lowered. Encodability is
+centralized: every SP/base-relative load and store goes through a precise
+`offsetEncodable(offset, size)` check (unscaled ldur/stur form for -256..255,
+scaled form for size-aligned offsets up to size*4095 — both wider and stricter
+than the old 504/255 caps, which wrongly accepted unaligned 256..504) with the
+existing x9 fallback, and all add/sub immediates (prologue/epilogue, address
+loads, struct-copy offset adds) go through `generateAddSubImm`, which splits
+values beyond 12 bits into shifted+unshifted parts (deliberate limit: frames
+beyond 16 MB panic with a clear message instead of emitting bad assembly).
+Regression
+test: `tests/179_large_frames.pirx` (> 4 KB frame, > 4 KB struct copied
+through a pointer, 320-byte struct passed by value to a Pirx function, the
+bool+int64 unaligned-offset case, printf with 33 varargs); verified failing to
+build pre-fix and green on darwin-arm64, linux-arm64, and linux-x86_64.
 
 #### 2.5 IR generator swallows all of its own errors — FIXED
 
@@ -731,6 +753,13 @@ x86_64 pastes the `movb/movl/movq` size-switch ~8 times despite having
 `sizeToSuffix` (`x86_64_codegen.go:1094-1106, 1117-1132, 1134-1167, 1169-1208,
 1420-1435`). Extract a `forEachChunk(size)` helper per backend: removes ~100
 lines and gives one place to fix offset-encoding bugs (2.4).
+
+*Update 2026-06-12*: the offset-encoding motivation is gone on aarch64 — the
+2.4 fix routes every chunk load/store through encodability-aware helpers
+(`offsetEncodable`/`generateAddSubImm`/`generateDerefLoad`), so the copy loops
+no longer carry per-site encoding logic. The `forEachChunk` extraction itself
+(line-count dedup, and the x86_64 side) remains open. The 2.4 work also merged
+the duplicate `generateStoreByAddr`/`generateStoreByAddrSized` pair.
 
 ### 2.2 `mustLocalOffset` that panics on unknown names — DONE
 

@@ -1,0 +1,87 @@
+// Large frames and argument areas must not produce unencodable assembly:
+// - bigframe: > 4 KB of locals (split sub/add sp, address loads past #4095).
+// - bigcopy: a > 4 KB struct copied through a pointer (chunk offsets past #4095).
+// - take320: a 320-byte struct passed by value to a Pirx function
+//   (> 256 bytes of outgoing argument area).
+// - oddoffset: bool + int64 arguments after ~240 bytes of locals put the int64
+//   at an SP offset over 255 that is not a multiple of 8 (unencodable scaled ldr).
+// - main: printf with 33 int varargs (> 256 bytes of stack arguments).
+// A 12-byte struct as a stack argument to a C callee is covered by test 169.
+
+struct B64 { a: int64; b: int64; c: int64; d: int64; e: int64; f: int64; g: int64; h: int64; }
+struct B512 { b0: B64; b1: B64; b2: B64; b3: B64; b4: B64; b5: B64; b6: B64; b7: B64; }
+struct B320 { b0: B64; b1: B64; b2: B64; b3: B64; b4: B64; }
+struct B4608 { s0: B512; s1: B512; s2: B512; s3: B512; s4: B512; s5: B512; s6: B512; s7: B512; s8: B512; }
+
+func bigframe(seed: int64): int64 {
+    var s0: B512;
+    var s1: B512;
+    var s2: B512;
+    var s3: B512;
+    var s4: B512;
+    var s5: B512;
+    var s6: B512;
+    var s7: B512;
+    var s8: B512;
+    s0.b0.a = seed;
+    s1.b1.b = seed + 1l;
+    s2.b2.c = seed + 2l;
+    s3.b3.d = seed + 3l;
+    s4.b4.e = seed + 4l;
+    s5.b5.f = seed + 5l;
+    s6.b6.g = seed + 6l;
+    s7.b7.h = seed + 7l;
+    s8.b7.h = seed + 8l;
+    return s0.b0.a + s1.b1.b + s2.b2.c + s3.b3.d + s4.b4.e + s5.b5.f + s6.b6.g + s7.b7.h + s8.b7.h;
+}
+
+func bigcopy(seed: int64): int64 {
+    var src: B4608;
+    var dst: B4608;
+    var p: *B4608 = &dst;
+    src.s0.b0.a = seed;
+    src.s4.b3.c = seed * 5l;
+    src.s8.b7.h = seed * 9l;
+    *p = src;
+    return dst.s0.b0.a + dst.s4.b3.c + dst.s8.b7.h;
+}
+
+func take320(s: B320): int64 {
+    return s.b0.a + s.b2.d + s.b4.h;
+}
+
+func oddoffset(b: bool, x: int64): int64 {
+    var p0: B64;
+    var p1: B64;
+    var p2: B64;
+    var extra: int64;
+    p0.a = x;
+    p1.b = x + 1l;
+    p2.c = x + 2l;
+    extra = x + 3l;
+    if (b) {
+        extra = extra + 100l;
+    }
+    return p0.a + p1.b + p2.c + extra;
+}
+
+func main(): int {
+    printf("%lld\n", bigframe(10l));
+    printf("%lld\n", bigcopy(111l));
+
+    var s: B320;
+    s.b0.a = 1000l;
+    s.b2.d = 200l;
+    s.b4.h = 30l;
+    printf("%lld\n", take320(s));
+
+    printf("%lld\n", oddoffset(true, 10l));
+
+    var x = 1;
+    printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+        x, x+1, x+2, x+3, x+4, x+5, x+6, x+7, x+8, x+9,
+        x+10, x+11, x+12, x+13, x+14, x+15, x+16, x+17, x+18, x+19,
+        x+20, x+21, x+22, x+23, x+24, x+25, x+26, x+27, x+28, x+29,
+        x+30, x+31, x+32);
+    return 0;
+}

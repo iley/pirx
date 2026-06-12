@@ -630,12 +630,17 @@ plain 8-byte scalar compare with no IR/codegen changes. `PirxReadLine` returns
 an empty string on a NULL handle instead of crashing (`PirxClose` was already
 NULL-safe). Regression test: `tests/177_open_failure.pirx`.
 
-#### 4.3 No slice bounds checking anywhere — CONFIRMED, medium (design gap)
+#### 4.3 No slice bounds checking anywhere — DOCUMENTED (skipped)
 
 `s[100000000]` on a 3-element slice silently returns 0; `s[3]` write succeeds
 (heap corruption); `range(s, 2, 10)` produces an out-of-bounds view. `Panic()`
 is declared in `builtin.h:6` but defined and called nowhere. If intentional,
 document in TODO.md; otherwise the `Panic` hook is the place to start.
+
+**Skipped 2026-06-12**: implementing bounds checking is a language-design
+decision (runtime cost, violation semantics), not a localized fix. Documented
+in `docs/TODO.md` under "No slice bounds checking" along with the other
+missing-feature candidates from Part 3.
 
 #### 4.4 Minor runtime nits — SUSPECTED, low
 

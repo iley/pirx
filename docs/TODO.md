@@ -28,6 +28,30 @@ An `extern func` *defined in Pirx* receives its parameters via a C-ABI prologue 
 
 There is no syntax for float32 literals (the lexer never produces `ast.Literal.Float32Value`), and both code generators use double-precision instructions for all float arithmetic regardless of operand size.
 
+### No slice bounds checking
+
+Slice reads and writes are not bounds-checked: `s[100]` on a 3-element slice silently reads garbage, an out-of-bounds write corrupts the heap, and `range(s, 2, 10)` produces an out-of-bounds view. The unused `Panic()` hook declared in `stdlib/builtin.h` is the natural place to start if checks are added. Needs a design decision (runtime cost vs. safety, behavior on violation).
+
+### No block comments
+
+Only `//` line comments exist; `/* */` produces a confusing parse error.
+
+### Struct declaration order matters
+
+`struct A { b: B; }` fails with "type B is not fully defined" when `B` is declared after `A`. Forward references between struct types are not resolved.
+
+### int8 returns from Pirx-bodied extern funcs unsupported
+
+An `extern func` defined in Pirx with an `int8` return type fails with "unsupported return value size: 1" on both backends.
+
+### readline cannot distinguish EOF from empty line
+
+`readline` returns a size-0 string both at EOF and for an empty line; the only way to tell them apart is `getptr(line) == null`.
+
+### No float exponent literal syntax
+
+`1.5e10` lexes as `1.5` followed by an identifier `e10`, producing a misleading error.
+
 ## Bugs
 
 ### Assigning to a string element compiles but can crash

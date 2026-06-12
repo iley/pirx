@@ -173,7 +173,7 @@ uses `__TEXT,__const` (identical literals are already deduped by the
 compiler). Regression test: `tests/164_string_escapes.pirx` (UTF-8 with
 getsize, bytes after `\0`, literal backslash) plus unit tests.
 
-#### 1.6 aarch64 external calls: register classes starve each other — CONFIRMED, high
+#### 1.6 aarch64 external calls: register classes starve each other — FIXED
 
 `internal/codegen/aarch64/aarch64_codegen.go:467-476`. The register-assignment
 loop `break`s entirely when the *current* arg's register class is exhausted,
@@ -187,13 +187,31 @@ registers. Confirmed against real C callees:
 Per AAPCS64/Apple, exhausting one class must not push other-class args to the
 stack. Classification must be per-class.
 
-#### 1.7 aarch64: named sub-8-byte stack args use 8-byte slots — CONFIRMED, high
+**Fixed 2026-06-12**: argument locations are now computed up front by a shared
+per-class classifier, `classifyExternalArgs` (simplicity item 2.4), used by
+both `generateExternalFunctionCall` and `generateExternalPrologue`. Exhausting
+one register class no longer pushes other-class arguments to the stack, and
+per AAPCS64 C.11 a spilled int-class argument closes the int registers for
+later arguments (no back-filling). Regression test:
+`tests/167_extern_abi_args/` (real C callees; the float-exhaustion-then-int
+case is deferred to the 1.10 fix because that pattern is still broken on
+x86_64).
+
+#### 1.7 aarch64: named sub-8-byte stack args use 8-byte slots — FIXED
 
 `aarch64_codegen.go:526-563`. Every stack arg is rounded to 8 bytes, but
 Apple's arm64 ABI packs *named* stack arguments at natural size and alignment
 (only variadic args get 8-byte slots). C `int sum10(int a..j)` called with
 1..10 returns 285 instead of 385 (10th arg read from the 9th's padding).
 Variadic calls were verified correct.
+
+**Fixed 2026-06-12**: `classifyExternalArgs` packs named stack arguments at
+natural size and alignment when the new `Features.PackedStackArgs` flag is set
+(Darwin only); Linux keeps standard-AAPCS64 8-byte slots, and variadic
+arguments keep 8-byte slots on both platforms. Stack alignment is derived from
+the argument size (largest power of two dividing it, capped at 8), and 12-byte
+struct stack args no longer panic. Regression test:
+`tests/167_extern_abi_args/`, verified natively and under linux/arm64.
 
 #### 1.8 x86_64: float negation is a no-op when the program contains `0.0` — CONFIRMED, high
 
@@ -620,12 +638,16 @@ converts silent memory corruption into a compile-time failure permanently.
 * `Optimize` (`:19-26`) copies `IrFunction` field-by-field; any future field is
   silently dropped.
 
-### 2.4 Shared register classifier for aarch64 extern prologue + call — medium (~2h)
+### 2.4 Shared register classifier for aarch64 extern prologue + call — DONE
 
 `generateExternalPrologue` (`aarch64_codegen.go:237-293`) and
 `generateExternalFunctionCall` (`:443-521`) duplicate the size-1/4/8/12/16,
 int-vs-float classification switch. One shared classifier fixes bugs 1.6 and
 the 12-byte-stack-arg panic once instead of twice.
+
+**Done 2026-06-12**: `classifyExternalArgs` computes every argument's location
+(register index within its class, or stack offset) in one place; the prologue
+and the call site only emit the loads/stores. Done as part of fixing 1.6/1.7.
 
 ### 2.5 Type switches instead of assertion chains — small, mechanical
 

@@ -23,6 +23,9 @@ const (
 type Features struct {
 	VarargsOnStack       bool
 	FuncLabelsUnderscore bool
+	// Apple's arm64 ABI packs named stack arguments at natural size and alignment;
+	// standard AAPCS64 (Linux) rounds every stack argument up to 8 bytes.
+	PackedStackArgs bool
 }
 
 type CodegenContext struct {
@@ -246,61 +249,114 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 // Spill the incoming register arguments of an external (C ABI) function into the stack slots
 // where the function body expects to find them. Mirrors generateExternalFunctionCall.
 func generateExternalPrologue(cc *CodegenContext, irfn ir.IrFunction) ([]asm.Line, error) {
-	var lines []asm.Line
-	nextIntRegister := 0
-	nextFloatRegister := 0
+	locations, _ := classifyExternalArgs(irfn.ArgSizes, irfn.ArgFloats, len(irfn.Args), cc.features.PackedStackArgs)
 
+	var lines []asm.Line
 	for i, arg := range irfn.Args {
 		argSize := irfn.ArgSizes[i]
-
-		needRegisters := 1
-		if argSize > 8 {
-			needRegisters = 2
-		}
-		if irfn.ArgFloats[i] {
-			if nextFloatRegister+needRegisters > FUNC_CALL_REGISTERS {
-				return lines, fmt.Errorf("external function %s has too many arguments: receiving arguments on the stack is not supported", irfn.Name)
-			}
-		} else {
-			if nextIntRegister+needRegisters > FUNC_CALL_REGISTERS {
-				return lines, fmt.Errorf("external function %s has too many arguments: receiving arguments on the stack is not supported", irfn.Name)
-			}
+		reg := locations[i].Reg
+		if reg < 0 {
+			return lines, fmt.Errorf("external function %s has too many arguments: receiving arguments on the stack is not supported", irfn.Name)
 		}
 
 		switch argSize {
 		case 1:
-			lines = append(lines, generateStoreToLocalWithOffsetSized(cc, registerByIndex(nextIntRegister, 4), 1, arg, 0)...)
-			nextIntRegister++
+			lines = append(lines, generateStoreToLocalWithOffsetSized(cc, registerByIndex(reg, 4), 1, arg, 0)...)
 		case 4:
 			if irfn.ArgFloats[i] {
-				lines = append(lines, generateStoreToLocalWithOffsetSized(cc, fmt.Sprintf("s%d", nextFloatRegister), 4, arg, 0)...)
-				nextFloatRegister++
+				lines = append(lines, generateStoreToLocalWithOffsetSized(cc, fmt.Sprintf("s%d", reg), 4, arg, 0)...)
 			} else {
-				lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister, 4), arg, 0)...)
-				nextIntRegister++
+				lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(reg, 4), arg, 0)...)
 			}
 		case 8:
 			if irfn.ArgFloats[i] {
-				lines = append(lines, generateStoreToLocalWithOffsetSized(cc, fmt.Sprintf("d%d", nextFloatRegister), 8, arg, 0)...)
-				nextFloatRegister++
+				lines = append(lines, generateStoreToLocalWithOffsetSized(cc, fmt.Sprintf("d%d", reg), 8, arg, 0)...)
 			} else {
-				lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister, 8), arg, 0)...)
-				nextIntRegister++
+				lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(reg, 8), arg, 0)...)
 			}
 		case 12:
-			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister, 8), arg, 0)...)
-			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister+1, 4), arg, 8)...)
-			nextIntRegister += 2
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(reg, 8), arg, 0)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(reg+1, 4), arg, 8)...)
 		case 16:
-			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister, 8), arg, 0)...)
-			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(nextIntRegister+1, 8), arg, 8)...)
-			nextIntRegister += 2
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(reg, 8), arg, 0)...)
+			lines = append(lines, generateStoreToLocalWithOffset(cc, registerByIndex(reg+1, 8), arg, 8)...)
 		default:
 			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
 		}
 	}
 
 	return lines, nil
+}
+
+// argLocation says where one C-ABI argument lives: in a register of its class
+// (x<Reg> for ints, s<Reg>/d<Reg> for floats; arguments over 8 bytes take Reg and Reg+1),
+// or, when Reg is -1, on the stack at StackOffset within the outgoing argument area.
+type argLocation struct {
+	Reg         int
+	StackOffset int
+}
+
+// classifyExternalArgs assigns a C-ABI location to every argument of an external call.
+// Register assignment is per class: ints consume x0-x7 independently of floats consuming
+// d0-d7, and an argument goes to the stack only when its own class is exhausted.
+// Arguments at index >= numRegisterEligible (variadic arguments on Darwin) always go to
+// the stack in 8-byte slots. Named stack arguments are packed at natural size and
+// alignment when packStackArgs is set (Apple ABI) and use 8-byte slots otherwise
+// (standard AAPCS64). Returns the locations and the total stack area size.
+func classifyExternalArgs(sizes []int, floats []bool, numRegisterEligible int, packStackArgs bool) ([]argLocation, int) {
+	locations := make([]argLocation, len(sizes))
+	nextIntRegister := 0
+	nextFloatRegister := 0
+	stackOffset := 0
+
+	for i, size := range sizes {
+		reg := -1
+		if i < numRegisterEligible {
+			if floats[i] {
+				if nextFloatRegister < FUNC_CALL_REGISTERS {
+					reg = nextFloatRegister
+					nextFloatRegister++
+				}
+			} else {
+				needRegisters := 1
+				if size > 8 {
+					needRegisters = 2
+				}
+				if nextIntRegister+needRegisters <= FUNC_CALL_REGISTERS {
+					reg = nextIntRegister
+					nextIntRegister += needRegisters
+				} else {
+					// AAPCS64 rule C.11: once an int-class argument spills to the stack,
+					// later arguments must not back-fill the remaining int registers.
+					nextIntRegister = FUNC_CALL_REGISTERS
+				}
+			}
+		}
+
+		if reg >= 0 {
+			locations[i] = argLocation{Reg: reg, StackOffset: -1}
+			continue
+		}
+
+		slotSize := size
+		align := naturalAlignment(size)
+		if !packStackArgs || i >= numRegisterEligible {
+			slotSize = util.Align(size, 8)
+			align = 8
+		}
+		stackOffset = util.Align(stackOffset, align)
+		locations[i] = argLocation{Reg: -1, StackOffset: stackOffset}
+		stackOffset += slotSize
+	}
+
+	return locations, stackOffset
+}
+
+// naturalAlignment approximates a value's C alignment from its size alone: the largest
+// power of two dividing the size, capped at 8. This is exact for all scalar types and
+// for aggregates of equally-sized members (e.g. a 12-byte struct of ints aligns to 4).
+func naturalAlignment(size int) int {
+	return min(size&-size, 8)
 }
 
 func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
@@ -452,125 +508,88 @@ func generateFunctionCall(cc *CodegenContext, call ir.Call) []asm.Line {
 // ** WARNING! **
 // We don't support the full C ABI here, just the bare minimum that we needed up to this point.
 func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]asm.Line, error) {
-	var lines []asm.Line
-	remainingArgs := call.Args
-
-	var nRegisterArgs int // how many args can go into registers
+	// On Darwin variadic arguments never go into registers.
+	numRegisterEligible := len(call.Args)
 	if cc.features.VarargsOnStack {
-		nRegisterArgs = call.NamedArgs
-	} else {
-		nRegisterArgs = len(call.Args)
+		numRegisterEligible = call.NamedArgs
 	}
 
-	nextIntRegister := 0   // X0
-	nextFloatRegister := 0 // S0/D0
-	for range nRegisterArgs {
-		callArg := remainingArgs[0]
+	sizes := make([]int, len(call.Args))
+	floats := make([]bool, len(call.Args))
+	for i, callArg := range call.Args {
+		sizes[i] = callArg.Size
+		floats[i] = callArg.IsFloat
+	}
+	locations, stackSize := classifyExternalArgs(sizes, floats, numRegisterEligible, cc.features.PackedStackArgs)
+	spShift := alignSP(stackSize)
+
+	var lines []asm.Line
+
+	for i, callArg := range call.Args {
 		arg := callArg.Arg
 		argSize := callArg.Size
-
-		// We can split a larger argument into two registers.
-		needRegisters := 1
-		if argSize > 8 {
-			needRegisters = 2
-		}
-
-		// Check if we ran out of registers.
-		if callArg.IsFloat {
-			if nextFloatRegister+needRegisters > FUNC_CALL_REGISTERS {
-				break
-			}
-		} else {
-			if nextIntRegister+needRegisters > FUNC_CALL_REGISTERS {
-				break
-			}
+		reg := locations[i].Reg
+		if reg < 0 {
+			continue
 		}
 
 		switch argSize {
 		case 1:
-			reg32 := registerByIndex(nextIntRegister, 4)
-			reg64 := registerByIndex(nextIntRegister, 8)
-			lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextIntRegister, argSize), argSize, arg)...)
-			lines = append(lines, asm.Op2("sxtb", asm.Reg(reg64), asm.Reg(reg32)))
-			nextIntRegister++
+			lines = append(lines, generateRegisterLoad(cc, registerByIndex(reg, argSize), argSize, arg)...)
+			lines = append(lines, asm.Op2("sxtb", asm.Reg(registerByIndex(reg, 8)), asm.Reg(registerByIndex(reg, 4))))
 		case 4:
 			if callArg.IsFloat {
-				// Float argument - use S register
-				sReg := fmt.Sprintf("s%d", nextFloatRegister)
-				lines = append(lines, generateRegisterLoad(cc, sReg, argSize, arg)...)
-				nextFloatRegister++
+				lines = append(lines, generateRegisterLoad(cc, fmt.Sprintf("s%d", reg), argSize, arg)...)
 			} else {
-				reg32 := registerByIndex(nextIntRegister, 4)
-				reg64 := registerByIndex(nextIntRegister, 8)
-				lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextIntRegister, argSize), argSize, arg)...)
-				lines = append(lines, asm.Op2("sxtw", asm.Reg(reg64), asm.Reg(reg32)))
-				nextIntRegister++
+				lines = append(lines, generateRegisterLoad(cc, registerByIndex(reg, argSize), argSize, arg)...)
+				lines = append(lines, asm.Op2("sxtw", asm.Reg(registerByIndex(reg, 8)), asm.Reg(registerByIndex(reg, 4))))
 			}
 		case 8:
 			if callArg.IsFloat {
-				// Double argument - use D register
-				dReg := fmt.Sprintf("d%d", nextFloatRegister)
-				lines = append(lines, generateRegisterLoad(cc, dReg, argSize, arg)...)
-				nextFloatRegister++
+				lines = append(lines, generateRegisterLoad(cc, fmt.Sprintf("d%d", reg), argSize, arg)...)
 			} else {
-				lines = append(lines, generateRegisterLoad(cc, registerByIndex(nextIntRegister, argSize), argSize, arg)...)
-				nextIntRegister++
+				lines = append(lines, generateRegisterLoad(cc, registerByIndex(reg, argSize), argSize, arg)...)
 			}
 		case 12:
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextIntRegister, 8), 8, arg, 0)...)
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextIntRegister+1, 4), 4, arg, 8)...)
-			nextIntRegister += 2
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(reg, 8), 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(reg+1, 4), 4, arg, 8)...)
 		case 16:
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextIntRegister, 8), 8, arg, 0)...)
-			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(nextIntRegister+1, 8), 8, arg, 8)...)
-			nextIntRegister += 2
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(reg, 8), 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(reg+1, 8), 8, arg, 8)...)
 		default:
 			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
 		}
-
-		remainingArgs = remainingArgs[1:]
 	}
 
-	var spShift int
-
-	// Everything else goes on the stack.
-	if len(remainingArgs) > 0 {
-		// Calculate space needed for stack arguments.
-		stackSize := 0
-		for _, callArg := range remainingArgs {
-			if callArg.Size <= 8 {
-				stackSize += ast.WORD_SIZE
-			} else {
-				// For larger arguments, round up to multiple of WORD_SIZE
-				stackSize += ((callArg.Size + ast.WORD_SIZE - 1) / ast.WORD_SIZE) * ast.WORD_SIZE
-			}
+	// Stack arguments are stored below the current SP; SP itself is adjusted just before
+	// the call so that the loads above can still address locals at their usual offsets.
+	// The stores use x10/w10 as scratch to keep the already-loaded argument registers intact.
+	for i, callArg := range call.Args {
+		if locations[i].Reg >= 0 {
+			continue
 		}
-		spShift = alignSP(stackSize)
+		arg := callArg.Arg
+		argSize := callArg.Size
+		offset := locations[i].StackOffset - spShift
 
-		// Then generate the stack pushes.
-		stackOffset := 0
-		for _, callArg := range remainingArgs {
-			arg := callArg.Arg
-			argSize := callArg.Size
-
-			switch argSize {
-			case 16:
-				// For 16-byte arguments (like slices/strings), load and store as two 8-byte values
-				lines = append(lines, generateRegisterLoadWithOffset(cc, "x10", 8, arg, 0)...)
-				lines = append(lines, generateRegisterStore("x10", "sp", stackOffset-int(spShift))...)
-				lines = append(lines, generateRegisterLoadWithOffset(cc, "x10", 8, arg, 8)...)
-				lines = append(lines, generateRegisterStore("x10", "sp", stackOffset+8-int(spShift))...)
-				stackOffset += 16
-			default:
-				lines = append(lines, generateRegisterLoad(cc, registerByIndex(10, argSize), argSize, arg)...)
-				// We extend all arguments to 64 bit.
-				if argSize == 4 {
-					// Sign extend 32-bit values to 64-bit
-					lines = append(lines, asm.Op2("sxtw", asm.Reg("x10"), asm.Reg("w10")))
-				}
-				lines = append(lines, generateRegisterStore("x10", "sp", stackOffset-int(spShift))...)
-				stackOffset += ast.WORD_SIZE
+		switch {
+		case argSize > 8:
+			// 12- and 16-byte aggregates: copy as an 8-byte chunk plus the remainder.
+			lines = append(lines, generateRegisterLoadWithOffset(cc, "x10", 8, arg, 0)...)
+			lines = append(lines, generateRegisterStore("x10", "sp", offset)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, registerByIndex(10, argSize-8), argSize-8, arg, 8)...)
+			lines = append(lines, generateRegisterStore(registerByIndex(10, argSize-8), "sp", offset+8)...)
+		case cc.features.PackedStackArgs && i < numRegisterEligible:
+			// Apple packs named stack arguments at natural size.
+			lines = append(lines, generateRegisterLoad(cc, registerByIndex(10, argSize), argSize, arg)...)
+			lines = append(lines, generateRegisterStoreSized(registerByIndex(10, argSize), argSize, "sp", offset)...)
+		default:
+			// 8-byte slot: extend the value to 64 bits.
+			lines = append(lines, generateRegisterLoad(cc, registerByIndex(10, argSize), argSize, arg)...)
+			if argSize == 4 {
+				lines = append(lines, asm.Op2("sxtw", asm.Reg("x10"), asm.Reg("w10")))
 			}
+			lines = append(lines, generateRegisterStore("x10", "sp", offset)...)
 		}
 	}
 

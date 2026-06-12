@@ -1,0 +1,27 @@
+// Exercises the external-call C ABI: register assignment must be per class
+// (ints in x0-x7 independently of floats in d0-d7), and named stack arguments
+// must use natural size and alignment on Apple (8-byte slots on Linux).
+
+extern func mix9i1d(a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, x: float64): float64;
+extern func sum10(a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, i: int, j: int): int;
+extern func mixmany(d1: float64, d2: float64, d3: float64, d4: float64, d5: float64, d6: float64, d7: float64, d8: float64,
+                    i1: int, i2: int, i3: int, i4: int, i5: int, i6: int, s1: int, s2: int,
+                    t1: int8, t2: int, t3: bool, t4: int64, t5: int): float64;
+
+func main(): int {
+    // 1+2+...+9 + 0.5 = 45.5
+    printf("%.2f\n", mix9i1d(1, 2, 3, 4, 5, 6, 7, 8, 9, 0.5));
+
+    // Negative values on the stack catch wrong slot sizes and sign extension.
+    // 1-4+9-16+25-36+49-64+81-100 = -55
+    printf("%d\n", sum10(1, -2, 3, -4, 5, -6, 7, -8, 9, -10));
+
+    // doubles: 0.5+3+7.5+14+22.5+33+45.5+60 = 186
+    // ints: 9+20+33+48+65+84+105+128 = 492
+    // stack: -153+180+19+220+252 = 518
+    // total: 1196
+    printf("%.2f\n", mixmany(0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5,
+                             1, 2, 3, 4, 5, 6, 7, 8,
+                             -9i8, 10, true, 11l, 12));
+    return 0;
+}

@@ -15,6 +15,7 @@ func (cg *CodeGenerator) Generate(program ir.IrProgram) (asm.Program, error) {
 	features := aarch64.Features{
 		VarargsOnStack:       false,
 		FuncLabelsUnderscore: false,
+		PackedStackArgs:      false,
 	}
 	return aarch64.Generate(program, features)
 }

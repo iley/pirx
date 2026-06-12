@@ -1,0 +1,29 @@
+// Constants declared with val cannot be mutated through pointers or field writes.
+
+struct Point {
+  x: int;
+  y: int;
+}
+
+struct Line {
+  a: Point;
+  b: Point;
+}
+
+func main(): int {
+  val c = 1;
+  *&c = 7;
+  var q: *int = &c;
+
+  val p: Point = {1, 2};
+  p.x = 99;
+  p.x += 1;
+  p.y++;
+  --p.y;
+  var r: *int = &p.x;
+
+  val l: Line = {{1, 2}, {3, 4}};
+  l.a.x = 5;
+
+  return 0;
+}

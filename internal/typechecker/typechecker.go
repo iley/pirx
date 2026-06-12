@@ -532,14 +532,8 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 		}
 	}
 
-	// Look up the target in the original AST node: checkExpression renames variables,
-	// and renamed (shadowed) variables can no longer be looked up by name.
-	if varRef, ok := assignment.Target.(*ast.VariableReference); ok {
-		if vd, ok := c.vars.lookup(varRef.Name); ok {
-			if vd.constant {
-				c.errorf("%s: cannot assign value to constant %s", assignment.Loc, varRef.Name)
-			}
-		}
+	if name, isConst := c.constantRoot(assignment.Target, checkedTarget); isConst {
+		c.errorf("%s: cannot assign value to constant %s", assignment.Loc, name)
 	}
 
 	// Ensure we always have a valid type to avoid nil dereference.
@@ -571,6 +565,27 @@ func isAddressable(expr ast.Expression) bool {
 	default:
 		return false
 	}
+}
+
+// constantRoot reports whether an expression refers to the storage of a variable declared
+// with val, and returns that variable's name. It walks field-access chains down to the root
+// variable; dereference, indexing and pointer auto-dereference break the chain because the
+// resulting location lives behind a pointer rather than in the constant's own storage.
+// It takes both the original expression (checkExpression renames variables, and renamed
+// variables can no longer be looked up by name) and the checked one (for type information).
+func (c *TypeChecker) constantRoot(orig, checked ast.Expression) (string, bool) {
+	switch origExpr := orig.(type) {
+	case *ast.VariableReference:
+		if vd, ok := c.vars.lookup(origExpr.Name); ok && vd.constant {
+			return origExpr.Name, true
+		}
+	case *ast.FieldAccess:
+		checkedFa, ok := checked.(*ast.FieldAccess)
+		if ok && !ast.IsPointerType(checkedFa.Object.GetType()) {
+			return c.constantRoot(origExpr.Object, checkedFa.Object)
+		}
+	}
+	return "", false
 }
 
 func (c *TypeChecker) checkVariableReference(ref *ast.VariableReference) *ast.VariableReference {
@@ -641,8 +656,14 @@ func (c *TypeChecker) checkUnaryOperation(unaryOp *ast.UnaryOperation) *ast.Unar
 	operandType := operandExpr.GetType()
 	// Addressability is a property of the expression, not its type, so it cannot
 	// be checked in unaryOperationResult.
-	if unaryOp.Operator == "&" && !isAddressable(operandExpr) {
-		c.errorf("%s: cannot take the address of an expression that is not an lvalue", unaryOp.Loc)
+	if unaryOp.Operator == "&" {
+		if !isAddressable(operandExpr) {
+			c.errorf("%s: cannot take the address of an expression that is not an lvalue", unaryOp.Loc)
+		}
+		// A pointer to a constant's storage would allow mutating it, so reject it outright.
+		if name, isConst := c.constantRoot(unaryOp.Operand, operandExpr); isConst {
+			c.errorf("%s: cannot take the address of constant %s", unaryOp.Loc, name)
+		}
 	}
 	resultType, ok := c.unaryOperationResult(unaryOp.Operator, operandType)
 	if !ok {
@@ -870,10 +891,8 @@ func (c *TypeChecker) checkPrefixOperator(po *ast.PrefixOperator) *ast.PrefixOpe
 // It needs both the original operand (for looking up variables by their source name)
 // and the checked one (for type information).
 func (c *TypeChecker) checkIncDecOperand(loc ast.Location, operand, checkedOperand ast.Expression, operator string) {
-	if varRef, ok := operand.(*ast.VariableReference); ok {
-		if vd, ok := c.vars.lookup(varRef.Name); ok && vd.constant {
-			c.errorf("%s: cannot apply %s to constant %s", loc, operator, varRef.Name)
-		}
+	if name, isConst := c.constantRoot(operand, checkedOperand); isConst {
+		c.errorf("%s: cannot apply %s to constant %s", loc, operator, name)
 	}
 	if !isAddressable(checkedOperand) {
 		c.errorf("%s: invalid operand for %s", loc, operator)

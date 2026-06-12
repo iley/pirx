@@ -465,12 +465,22 @@ runs (bool reinterpreted as count); `new([]int, "hello")` panics codegen
 int-sized counts; int64/int8 counts already failed in IR/codegen). Regression
 test: `tests/166_new_count_type_error.pirx`.
 
-#### 3.2 `val` const-ness only enforced for direct assignment — CONFIRMED, medium
+#### 3.2 `val` const-ness only enforced for direct assignment — FIXED
 
 `typechecker.go:503-510, 829-838`. All of these compile and mutate constants:
 `*&c = 7`, `var p: *int = &c; *p = 9`, and for `val p: Point`:
 `p.x = 99; p.y++;`. At minimum, `&const` and `constVar.field = ...` deserve
 checks (extend the const lookup to FieldAccess bases and `&` operands).
+
+**Fixed 2026-06-12**: a new `constantRoot` helper walks assignment/inc-dec
+targets and `&` operands through field-access chains down to the root
+variable and rejects the operation when that root is a `val`. Taking the
+address of a constant (or of its field) is now an error, which closes both
+pointer-escape holes. Deliberate scope: dereference, indexing, and pointer
+auto-dereference break the chain — a `val` pointer's pointee and a `val`
+slice's elements remain mutable, since `val` protects the variable's own
+storage (the pointer/slice header), not the heap it points to. Regression
+test: `tests/171_val_constness_error.pirx`.
 
 #### 3.3 Non-interned `file` type breaks `==` — CONFIRMED, medium
 

@@ -852,16 +852,34 @@ func (g *Generator) generateMain() IrFunction {
 			Function: "Pirx_Init",
 			Args:     []CallArg{},
 		},
-		Call{
-			Result:   "$ret",
-			Function: "Pirx_Main",
-			Args:     []CallArg{},
-			Size:     ast.INT_SIZE,
-		},
-		ExternalReturn{
-			Value: &Arg{Variable: "$ret"},
-			Size:  ast.INT_SIZE,
-		},
+	}
+
+	// When main is declared without a return type, there's no result to thread
+	// through; return a literal 0 so the exit status isn't garbage.
+	if g.funcs["main"].ReturnType != nil {
+		ops = append(ops,
+			Call{
+				Result:   "$ret",
+				Function: "Pirx_Main",
+				Args:     []CallArg{},
+				Size:     ast.INT_SIZE,
+			},
+			ExternalReturn{
+				Value: &Arg{Variable: "$ret"},
+				Size:  ast.INT_SIZE,
+			},
+		)
+	} else {
+		ops = append(ops,
+			Call{
+				Function: "Pirx_Main",
+				Args:     []CallArg{},
+			},
+			ExternalReturn{
+				Value: &Arg{LiteralInt: util.Int64Ptr(0)},
+				Size:  ast.INT_SIZE,
+			},
+		)
 	}
 
 	return IrFunction{

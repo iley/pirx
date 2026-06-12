@@ -222,7 +222,7 @@ All confirmed against real C callees in Docker:
 Note: a single trailing float after register exhaustion *accidentally* prints
 correctly (two bugs canceling), so tests need ≥2 floats to catch this.
 
-#### 1.11 `func main()` without return type exits with garbage status — CONFIRMED, high
+#### 1.11 `func main()` without return type exits with garbage status — FIXED
 
 `internal/ir/generator.go:849` (`generateMain`). The entry stub always emits
 `Call4($ret = Pirx_Main()); ExternalReturn4($ret)`; for a void `main`, `$ret`
@@ -231,6 +231,10 @@ status 200 on aarch64-darwin, 255 on x86_64-linux. All 156 e2e tests use
 `main(): int` with explicit `return 0`, which masks this. Fix: zero-initialize
 `$ret` (one IR op), or only thread a result when main is declared `: int`.
 Affects all backends.
+
+**Fixed 2026-06-12**: `generateMain` only threads `$ret` when main is declared
+with a return type; for void main it returns a literal 0. Regression test:
+`tests/156_void_main.pirx`.
 
 ### Tier 2 — compiler crashes / hangs on valid code
 
@@ -659,7 +663,7 @@ switch the predicates to name comparison. Removes the entire class behind 3.3.
 
 Each fix has a ready-made repro that can become a `tests/NNN_*.pirx` case.
 
-1. **1.11** void-main exit status (one line in `generateMain`).
+1. ~~**1.11** void-main exit status (one line in `generateMain`).~~ DONE
 2. **1.1 + 1.4 + 2.2** optimizer soundness (one small change surface in
    optimize.go; add the first internal/ir unit tests here).
 3. **1.3** compound-assignment double-eval (lower in IR generator).

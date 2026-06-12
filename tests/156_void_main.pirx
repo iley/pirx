@@ -1,0 +1,4 @@
+// main() without a return type must exit with status 0.
+func main() {
+    printf("hello from void main\n");
+}

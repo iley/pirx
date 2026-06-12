@@ -1064,9 +1064,12 @@ func (p *Parser) parseCharLiteral() (ast.Expression, error) {
 	}
 
 	// Get the rune value (first character of the string)
-	charValue := int8([]rune(lex.Str)[0])
+	r := []rune(lex.Str)[0]
+	if r > 127 {
+		return nil, fmt.Errorf("%s: character literal %q does not fit in int8: only ASCII characters are supported", lex.Loc, r)
+	}
 
-	literal := ast.NewInt8Literal(charValue)
+	literal := ast.NewInt8Literal(int8(r))
 	literal.Loc = litLoc
 	return literal, nil
 }

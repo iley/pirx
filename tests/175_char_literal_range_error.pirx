@@ -1,0 +1,5 @@
+// Character literals must fit in int8, so non-ASCII codepoints are rejected.
+func main(): int {
+  var c = 'é';
+  return int(c);
+}

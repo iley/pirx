@@ -526,11 +526,17 @@ for `getptr` on a string, mirroring the `range` pattern. No IR/runtime changes
 needed: strings share the slice representation, so `PirxSlicePtr` already
 works. Regression test: `tests/174_getptr_string.pirx`.
 
-#### 3.7 Non-ASCII char literals silently truncate — CONFIRMED, medium
+#### 3.7 Non-ASCII char literals silently truncate — FIXED
 
 `internal/parser/parser.go:1067`. `int8([]rune(lex.Str)[0])` wraps any
 codepoint > 127: `'é'` becomes -23 with no diagnostic. Fix: reject char
 literals outside int8 range.
+
+**Fixed 2026-06-12**: `parseCharLiteral` rejects codepoints > 127 with
+"character literal 'é' does not fit in int8: only ASCII characters are
+supported" at the literal's source location. Escape sequences are decoded in
+the lexer and unaffected. Regression test:
+`tests/175_char_literal_range_error.pirx`.
 
 #### 3.8 Generated `PirxEq_<Struct>` collides with user functions — CONFIRMED, medium
 

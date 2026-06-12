@@ -609,7 +609,7 @@ document in TODO.md; otherwise the `Panic` hook is the place to start.
 
 ### Tier 5 — tooling / drivers
 
-#### 5.1 `pirx build` clobbers and deletes user files — CONFIRMED, medium
+#### 5.1 `pirx build` clobbers and deletes user files — FIXED
 
 `cmd/pirx/main.go:194-257`. Intermediates `<base>.s`/`<base>.o` are placed
 next to the output and unconditionally removed:
@@ -624,6 +624,16 @@ next to the output and unconditionally removed:
 
 Fix for the whole family: put intermediates in `os.MkdirTemp` (also deletes
 the `-k` cleanup bookkeeping).
+
+**Fixed 2026-06-12**: all intermediates now live in an `os.MkdirTemp`
+directory removed on every exit path, with collision-proof object names
+(`pirx.o`, `c0.o`, `c1.o`, ...). User files next to the output are never
+touched, `-o foo.s` leaves the binary at `foo.s` intact, and failed builds
+leave nothing behind. `-k` copies the `.s` and the Pirx `.o` next to the
+output binary (C objects are no longer kept), refusing to overwrite the
+binary itself. Regression test: `tests/178_same_basename_c/` (directory build
+where a C file shares the Pirx object's basename — previously linked against
+the wrong object and failed with "Undefined symbols: _main").
 
 #### 5.2 `pirxc -t ast` ignores `-o` and truncates the output file — CONFIRMED, low
 
@@ -816,6 +826,10 @@ singletons from one list.
   a single loop with a "directory only as sole argument" check covers it.
   `buildProgram` takes 8 parameters; a temp dir for intermediates (fixes 5.1)
   removes `keepIntermediate`, `isDirectoryBuild`, and `buildDir` plumbing.
+  *Update 2026-06-12*: partially done with the 5.1 fix — `buildProgram` is
+  down to 6 parameters (`isDirectoryBuild`/`buildDir` replaced by a
+  precomputed `binFile`); `keepIntermediate` stays because `-k` still copies
+  the `.s`/`.o` next to the output. Argument classification untouched.
 * `cmd/testrunner`: `runSingleTest`/`runSingleTestQuiet` are byte-identical
   except one printf (`main.go:382-479`); `compileTest`/`compileProgram` are
   near-duplicates (`:658-742`); `findPirxFile` could reuse `findTestCase`

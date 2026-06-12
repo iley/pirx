@@ -122,7 +122,8 @@ var buildCmd = &cobra.Command{
 		keepIntermediateFiles, _ := cmd.Flags().GetBool("keep")
 
 		// Build the program
-		if err := buildProgram(config, pirxFiles, cFiles, keepIntermediateFiles, optLevel, outputFile, isDirectoryBuild, buildDir); err != nil {
+		binFile := outputBinaryPath(outputFile, isDirectoryBuild, buildDir, pirxFiles)
+		if err := buildProgram(config, pirxFiles, cFiles, keepIntermediateFiles, optLevel, binFile); err != nil {
 			cmd.SilenceUsage = true
 			return err
 		}
@@ -131,7 +132,7 @@ var buildCmd = &cobra.Command{
 }
 
 func init() {
-	buildCmd.Flags().BoolP("keep", "k", false, "Keep intermediate files (.s, .o)")
+	buildCmd.Flags().BoolP("keep", "k", false, "Keep intermediate files (.s, .o) next to the output binary")
 	buildCmd.Flags().StringVarP(&optLevel, "O", "O", "", "optimization level (0 to disable)")
 	buildCmd.Flags().StringVarP(&outputFile, "o", "o", "", "output file name")
 	rootCmd.AddCommand(buildCmd)
@@ -167,34 +168,41 @@ func findSourceFiles(dir string) ([]string, []string, error) {
 	return pirxFiles, cFiles, nil
 }
 
-// buildProgram compiles one or more pirx files and optionally C files to an executable
-func buildProgram(config *CompilationConfig, pirxFiles []string, cFiles []string, keepIntermediate bool, optLevel string, outputFile string, isDirectoryBuild bool, buildDir string) error {
+// outputBinaryPath determines where the final binary goes: the -o value if
+// given, otherwise inside the build directory or next to the source file.
+func outputBinaryPath(outputFile string, isDirectoryBuild bool, buildDir string, pirxFiles []string) string {
+	if outputFile != "" {
+		return outputFile
+	}
+	if isDirectoryBuild {
+		return filepath.Join(buildDir, filepath.Base(buildDir))
+	}
+	baseName := strings.TrimSuffix(filepath.Base(pirxFiles[0]), ".pirx")
+	return filepath.Join(filepath.Dir(pirxFiles[0]), baseName)
+}
+
+// buildProgram compiles one or more pirx files and optionally C files to an
+// executable. Intermediate files live in a temporary directory so they can
+// never clobber user files (or each other); with keepIntermediate a copy of
+// the .s and .o is left next to the output binary.
+func buildProgram(config *CompilationConfig, pirxFiles []string, cFiles []string, keepIntermediate bool, optLevel string, binFile string) error {
 	// Get PIRX root directory
 	pirxRoot, err := getPirxRoot()
 	if err != nil {
 		return fmt.Errorf("failed to determine PIRXROOT: %w", err)
 	}
 
-	// Determine output file and base name for intermediate files
-	var binFile, baseName string
-	if outputFile != "" {
-		binFile = outputFile
-		baseName = strings.TrimSuffix(filepath.Base(outputFile), filepath.Ext(outputFile))
-	} else if isDirectoryBuild {
-		// Directory build case - use directory name
-		baseName = filepath.Base(buildDir)
-		binFile = filepath.Join(buildDir, baseName)
-	} else {
-		// Single file case - use first file's name
-		sourceDir := filepath.Dir(pirxFiles[0])
-		baseName = strings.TrimSuffix(filepath.Base(pirxFiles[0]), ".pirx")
-		binFile = filepath.Join(sourceDir, baseName)
+	tmpDir, err := os.MkdirTemp("", "pirx-build-")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary build directory: %w", err)
 	}
+	defer os.RemoveAll(tmpDir)
 
-	// Generate intermediate file paths using output file base
-	outputDir := filepath.Dir(binFile)
-	asmFile := filepath.Join(outputDir, baseName+".s")
-	objFile := filepath.Join(outputDir, baseName+".o")
+	baseName := strings.TrimSuffix(filepath.Base(binFile), filepath.Ext(binFile))
+	asmFile := filepath.Join(tmpDir, baseName+".s")
+	// The fixed object names cannot collide with each other no matter how the
+	// input files are named.
+	objFile := filepath.Join(tmpDir, "pirx.o")
 
 	stdlibPath := filepath.Join(pirxRoot, "stdlib", "libpirx.a")
 	pirxcPath := filepath.Join(pirxRoot, "pirxc")
@@ -221,10 +229,8 @@ func buildProgram(config *CompilationConfig, pirxFiles []string, cFiles []string
 
 	// Step 3: Compile C files to .o files (if any)
 	var cObjectFiles []string
-	for _, cFile := range cFiles {
-		cBaseName := strings.TrimSuffix(filepath.Base(cFile), ".c")
-		cDir := filepath.Dir(cFile)
-		cObjFile := filepath.Join(cDir, cBaseName+".o")
+	for i, cFile := range cFiles {
+		cObjFile := filepath.Join(tmpDir, fmt.Sprintf("c%d.o", i))
 		cObjectFiles = append(cObjectFiles, cObjFile)
 
 		// Compile C file to object file
@@ -247,17 +253,34 @@ func buildProgram(config *CompilationConfig, pirxFiles []string, cFiles []string
 		return err
 	}
 
-	// Clean up intermediate files unless -k flag is set
-	if !keepIntermediate {
-		os.Remove(asmFile)
-		os.Remove(objFile)
-		for _, cObjFile := range cObjectFiles {
-			os.Remove(cObjFile)
+	// With -k, leave a copy of the assembly and the Pirx object next to the
+	// output binary for inspection.
+	if keepIntermediate {
+		outputDir := filepath.Dir(binFile)
+		for src, dst := range map[string]string{
+			asmFile: filepath.Join(outputDir, baseName+".s"),
+			objFile: filepath.Join(outputDir, baseName+".o"),
+		} {
+			// Never overwrite the binary itself (e.g. pirx build -k foo.pirx -o foo.s).
+			if dst == filepath.Clean(binFile) {
+				continue
+			}
+			if err := copyFile(src, dst); err != nil {
+				return fmt.Errorf("failed to keep intermediate file %s: %w", dst, err)
+			}
 		}
 	}
 
 	fmt.Printf("Built %s\n", binFile)
 	return nil
+}
+
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0o644)
 }
 
 // getCompilationConfig returns compilation configuration for the current platform

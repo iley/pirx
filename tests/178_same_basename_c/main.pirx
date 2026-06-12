@@ -1,0 +1,8 @@
+extern func c_add(x: int, y: int): int;
+extern func c_scale(x: int): int;
+
+func main(): int {
+    printf("c_add(2, 3) = %d\n", c_add(2, 3));
+    printf("c_scale(7) = %d\n", c_scale(7));
+    return 0;
+}

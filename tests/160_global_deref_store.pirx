@@ -1,0 +1,36 @@
+// Storing a pointer dereference directly into a global: the optimizer merges
+// "$1 = *p; g = $1" into a single op targeting the global, and the backends
+// used to treat that target as a local at stack offset 0 (frame corruption).
+struct Point {
+  x: int64;
+  y: int;
+}
+
+var g64: int64;
+var g32: int;
+var g8: int8;
+var gs: Point;
+
+func main(): int {
+  var x = 5l;
+  var p64: *int64 = &x;
+  g64 = *p64;
+  printf("%lld\n", g64);
+
+  var y = 42;
+  var p32: *int = &y;
+  g32 = *p32;
+  printf("%d\n", g32);
+
+  var z: int8 = 7i8;
+  var p8: *int8 = &z;
+  g8 = *p8;
+  printf("%d\n", g8);
+
+  var lp: Point = {100l, 200};
+  var ps: *Point = &lp;
+  gs = *ps;
+  printf("%lld %d\n", gs.x, gs.y);
+
+  return 0;
+}

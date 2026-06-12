@@ -28,6 +28,17 @@ type CodegenContext struct {
 	functionName string
 }
 
+// mustLocalOffset returns the rbp-relative offset of a local variable.
+// A name missing from cc.locals (e.g. a global reaching a local-only code path)
+// would otherwise silently map to offset 0 and overwrite the saved rbp.
+func (cc *CodegenContext) mustLocalOffset(name string) int {
+	offset, ok := cc.locals[name]
+	if !ok {
+		panic(fmt.Errorf("variable %s has no stack slot in function %s", name, cc.functionName))
+	}
+	return offset
+}
+
 func Generate(irp ir.IrProgram) (asm.Program, error) {
 	asmProgram := asm.Program{}
 
@@ -252,7 +263,7 @@ func generateExternalPrologue(cc *CodegenContext, irfn ir.IrFunction) ([]asm.Lin
 	for i, arg := range irfn.Args {
 		argSize := irfn.ArgSizes[i]
 		argSlot := func(offset int) asm.Arg {
-			return asm.Arg{Reg: "rbp", Offset: cc.locals[arg] + offset, Deref: true}
+			return asm.Arg{Reg: "rbp", Offset: cc.mustLocalOffset(arg) + offset, Deref: true}
 		}
 
 		if irfn.ArgFloats[i] {
@@ -345,7 +356,7 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "rcx", 0)...)
 		} else {
 			// Copy from source variable to target variable on stack
-			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "rbp", cc.locals[assign.Target])...)
+			lines = append(lines, generateMemoryCopyToReg(cc, assign.Value, assign.Size, "rbp", cc.mustLocalOffset(assign.Target))...)
 		}
 	} else if assign.Value.LiteralInt != nil {
 		lines = append(lines, generateRegisterLoad(cc, registerByIndex(0, assign.Size), assign.Size, assign.Value)...)
@@ -1116,7 +1127,7 @@ func generateStringLiteralLoad(cc *CodegenContext, reg string, literal string) [
 
 func generateLocalVariableLoadWithOffset(cc *CodegenContext, reg string, regSize int, variable string, offset int) []asm.Line {
 	var lines []asm.Line
-	fullOffset := cc.locals[variable] + offset
+	fullOffset := cc.mustLocalOffset(variable) + offset
 	rbpArg := asm.Arg{Reg: "rbp", Offset: fullOffset, Deref: true}
 
 	switch regSize {
@@ -1191,7 +1202,7 @@ func generateStoreToVariable(cc *CodegenContext, reg string, target string) []as
 
 func generateStoreToLocalWithOffset(cc *CodegenContext, reg string, target string, offset int) []asm.Line {
 	var lines []asm.Line
-	fullOffset := cc.locals[target] + offset
+	fullOffset := cc.mustLocalOffset(target) + offset
 	rbpArg := asm.Arg{Reg: "rbp", Offset: fullOffset, Deref: true}
 
 	regSize := registerSizeFromName(reg)
@@ -1304,7 +1315,7 @@ func generateStoreFloatToVariable(cc *CodegenContext, reg string, regSize int, t
 		}
 	} else {
 		// Store to local variable on stack
-		fullOffset := cc.locals[target]
+		fullOffset := cc.mustLocalOffset(target)
 		rbpArg := asm.Arg{Reg: "rbp", Offset: fullOffset, Deref: true}
 
 		switch regSize {
@@ -1343,7 +1354,7 @@ func generateFloatLoad(cc *CodegenContext, reg string, regSize int, arg ir.Arg) 
 			}
 		} else {
 			// Load from local variable on stack
-			fullOffset := cc.locals[arg.Variable]
+			fullOffset := cc.mustLocalOffset(arg.Variable)
 			rbpArg := asm.Arg{Reg: "rbp", Offset: fullOffset, Deref: true}
 
 			switch regSize {
@@ -1388,28 +1399,35 @@ func generateMemoryCopyToReg(cc *CodegenContext, source ir.Arg, size int, baseRe
 }
 
 // Copy memory from [sourceRef] to target variable. Used for pointer dereference.
-// sourceRef is an argument holding a pointer, target is a local variable name.
+// sourceRef is an argument holding a pointer, target is a variable name (local or global).
 func generateMemoryCopyFromRef(cc *CodegenContext, sourceRef ir.Arg, size int, target string) []asm.Line {
 	var lines []asm.Line
 
 	lines = append(lines, generateRegisterLoad(cc, "rcx", ast.WORD_SIZE, sourceRef)...)
 
+	// A global target lives at its symbol, not in the frame; store via RIP-relative addressing.
+	store := func(reg string, offset int) []asm.Line {
+		if ir.IsGlobal(target) {
+			targetArg := asm.Arg{Label: getGlobalLabel(target), Reg: "rip", Offset: offset, Deref: true}
+			return []asm.Line{asm.Op2("mov"+sizeToSuffix(registerSizeFromName(reg)), asm.Reg(reg), targetArg)}
+		}
+		return generateStoreToLocalWithOffset(cc, reg, target, offset)
+	}
+
 	offset := 0
 	for offset < size {
+		srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
 		if size-offset >= 8 {
-			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
 			lines = append(lines, asm.Op2("movq", srcArg, asm.Reg("rax")))
-			lines = append(lines, generateStoreToLocalWithOffset(cc, "rax", target, offset)...)
+			lines = append(lines, store("rax", offset)...)
 			offset += 8
 		} else if size-offset >= 4 {
-			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
 			lines = append(lines, asm.Op2("movl", srcArg, asm.Reg("eax")))
-			lines = append(lines, generateStoreToLocalWithOffset(cc, "eax", target, offset)...)
+			lines = append(lines, store("eax", offset)...)
 			offset += 4
 		} else {
-			srcArg := asm.Arg{Reg: "rcx", Offset: offset, Deref: true}
 			lines = append(lines, asm.Op2("movb", srcArg, asm.Reg("al")))
-			lines = append(lines, generateStoreToLocalWithOffset(cc, "al", target, offset)...)
+			lines = append(lines, store("al", offset)...)
 			offset += 1
 		}
 	}
@@ -1449,7 +1467,7 @@ func generateAddressLoad(cc *CodegenContext, reg string, arg ir.Arg) []asm.Line 
 		labelArg := asm.Arg{Label: label, Reg: "rip", Deref: false}
 		lines = append(lines, asm.Op2("leaq", labelArg, regArg))
 	} else {
-		offset := cc.locals[arg.Variable]
+		offset := cc.mustLocalOffset(arg.Variable)
 		rbpArg := asm.Arg{Reg: "rbp", Offset: offset, Deref: false}
 		lines = append(lines, asm.Op2("leaq", rbpArg, regArg))
 	}

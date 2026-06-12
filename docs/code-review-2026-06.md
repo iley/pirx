@@ -65,7 +65,7 @@ this only bites in straight-line code.
 `ExternalCall`, and `AssignByAddr`. First unit tests added in
 `internal/ir/optimize_test.go`. Regression test: `tests/157_optimizer_globals.pirx`.
 
-#### 1.2 `g = *p` with a global target writes to stack offset 0 — CONFIRMED, high
+#### 1.2 `g = *p` with a global target writes to stack offset 0 — FIXED
 
 The optimizer merges `$1 = *p; @g = $1` into `UnaryOp(@g = *p)`
 (`reorderAssignments` only guards ExternalCall-into-global). Both backends'
@@ -90,6 +90,13 @@ func main(): int {
 Only reproduces with optimization on. Two independent fixes warranted: handle
 global targets in the deref-store paths, and make `cc.locals` misses panic
 instead of emitting frame-corrupting stores (see simplicity item 2.2).
+
+**Fixed 2026-06-12**: `generateMemoryCopyFromRef` in both backends now routes
+global targets through their symbol (address in x2 on aarch64, RIP-relative
+stores on x86_64). Additionally, all direct `cc.locals` reads go through a new
+`mustLocalOffset` helper that panics on unknown names (simplicity item 2.2).
+Regression test: `tests/160_global_deref_store.pirx` (int64/int/int8/struct
+globals).
 
 #### 1.3 Compound assignment double-evaluates the lvalue — CONFIRMED, high
 
@@ -550,11 +557,13 @@ x86_64 pastes the `movb/movl/movq` size-switch ~8 times despite having
 1420-1435`). Extract a `forEachChunk(size)` helper per backend: removes ~100
 lines and gives one place to fix offset-encoding bugs (2.4).
 
-### 2.2 `mustLocalOffset` that panics on unknown names — trivial, high value
+### 2.2 `mustLocalOffset` that panics on unknown names — DONE
 
 Both backends silently map `cc.locals` misses to offset 0 — the root of the
 frame-smashing bug 1.2. A lookup helper that panics on unknown/global names
 converts silent memory corruption into a compile-time failure permanently.
+
+**Done 2026-06-12** alongside the fix for 1.2.
 
 ### 2.3 Optimizer deduplication — small
 

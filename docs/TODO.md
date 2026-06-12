@@ -27,3 +27,9 @@ An `extern func` *defined in Pirx* receives its parameters via a C-ABI prologue 
 ### float32 is not fully supported
 
 There is no syntax for float32 literals (the lexer never produces `ast.Literal.Float32Value`), and both code generators use double-precision instructions for all float arithmetic regardless of operand size.
+
+## Bugs
+
+### Assigning to a string element compiles but can crash
+
+`s[0] = 'x'` typechecks (string indexing is addressable like slice indexing), but string literal data lives in read-only memory, so writing to a literal-backed string segfaults at runtime. Strings are otherwise treated as immutable values (compared by content, `range` copies); index assignment on strings should probably be a typechecker error.

@@ -679,7 +679,16 @@ func (g *Generator) generateRangeCall(call *ast.FunctionCall, resultVar string, 
 	if sliceType, ok := call.Args[0].GetType().(*ast.SliceType); ok {
 		elementSize = g.types.GetSizeNoError(sliceType.ElementType)
 	} else if call.Args[0].GetType() == ast.String {
-		elementSize = g.types.GetSizeNoError(ast.Int8)
+		// Strings go through PirxStringRange, which copies into a NUL-terminated
+		// buffer instead of producing a view: cstr(), open() and printf's %s all
+		// rely on string data being NUL-terminated at its size.
+		return ExternalCall{
+			Result:    resultVar,
+			Function:  "PirxStringRange",
+			Args:      callArgs,
+			NamedArgs: 3,
+			Size:      size,
+		}
 	} else {
 		panic(fmt.Errorf("%s: invalid argument type for range(): %s", call.Loc, call.Args[0].GetType()))
 	}

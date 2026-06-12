@@ -39,6 +39,7 @@ extern int32_t PirxIntFromFloat32(float value);
 extern int32_t PirxIntFromFloat64(double value);
 
 extern PirxSlice PirxString(int32_t len, const char *str);
+extern PirxSlice PirxStringRange(PirxSlice str, int32_t start, int32_t end);
 extern int32_t PirxStringEq(PirxSlice a, PirxSlice b);
 extern void PirxPrintf(PirxSlice fmt, ...);
 extern char *PirxCStr(PirxSlice str);

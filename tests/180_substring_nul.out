@@ -1,0 +1,6 @@
+sub=[hello] len=5
+sub2=[ell] len=3
+tail=[world] len=5
+empty=[] len=0
+atof=3.25
+open ok

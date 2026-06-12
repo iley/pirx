@@ -1,0 +1,32 @@
+// range() on a string copies the bytes into a NUL-terminated buffer, so %s,
+// cstr() and open() see exactly the substring instead of over-reading to the
+// original string's terminator.
+
+extern func atof(s: *int8): float64;
+
+func main(): int {
+  var sub = range("hello world", 0, 5);
+  printf("sub=[%s] len=%d\n", sub, getsize(sub));
+
+  // A range of a range, a tail range, and an empty range.
+  var sub2 = range(sub, 1, 4);
+  printf("sub2=[%s] len=%d\n", sub2, getsize(sub2));
+  var tail = range("hello world", 6, 11);
+  printf("tail=[%s] len=%d\n", tail, getsize(tail));
+  var empty = range(sub, 2, 2);
+  printf("empty=[%s] len=%d\n", empty, getsize(empty));
+
+  // cstr() hands the data pointer to C code that relies on the terminator.
+  printf("atof=%.2f\n", atof(cstr(range("3.25xyz", 0, 4))));
+
+  // open() on a path computed via range must open the right file.
+  var f = open(range("/dev/nullXXX", 0, 9));
+  if f != null {
+    printf("open ok\n");
+  } else {
+    printf("open failed\n");
+  }
+  close(f);
+
+  return 0;
+}

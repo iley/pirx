@@ -77,6 +77,22 @@ PirxSlice PirxString(int32_t len, const char *str) {
   return slice;
 }
 
+// Unlike range() on a slice, range() on a string copies the bytes into a
+// fresh buffer instead of producing a view. This maintains the invariant that
+// every string's data is NUL-terminated at data[size], which cstr(), open()
+// and printf's %s all rely on (varargs lose the size, so the terminator is
+// the only length information they get).
+PirxSlice PirxStringRange(PirxSlice str, int32_t start, int32_t end) {
+  int32_t size = end - start;
+  // PirxAlloc zeroes the buffer, so the terminating NUL is already in place.
+  char *buffer = PirxAlloc(size + 1);
+  if (size > 0) {
+    memcpy(buffer, (char *)str.data + start, size);
+  }
+  PirxSlice result = {.data = buffer, .size = size, .cap = size + 1};
+  return result;
+}
+
 int32_t PirxStringEq(PirxSlice a, PirxSlice b) {
   if (a.size != b.size) {
     return 0;

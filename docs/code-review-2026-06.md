@@ -583,7 +583,7 @@ body are still allowed (`tests/094_int8_sign_extend.pirx` declares
 
 ### Tier 4 — runtime / stdlib
 
-#### 4.1 `%s` ignores Pirx string length — CONFIRMED, medium
+#### 4.1 `%s` ignores Pirx string length — FIXED
 
 `stdlib/builtin.c:82-105`. Pirx strings are length+data; substrings from
 `range` are not NUL-terminated at `size`:
@@ -597,6 +597,24 @@ Same no-NUL assumption breaks `cstr()` and `open()` (fopen on `data`) for any
 computed/substring string. PirxPrintf alone can't fix it (varargs lose the
 size); needs codegen+stdlib coordination (e.g. pass size and rewrite `%s` →
 `%.*s`).
+
+**Fixed 2026-06-12** by establishing a NUL-termination invariant: every
+string-producing operation guarantees `data[size] == 0`. An audit found
+exactly three producers — string literals (`.string` already emits a trailing
+NUL), `readline` (already allocates size+1 and terminates), and `range` on a
+string, the only violator. `range` on a string now lowers to a new
+`PirxStringRange` runtime function that copies the bytes into a fresh
+NUL-terminated buffer instead of producing a view; `range` on slices is
+unchanged (views must alias, per `tests/121_slice_aliasing.pirx`). This fixes
+`%s` (strings reach printf as `PirxCStr(s)` = raw data pointer), `cstr()`,
+and `open()` in one place, with no format-string rewriting. Trade-offs:
+range-on-string is now O(n) and allocates (disposable like any string), and
+`getptr`/`getcap` on a substring reflect the new buffer instead of aliasing
+the original — nothing relied on that. The `%.*s` rewrite alternative was
+rejected: it only fixes printf with literal format strings and leaves
+cstr/open broken. Regression test: `tests/180_substring_nul.pirx` (%s on
+substrings/nested ranges/empty range, `atof(cstr(range(...)))`, `open()` on a
+range-computed path).
 
 #### 4.2 `open()` failure is undetectable; `readline` on it segfaults — FIXED
 

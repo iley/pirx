@@ -482,7 +482,7 @@ slice's elements remain mutable, since `val` protects the variable's own
 storage (the pointer/slice header), not the heap it points to. Regression
 test: `tests/171_val_constness_error.pirx`.
 
-#### 3.3 Non-interned `file` type breaks `==` — CONFIRMED, medium
+#### 3.3 Non-interned `file` type breaks `==` — FIXED
 
 `typechecker.go:993` uses pointer identity (`typ == ast.File`) but
 `NewBaseType` (`ast/types.go:60-81`) does not intern `"file"`. Result:
@@ -490,6 +490,12 @@ test: `tests/171_val_constness_error.pirx`.
 inferred types compiles. Fix: intern `"file"` (one line) or compare by name.
 See also simplicity item 2.6 — the identity-vs-name dual equality is a
 standing fragility class.
+
+**Fixed 2026-06-12**: `NewBaseType` now interns every base-type singleton
+(including `file` and the pseudo-types) from a single `baseTypeSingletons`
+list, so pointer-identity comparisons can no longer diverge from name
+equality (simplicity item 2.6). Unit test in `internal/ast/types_test.go`;
+regression test: `tests/172_file_type_equality.pirx`.
 
 #### 3.4 Duplicate struct field names accepted silently — CONFIRMED, medium
 
@@ -746,6 +752,9 @@ and the call site only emit the loads/stores. Done as part of fixing 1.6/1.7.
 identity while `Equals` (`:89-94`) compares names. Route all type construction
 through interning (add `"file"` and any future singletons to `NewBaseType`) or
 switch the predicates to name comparison. Removes the entire class behind 3.3.
+
+**Done 2026-06-12** as part of the 3.3 fix: `NewBaseType` interns all
+singletons from one list.
 
 ### 2.7 Lexer table-driving — small/medium
 

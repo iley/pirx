@@ -56,28 +56,22 @@ type BaseType struct {
 	Name string
 }
 
-// NewBaseType creates a base type, returning singleton instances for common types
+// All base type singletons. NewBaseType interns every one of them so that
+// pointer-identity comparisons against the singletons (e.g. typ == File)
+// never diverge from name-based equality.
+var baseTypeSingletons = []*BaseType{
+	Int, Int8, Int64, Float32, Float64, String, Bool, Void, File,
+	VoidPtr, NullPtr, Undefined, Disposable, Any, AnySlice, AnySlicePtr, Numeric,
+}
+
+// NewBaseType creates a base type, returning the singleton instance if one exists.
 func NewBaseType(name string) *BaseType {
-	switch name {
-	case "int":
-		return Int
-	case "int8":
-		return Int8
-	case "int64":
-		return Int64
-	case "float32":
-		return Float32
-	case "float64":
-		return Float64
-	case "string":
-		return String
-	case "bool":
-		return Bool
-	case "void":
-		return Void
-	default:
-		return &BaseType{Name: name}
+	for _, t := range baseTypeSingletons {
+		if t.Name == name {
+			return t
+		}
 	}
+	return &BaseType{Name: name}
 }
 
 func (b *BaseType) isType() {}

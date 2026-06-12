@@ -1,0 +1,15 @@
+func main(): int {
+  // Explicit type annotations used to produce a non-interned "file" type
+  // that broke == / != in the type checker.
+  var f: file = open("/dev/null");
+  var g: file = open("/dev/null");
+
+  printf("f == f: %d\n", f == f);
+  printf("f == g: %d\n", f == g);
+  printf("f != f: %d\n", f != f);
+  printf("f != g: %d\n", f != g);
+
+  close(f);
+  close(g);
+  return 0;
+}

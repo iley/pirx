@@ -1,0 +1,4 @@
+pirxc compilation failed: exit status 1
+Output: tests/166_new_count_type_error.pirx:4:18: element count in new() must have type int, got string
+tests/166_new_count_type_error.pirx:5:18: element count in new() must have type int, got bool
+Error: exit status 1

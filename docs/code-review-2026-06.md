@@ -376,11 +376,16 @@ nil-pointer panic instead of a diagnostic. Fix: `return irp, g.errors`.
 
 ### Tier 3 — unsound typechecking / wrong rejection
 
-#### 3.1 `new([]T, count)` never checks the count type — CONFIRMED, high
+#### 3.1 `new([]T, count)` never checks the count type — FIXED
 
 `internal/typechecker/typechecker.go:768-789`. `new([]int, true)` compiles and
 runs (bool reinterpreted as count); `new([]int, "hello")` panics codegen
 (`aarch64_codegen.go:930`). Fix: require an integer type for the count.
+
+**Fixed 2026-06-12**: `checkNewExpression` now requires the count to have type
+`int`, matching `resize()`'s `newsize` argument (the backend only supports
+int-sized counts; int64/int8 counts already failed in IR/codegen). Regression
+test: `tests/166_new_count_type_error.pirx`.
 
 #### 3.2 `val` const-ness only enforced for direct assignment — CONFIRMED, medium
 

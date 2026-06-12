@@ -1,0 +1,8 @@
+// The element count in new([]T, count) must be an int, not just any type.
+
+func main(): int {
+  var a: []int = new([]int, "hello");
+  var b: []int = new([]int, true);
+  printf("%d %d\n", getsize(a), getsize(b));
+  return 0;
+}

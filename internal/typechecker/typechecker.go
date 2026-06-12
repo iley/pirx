@@ -779,9 +779,14 @@ func (c *TypeChecker) checkNewExpression(n *ast.NewExpression) *ast.NewExpressio
 			result.Type = ast.Undefined
 			return &result
 		}
+		checkedCount := c.checkValueExpression(n.Count)
+		// The backend only supports int-sized counts, same as resize().
+		if countType := checkedCount.GetType(); !countType.Equals(ast.Int) {
+			c.errorf("%s: element count in new() must have type %s, got %s", n.Loc, ast.Int, countType)
+		}
 		result := *n
 		result.Type = n.TypeExpr
-		result.Count = c.checkValueExpression(n.Count)
+		result.Count = checkedCount
 		return &result
 	} else {
 		if n.Count != nil {

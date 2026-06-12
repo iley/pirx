@@ -1,0 +1,20 @@
+// String literals must survive assembly emission byte-for-byte.
+func main(): int {
+  // Multi-byte UTF-8 runes: every byte must be emitted, and the
+  // compile-time size must match the emitted data.
+  var accent = "héllo";
+  printf("%s %d\n", accent, getsize(accent));
+
+  var kanji = "日本";
+  printf("%s %d\n", kanji, getsize(kanji));
+
+  // A NUL escape followed by hex-digit characters: the bytes after \0
+  // must not be swallowed by the assembler's escape parsing.
+  var nul = "x\0abc";
+  printf("%d %d %d %d %d\n", getsize(nul), int(nul[0]), int(nul[1]), int(nul[2]), int(nul[4]));
+
+  // A literal backslash must not turn into an escape sequence.
+  printf("%s\n", "a\\nb");
+
+  return 0;
+}

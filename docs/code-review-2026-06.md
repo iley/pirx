@@ -144,7 +144,7 @@ Same latent issue for int32 `-(-2147483648)`.
 `performSizedIntegerArithmetic` using the op size. Regression test:
 `tests/158_optimizer_unary_minus_overflow.pirx` plus unit tests.
 
-#### 1.5 `util.EscapeString` corrupts string literals — CONFIRMED, high
+#### 1.5 `util.EscapeString` corrupts string literals — FIXED
 
 `internal/util/strings.go:9-25`, used for all `.string` emission in both
 backends. Failure modes:
@@ -163,6 +163,15 @@ backends. Failure modes:
 Fix: iterate **bytes**, not runes; emit fixed-width octal escapes (`\NNN`,
 exactly 3 digits, immune to the adjacency problem) for anything non-printable,
 and escape `\`.
+
+**Fixed 2026-06-12**: `EscapeString` now iterates bytes and emits fixed-width
+3-digit octal escapes for non-printable bytes; `\` and `"` are escaped. Fixing
+the escaping exposed a second bug: the Darwin backend emitted literals into
+`__TEXT,__cstring,cstring_literals`, where the linker dedups/tail-merges
+NUL-terminated C strings and scrambles literals with embedded NULs; it now
+uses `__TEXT,__const` (identical literals are already deduped by the
+compiler). Regression test: `tests/164_string_escapes.pirx` (UTF-8 with
+getsize, bytes after `\0`, literal backslash) plus unit tests.
 
 #### 1.6 aarch64 external calls: register classes starve each other — CONFIRMED, high
 

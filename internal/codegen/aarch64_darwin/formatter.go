@@ -93,7 +93,10 @@ func formatStringLiterals(out io.Writer, stringLiterals []asm.StringLiteral) {
 		return
 	}
 
-	fmt.Fprintf(out, ".section  __TEXT,__cstring,cstring_literals\n")
+	// Not __cstring,cstring_literals: the linker dedups and tail-merges that
+	// section assuming NUL-terminated C strings, which scrambles literals
+	// with embedded NULs. We dedup identical literals ourselves anyway.
+	fmt.Fprintf(out, ".section  __TEXT,__const\n")
 	fmt.Fprintf(out, "\n// String literals.\n")
 	for _, sl := range stringLiterals {
 		fmt.Fprintf(out, "%s: .string \"%s\"\n", sl.Label, util.EscapeString(sl.Text))

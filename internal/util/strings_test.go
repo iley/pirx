@@ -41,47 +41,67 @@ func TestEscapeString(t *testing.T) {
 		{
 			name:     "string with non-printable ASCII",
 			input:    "hello\x00world",
-			expected: "hello\\x00world",
+			expected: "hello\\000world",
 		},
 		{
 			name:     "string with high ASCII",
 			input:    "hello\x80world",
-			expected: "hello\\xFFFDworld",
+			expected: "hello\\200world",
 		},
 		{
 			name:     "string with control characters",
 			input:    "hello\x01\x02\x03world",
-			expected: "hello\\x01\\x02\\x03world",
+			expected: "hello\\001\\002\\003world",
 		},
 		{
 			name:     "string with backslash",
 			input:    "hello\\world",
-			expected: "hello\\world",
+			expected: "hello\\\\world",
 		},
 		{
 			name:     "string with carriage return",
 			input:    "hello\rworld",
-			expected: "hello\\x0Dworld",
+			expected: "hello\\015world",
 		},
 		{
 			name:     "string with form feed",
 			input:    "hello\fworld",
-			expected: "hello\\x0Cworld",
+			expected: "hello\\014world",
 		},
 		{
 			name:     "string with vertical tab",
 			input:    "hello\vworld",
-			expected: "hello\\x0Bworld",
+			expected: "hello\\013world",
 		},
 		{
 			name:     "string with bell character",
 			input:    "hello\aworld",
-			expected: "hello\\x07world",
+			expected: "hello\\007world",
 		},
 		{
 			name:     "string with backspace",
 			input:    "hello\bworld",
-			expected: "hello\\x08world",
+			expected: "hello\\010world",
+		},
+		{
+			name:     "multi-byte UTF-8 emits every byte",
+			input:    "héllo\n",
+			expected: "h\\303\\251llo\\n",
+		},
+		{
+			name:     "runes above 0xFF emit all UTF-8 bytes",
+			input:    "日本",
+			expected: "\\346\\227\\245\\346\\234\\254",
+		},
+		{
+			name:     "NUL followed by hex digits does not merge",
+			input:    "x\x00abc",
+			expected: "x\\000abc",
+		},
+		{
+			name:     "literal backslash before n is not a newline",
+			input:    "a\\nb",
+			expected: "a\\\\nb",
 		},
 		{
 			name:     "printable ASCII characters",

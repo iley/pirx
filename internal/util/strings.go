@@ -3,22 +3,32 @@ package util
 import (
 	"fmt"
 	"strings"
-	"unicode"
 )
 
+// EscapeString encodes s for use inside a double-quoted assembler string
+// directive. It iterates over bytes, not runes, so the assembled data is
+// byte-for-byte identical to s: the compiler computes string lengths from
+// the Go byte length, and any re-encoding here would make the two disagree.
+// Non-printable bytes are emitted as fixed-width 3-digit octal escapes
+// (\NNN), which GNU as and Darwin as parse identically and which, unlike
+// \x escapes, cannot merge with hex-digit characters that follow them.
 func EscapeString(s string) string {
 	sb := strings.Builder{}
-	for _, rune := range s {
-		if rune == '"' {
+	for i := 0; i < len(s); i++ {
+		b := s[i]
+		switch {
+		case b == '"':
 			sb.WriteString("\\\"")
-		} else if rune == '\n' {
+		case b == '\\':
+			sb.WriteString("\\\\")
+		case b == '\n':
 			sb.WriteString("\\n")
-		} else if rune == '\t' {
+		case b == '\t':
 			sb.WriteString("\\t")
-		} else if unicode.IsPrint(rune) && rune < unicode.MaxASCII {
-			sb.WriteRune(rune)
-		} else {
-			sb.WriteString(fmt.Sprintf("\\x%02X", rune))
+		case b >= 0x20 && b < 0x7F:
+			sb.WriteByte(b)
+		default:
+			sb.WriteString(fmt.Sprintf("\\%03o", b))
 		}
 	}
 	return sb.String()

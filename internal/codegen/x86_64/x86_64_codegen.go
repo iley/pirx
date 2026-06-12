@@ -15,8 +15,11 @@ import (
 )
 
 const (
-	FUNC_CALL_REGISTERS = 6 // rdi, rsi, rdx, rcx, r8, r9
+	FUNC_CALL_REGISTERS  = 6 // rdi, rsi, rdx, rcx, r8, r9
+	FLOAT_CALL_REGISTERS = 8 // xmm0-xmm7
 )
+
+var intArgRegisters = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
 type CodegenContext struct {
 	stringLiterals map[string]string
@@ -258,62 +261,97 @@ func generateFunction(cc *CodegenContext, irfn ir.IrFunction) (asm.Function, err
 // Spill the incoming register arguments of an external (C ABI) function into the stack slots
 // where the function body expects to find them. Mirrors generateExternalFunctionCall.
 func generateExternalPrologue(cc *CodegenContext, irfn ir.IrFunction) ([]asm.Line, error) {
-	var lines []asm.Line
-	argRegisters := []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
-	nextIntRegister := 0
-	nextFloatRegister := 0
+	locations, _, _ := classifyExternalArgs(irfn.ArgSizes, irfn.ArgFloats)
 
+	var lines []asm.Line
 	for i, arg := range irfn.Args {
 		argSize := irfn.ArgSizes[i]
-		argSlot := func(offset int) asm.Arg {
-			return asm.Arg{Reg: "rbp", Offset: cc.mustLocalOffset(arg) + offset, Deref: true}
-		}
-
-		if irfn.ArgFloats[i] {
-			if nextFloatRegister >= 8 {
-				return lines, fmt.Errorf("external function %s has too many arguments: receiving arguments on the stack is not supported", irfn.Name)
-			}
-			xmmReg := fmt.Sprintf("xmm%d", nextFloatRegister)
-			lines = append(lines, generateStoreFloatToVariable(cc, xmmReg, argSize, arg)...)
-			nextFloatRegister++
-			continue
-		}
-
-		needRegisters := 1
-		if argSize > 8 {
-			needRegisters = 2
-		}
-		if nextIntRegister+needRegisters > len(argRegisters) {
+		reg := locations[i].Reg
+		if reg < 0 {
 			return lines, fmt.Errorf("external function %s has too many arguments: receiving arguments on the stack is not supported", irfn.Name)
 		}
 
+		if irfn.ArgFloats[i] {
+			lines = append(lines, generateStoreFloatToVariable(cc, fmt.Sprintf("xmm%d", reg), argSize, arg)...)
+			continue
+		}
+
+		argSlot := func(offset int) asm.Arg {
+			return asm.Arg{Reg: "rbp", Offset: cc.mustLocalOffset(arg) + offset, Deref: true}
+		}
 		switch argSize {
 		case 1:
-			reg8, _ := get8And32BitRegNames(argRegisters[nextIntRegister])
+			reg8, _ := get8And32BitRegNames(intArgRegisters[reg])
 			lines = append(lines, asm.Op2("movb", asm.Reg(reg8), argSlot(0)))
-			nextIntRegister++
 		case 4:
-			reg32 := get32BitRegName(argRegisters[nextIntRegister])
-			lines = append(lines, asm.Op2("movl", asm.Reg(reg32), argSlot(0)))
-			nextIntRegister++
+			lines = append(lines, asm.Op2("movl", asm.Reg(get32BitRegName(intArgRegisters[reg])), argSlot(0)))
 		case 8:
-			lines = append(lines, asm.Op2("movq", asm.Reg(argRegisters[nextIntRegister]), argSlot(0)))
-			nextIntRegister++
+			lines = append(lines, asm.Op2("movq", asm.Reg(intArgRegisters[reg]), argSlot(0)))
 		case 12:
-			lines = append(lines, asm.Op2("movq", asm.Reg(argRegisters[nextIntRegister]), argSlot(0)))
-			reg32 := get32BitRegName(argRegisters[nextIntRegister+1])
-			lines = append(lines, asm.Op2("movl", asm.Reg(reg32), argSlot(8)))
-			nextIntRegister += 2
+			lines = append(lines, asm.Op2("movq", asm.Reg(intArgRegisters[reg]), argSlot(0)))
+			lines = append(lines, asm.Op2("movl", asm.Reg(get32BitRegName(intArgRegisters[reg+1])), argSlot(8)))
 		case 16:
-			lines = append(lines, asm.Op2("movq", asm.Reg(argRegisters[nextIntRegister]), argSlot(0)))
-			lines = append(lines, asm.Op2("movq", asm.Reg(argRegisters[nextIntRegister+1]), argSlot(8)))
-			nextIntRegister += 2
+			lines = append(lines, asm.Op2("movq", asm.Reg(intArgRegisters[reg]), argSlot(0)))
+			lines = append(lines, asm.Op2("movq", asm.Reg(intArgRegisters[reg+1]), argSlot(8)))
 		default:
 			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
 		}
 	}
 
 	return lines, nil
+}
+
+// argLocation says where one C-ABI argument lives: in a register of its class
+// (intArgRegisters[Reg] for ints, with 9-16 byte arguments taking Reg and Reg+1;
+// xmm<Reg> for floats), or, when Reg is -1, on the stack at StackOffset within
+// the outgoing argument area.
+type argLocation struct {
+	Reg         int
+	StackOffset int
+}
+
+// classifyExternalArgs assigns a System V AMD64 location to every argument of an
+// external call. Register assignment is per class: ints consume rdi-r9 independently
+// of floats consuming xmm0-xmm7, and an argument goes to the stack only when its own
+// class is exhausted. Unlike AAPCS64, SysV lets later arguments keep filling the
+// remaining registers after an earlier argument has spilled to the stack. Stack
+// arguments occupy whole 8-byte-aligned eightbytes. Returns the locations, the total
+// stack area size, and the number of xmm registers used (variadic callees expect
+// that count in al).
+func classifyExternalArgs(sizes []int, floats []bool) ([]argLocation, int, int) {
+	locations := make([]argLocation, len(sizes))
+	nextIntRegister := 0
+	nextFloatRegister := 0
+	stackOffset := 0
+
+	for i, size := range sizes {
+		reg := -1
+		if floats[i] {
+			if size <= 8 && nextFloatRegister < FLOAT_CALL_REGISTERS {
+				reg = nextFloatRegister
+				nextFloatRegister++
+			}
+		} else {
+			needRegisters := 1
+			if size > 8 {
+				needRegisters = 2
+			}
+			if nextIntRegister+needRegisters <= FUNC_CALL_REGISTERS {
+				reg = nextIntRegister
+				nextIntRegister += needRegisters
+			}
+		}
+
+		if reg >= 0 {
+			locations[i] = argLocation{Reg: reg, StackOffset: -1}
+			continue
+		}
+
+		locations[i] = argLocation{Reg: -1, StackOffset: stackOffset}
+		stackOffset += util.Align(size, 8)
+	}
+
+	return locations, stackOffset, nextFloatRegister
 }
 
 func generateOp(cc *CodegenContext, op ir.Op) ([]asm.Line, error) {
@@ -739,171 +777,123 @@ func generateExternalFunctionCall(cc *CodegenContext, call ir.ExternalCall) ([]a
 	// System V AMD64 ABI:
 	// - Integer args in rdi/rsi/rdx/rcx/r8/r9
 	// - Float args in xmm0-xmm7
-	// - Rest on stack
+	// - Rest on stack in 8-byte-aligned slots
 	// Return value in rax, or rax:rdx for 9-16 byte values
-	var lines []asm.Line
-	argRegisters := []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
-	nextIntRegister := 0
-	nextFloatRegister := 0
-	var stackArgs []int
+	sizes := make([]int, len(call.Args))
+	floats := make([]bool, len(call.Args))
+	for i, callArg := range call.Args {
+		sizes[i] = callArg.Size
+		floats[i] = callArg.IsFloat
+	}
+	locations, stackSize, xmmUsed := classifyExternalArgs(sizes, floats)
+	spShift := alignSP(stackSize)
 
-	// First pass: load register arguments
-	for i := range call.Args {
-		callArg := call.Args[i]
+	var lines []asm.Line
+
+	// Register arguments.
+	for i, callArg := range call.Args {
+		reg := locations[i].Reg
+		if reg < 0 {
+			continue
+		}
 		arg := callArg.Arg
 		argSize := callArg.Size
-		isFloat := callArg.IsFloat
 
-		// Check if argument goes on stack
-		if isFloat {
-			if nextFloatRegister >= 8 || argSize > 8 {
-				// Float argument goes on stack
-				stackArgs = append(stackArgs, i)
-				continue
-			}
-		} else {
-			// Calculate how many registers we need for non-float
-			needRegisters := 1
-			if argSize > 8 {
-				needRegisters = 2
-			}
-
-			if nextIntRegister+needRegisters > len(argRegisters) {
-				// This argument and all remaining go on stack
-				for j := i; j < len(call.Args); j++ {
-					stackArgs = append(stackArgs, j)
-				}
-				break
-			}
+		if callArg.IsFloat {
+			lines = append(lines, generateFloatLoad(cc, fmt.Sprintf("xmm%d", reg), argSize, arg)...)
+			continue
 		}
 
-		// Load the argument into register(s)
-		if isFloat && argSize == 8 {
-			// Load float into XMM register
-			xmmReg := fmt.Sprintf("xmm%d", nextFloatRegister)
-			lines = append(lines, generateFloatLoad(cc, xmmReg, argSize, arg)...)
-			nextFloatRegister++
-		} else {
-			// Load integer argument
-			switch argSize {
-			case 1:
-				// Load 1-byte value and sign-extend to 64 bits
-				reg8, _ := get8And32BitRegNames(argRegisters[nextIntRegister])
-				lines = append(lines, generateRegisterLoad(cc, reg8, argSize, arg)...)
-				lines = append(lines, asm.Op2("movsbq", asm.Reg(reg8), asm.Reg(argRegisters[nextIntRegister])))
-				nextIntRegister++
-			case 4:
-				// Load 4-byte value and sign-extend to 64 bits
-				reg32 := get32BitRegName(argRegisters[nextIntRegister])
-				lines = append(lines, generateRegisterLoad(cc, reg32, argSize, arg)...)
-				lines = append(lines, asm.Op2("movslq", asm.Reg(reg32), asm.Reg(argRegisters[nextIntRegister])))
-				nextIntRegister++
-			case 8:
-				lines = append(lines, generateRegisterLoad(cc, argRegisters[nextIntRegister], argSize, arg)...)
-				nextIntRegister++
-			case 12:
-				// Split across two registers: 8 bytes + 4 bytes
-				lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextIntRegister], 8, arg, 0)...)
-				reg32 := get32BitRegName(argRegisters[nextIntRegister+1])
-				lines = append(lines, generateRegisterLoadWithOffset(cc, reg32, 4, arg, 8)...)
-				nextIntRegister += 2
-			case 16:
-				// Split across two 8-byte registers
-				lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextIntRegister], 8, arg, 0)...)
-				lines = append(lines, generateRegisterLoadWithOffset(cc, argRegisters[nextIntRegister+1], 8, arg, 8)...)
-				nextIntRegister += 2
-			default:
-				return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
-			}
+		switch argSize {
+		case 1:
+			// Load 1-byte value and sign-extend to 64 bits.
+			reg8, _ := get8And32BitRegNames(intArgRegisters[reg])
+			lines = append(lines, generateRegisterLoad(cc, reg8, argSize, arg)...)
+			lines = append(lines, asm.Op2("movsbq", asm.Reg(reg8), asm.Reg(intArgRegisters[reg])))
+		case 4:
+			// Load 4-byte value and sign-extend to 64 bits.
+			reg32 := get32BitRegName(intArgRegisters[reg])
+			lines = append(lines, generateRegisterLoad(cc, reg32, argSize, arg)...)
+			lines = append(lines, asm.Op2("movslq", asm.Reg(reg32), asm.Reg(intArgRegisters[reg])))
+		case 8:
+			lines = append(lines, generateRegisterLoad(cc, intArgRegisters[reg], argSize, arg)...)
+		case 12:
+			// Split across two registers: 8 bytes + 4 bytes.
+			lines = append(lines, generateRegisterLoadWithOffset(cc, intArgRegisters[reg], 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, get32BitRegName(intArgRegisters[reg+1]), 4, arg, 8)...)
+		case 16:
+			// Split across two 8-byte registers.
+			lines = append(lines, generateRegisterLoadWithOffset(cc, intArgRegisters[reg], 8, arg, 0)...)
+			lines = append(lines, generateRegisterLoadWithOffset(cc, intArgRegisters[reg+1], 8, arg, 8)...)
+		default:
+			return lines, fmt.Errorf("unsupported external function argument size %d", argSize)
 		}
 	}
 
-	// Second pass: handle stack arguments
-	var spShift int
-	if len(stackArgs) > 0 {
-		// Calculate space needed, ensuring each arg takes at least 8 bytes
-		totalStackArgSize := 0
-		for _, argIdx := range stackArgs {
-			argSize := call.Args[argIdx].Size
-			if argSize <= 8 {
-				totalStackArgSize += ast.WORD_SIZE
-			} else {
-				totalStackArgSize += ((argSize + 7) / 8) * 8
-			}
-		}
-		spShift = alignSP(totalStackArgSize)
-
+	// Stack arguments. All copies go through rax: it is not an argument register,
+	// so the rdi-r9 and xmm0-7 values loaded above stay intact (floats are copied
+	// as raw bits).
+	if spShift > 0 {
 		lines = append(lines, asm.Op2("subq", asm.Imm(spShift), asm.Reg("rsp")))
 
-		stackOffset := 0
-		for _, argIdx := range stackArgs {
-			callArg := call.Args[argIdx]
+		for i, callArg := range call.Args {
+			if locations[i].Reg >= 0 {
+				continue
+			}
 			arg := callArg.Arg
 			argSize := callArg.Size
-			isFloat := callArg.IsFloat
+			slot := func(offset int) asm.Arg {
+				return asm.Arg{Reg: "rsp", Offset: locations[i].StackOffset + offset, Deref: true}
+			}
 
-			// For arguments that fit in a single 8-byte slot
-			if argSize <= 8 {
-				if isFloat && argSize == 8 {
-					// Load and store float using XMM register
-					lines = append(lines, generateFloatLoad(cc, "xmm0", argSize, arg)...)
-					stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
-					lines = append(lines, asm.Op2("movsd", asm.Reg("xmm0"), stackArg))
-				} else {
-					// Load argument into appropriate register and sign-extend to 64 bits
-					switch argSize {
-					case 1:
-						lines = append(lines, generateRegisterLoad(cc, "al", argSize, arg)...)
-						lines = append(lines, asm.Op2("movsbq", asm.Reg("al"), asm.Reg("rax")))
-					case 4:
-						lines = append(lines, generateRegisterLoad(cc, "eax", argSize, arg)...)
-						lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
-					case 8:
-						lines = append(lines, generateRegisterLoad(cc, "rax", argSize, arg)...)
-					default:
-						return lines, fmt.Errorf("unsupported stack argument size %d", argSize)
-					}
-
-					// Store to stack at correct offset
-					stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
-					lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
-				}
-				stackOffset += ast.WORD_SIZE
-			} else {
-				// For larger arguments, copy in 8/4/1 byte chunks
+			if argSize > 8 {
+				// Aggregates: copy in 8/4/1 byte chunks.
 				bytesCopied := 0
 				for bytesCopied < argSize {
-					remaining := argSize - bytesCopied
-					if remaining >= 8 {
+					if argSize-bytesCopied >= 8 {
 						lines = append(lines, generateRegisterLoadWithOffset(cc, "rax", 8, arg, bytesCopied)...)
-						stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
-						lines = append(lines, asm.Op2("movq", asm.Reg("rax"), stackArg))
+						lines = append(lines, asm.Op2("movq", asm.Reg("rax"), slot(bytesCopied)))
 						bytesCopied += 8
-						stackOffset += 8
-					} else if remaining >= 4 {
+					} else if argSize-bytesCopied >= 4 {
 						lines = append(lines, generateRegisterLoadWithOffset(cc, "eax", 4, arg, bytesCopied)...)
-						stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
-						lines = append(lines, asm.Op2("movl", asm.Reg("eax"), stackArg))
+						lines = append(lines, asm.Op2("movl", asm.Reg("eax"), slot(bytesCopied)))
 						bytesCopied += 4
-						stackOffset += 4
 					} else {
-						// Copy remaining 1-3 bytes one at a time
 						lines = append(lines, generateRegisterLoadWithOffset(cc, "al", 1, arg, bytesCopied)...)
-						stackArg := asm.Arg{Reg: "rsp", Offset: stackOffset, Deref: true}
-						lines = append(lines, asm.Op2("movb", asm.Reg("al"), stackArg))
+						lines = append(lines, asm.Op2("movb", asm.Reg("al"), slot(bytesCopied)))
 						bytesCopied += 1
-						stackOffset += 1
 					}
 				}
+				continue
+			}
+
+			switch argSize {
+			case 1:
+				lines = append(lines, generateRegisterLoad(cc, "al", argSize, arg)...)
+				lines = append(lines, asm.Op2("movsbq", asm.Reg("al"), asm.Reg("rax")))
+				lines = append(lines, asm.Op2("movq", asm.Reg("rax"), slot(0)))
+			case 4:
+				lines = append(lines, generateRegisterLoad(cc, "eax", argSize, arg)...)
+				if callArg.IsFloat {
+					// Float bits must not be sign-extended; the callee only reads 4 bytes.
+					lines = append(lines, asm.Op2("movl", asm.Reg("eax"), slot(0)))
+				} else {
+					lines = append(lines, asm.Op2("movslq", asm.Reg("eax"), asm.Reg("rax")))
+					lines = append(lines, asm.Op2("movq", asm.Reg("rax"), slot(0)))
+				}
+			case 8:
+				lines = append(lines, generateRegisterLoad(cc, "rax", argSize, arg)...)
+				lines = append(lines, asm.Op2("movq", asm.Reg("rax"), slot(0)))
+			default:
+				return lines, fmt.Errorf("unsupported stack argument size %d", argSize)
 			}
 		}
 	}
 
-	// For variadic functions, AL must contain the number of XMM registers used
-	// According to x86-64 System V ABI
-	if nextFloatRegister > 0 {
-		lines = append(lines, asm.Op2("movl", asm.Imm(nextFloatRegister), asm.Reg("eax")))
-	}
+	// Variadic callees expect the number of xmm argument registers used in al,
+	// explicitly zero when there are no float args. Setting it is harmless for
+	// non-variadic callees, so do it unconditionally.
+	lines = append(lines, asm.Op2("movl", asm.Imm(xmmUsed), asm.Reg("eax")))
 
 	lines = append(lines, asm.Op1("call", asm.Ref(call.Function)))
 

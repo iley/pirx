@@ -1,0 +1,6 @@
+pirxc compilation failed: exit status 1
+Output: tests/170_extern_float_struct_error.pirx:15:1: argument v of extern function take_vec: structs with floating-point fields are not supported in extern functions
+tests/170_extern_float_struct_error.pirx:16:1: return type of extern function make_vec: structs with floating-point fields are not supported in extern functions
+tests/170_extern_float_struct_error.pirx:17:1: argument w of extern function take_wrapper: structs with floating-point fields are not supported in extern functions
+tests/170_extern_float_struct_error.pirx:22:3: argument #2 of function printf: structs with floating-point fields cannot be passed to extern functions
+Error: exit status 1

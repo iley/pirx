@@ -341,9 +341,12 @@ func classifyExternalArgs(sizes []int, floats []bool, numRegisterEligible int, p
 			continue
 		}
 
+		// Apple's packing applies to scalars only: composites (always size > 8 in
+		// Pirx) keep AAPCS64 C.12 semantics, 8-byte alignment and whole-eightbyte
+		// slots, on both platforms.
 		slotSize := size
 		align := naturalAlignment(size)
-		if !packStackArgs || i >= numRegisterEligible {
+		if !packStackArgs || i >= numRegisterEligible || size > 8 {
 			slotSize = util.Align(size, 8)
 			align = 8
 		}

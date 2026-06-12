@@ -1,0 +1,24 @@
+// Structs with floating-point fields would need SSE-class eightbytes
+// (x86_64) or HFA registers (arm64) in the C ABI, which the code generators
+// don't implement; extern signatures and variadic arguments must reject them.
+
+struct Vec2 {
+  x: float64;
+  y: float64;
+}
+
+struct Wrapper {
+  v: Vec2;
+  tag: int;
+}
+
+extern func take_vec(v: Vec2): int;
+extern func make_vec(s: float64): Vec2;
+extern func take_wrapper(w: Wrapper);
+
+func main(): int {
+  var v: Vec2 = {1.25, 2.5};
+  printf("%d\n", take_vec(v));
+  printf("%p\n", v); // Float structs can't be passed variadically either.
+  return 0;
+}

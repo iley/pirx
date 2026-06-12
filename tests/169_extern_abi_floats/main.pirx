@@ -1,0 +1,49 @@
+// Exercises the float side of the external-call C ABI: register exhaustion
+// must be per class, stack-passed floats must not clobber float argument
+// registers, stack slots are whole eightbytes, and variadic calls must
+// report the number of float registers used (al on x86_64).
+
+struct Triple {
+  x: int;
+  y: int;
+  z: int;
+}
+
+struct Pair64 {
+  p: int64;
+  q: int64;
+}
+
+extern func mix7i2d(a: int, b: int, c: int, d: int, e: int, f: int, g: int, x: float64, y: float64): float64;
+extern func sum9d(a: float64, b: float64, c: float64, d: float64, e: float64, f: float64, g: float64, h: float64, i: float64): float64;
+extern func mix8d1i(a: float64, b: float64, c: float64, d: float64, e: float64, f: float64, g: float64, h: float64, i: float64, j: int): float64;
+extern func s12stack(a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int, s: Triple, w: int): int;
+extern func backfill(a: int, b: int, c: int, d: int, e: int, s: Pair64, w: int): int64;
+
+func main(): int {
+    // Int registers exhausted (6 on x86_64), then two doubles: 140 + 5 + 25 = 170.
+    printf("%.2f\n", mix7i2d(1, 2, 3, 4, 5, 6, 7, 0.5, 0.25));
+
+    // Nine doubles: 0.5+3+7.5+14+22.5+33+45.5+60+76.5 = 262.5.
+    printf("%.2f\n", sum9d(0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5));
+
+    // Same doubles plus an int after float-register exhaustion: 262.5 + 30 = 292.5.
+    printf("%.2f\n", mix8d1i(0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 3));
+
+    // 12-byte struct on the stack followed by an int: 36 + 600+770+960 + 900 = 3266.
+    var t: Triple = {60, 70, 80};
+    printf("%d\n", s12stack(1, 2, 3, 4, 5, 6, 7, 8, t, 9));
+
+    // 16-byte struct spills with one int register left: 15 + 200+330 + 600 = 1145.
+    var p: Pair64 = {20l, 30l};
+    printf("%lld\n", backfill(1, 2, 3, 4, 5, p, 6));
+
+    // Variadic: int registers exhausted, floats still in registers (and counted in al).
+    printf("%d %d %d %d %d %d %.2f %.2f\n", 1, 2, 3, 4, 5, 6, 7.5, 8.5);
+
+    // Variadic: ninth double on the stack must not clobber the first one.
+    printf("%.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f\n",
+           0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5);
+
+    return 0;
+}

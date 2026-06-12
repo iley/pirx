@@ -16,6 +16,10 @@ NOTE: This is not planned for now.
 
 `%` only works on integers. Implementing fmod semantics for floats is an option.
 
+### Structs with floating-point fields can't cross the extern boundary
+
+The C ABI passes such structs in float registers (SSE-class eightbytes on x86_64, HFAs on arm64), which the code generators don't implement — they only track per-argument int/float, not per-eightbyte classes. Rather than silently passing garbage, the typechecker rejects structs with float fields (including nested ones) in extern function signatures, return types and variadic arguments. Implementing this properly requires per-eightbyte class information in the IR plus SSE/HFA marshalling in both backends, for arguments and return values alike.
+
 ### External functions with bodies only accept register arguments
 
 An `extern func` *defined in Pirx* receives its parameters via a C-ABI prologue that spills the incoming registers into the function's stack slots. Arguments that the C ABI passes on the stack (i.e. beyond 8 integer/float registers on aarch64, 6 integer/8 float registers on x86_64) are not supported and cause a compile-time error.

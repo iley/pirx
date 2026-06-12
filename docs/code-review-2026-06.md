@@ -213,6 +213,12 @@ the argument size (largest power of two dividing it, capped at 8), and 12-byte
 struct stack args no longer panic. Regression test:
 `tests/167_extern_abi_args/`, verified natively and under linux/arm64.
 
+**Update 2026-06-12**: the packing must not apply to composites — clang on
+Darwin gives stack-passed structs whole eightbyte slots per AAPCS64 C.12 and
+only packs scalars. `classifyExternalArgs` now exempts size > 8 arguments
+from packing; caught by `tests/169_extern_abi_floats/` (12-byte struct on the
+stack followed by an int).
+
 #### 1.8 x86_64: float negation is a no-op when the program contains `0.0` — FIXED
 
 `internal/codegen/x86_64/x86_64_codegen.go:89-94, 649-656`. Negation is
@@ -269,7 +275,7 @@ adjacent-global sentinel, `*pp = globalStruct`, and a 16-byte global struct
 passed by value in the rcx:r8 slots of a real C callee); verified failing on
 x86_64 before the fix and green after, and passing natively on aarch64.
 
-#### 1.10 x86_64 external-call ABI holes — CONFIRMED, high/medium
+#### 1.10 x86_64 external-call ABI holes — PARTIALLY FIXED
 
 All confirmed against real C callees in Docker:
 
@@ -292,6 +298,29 @@ All confirmed against real C callees in Docker:
 
 Note: a single trailing float after register exhaustion *accidentally* prints
 correctly (two bugs canceling), so tests need ≥2 floats to catch this.
+
+**Partially fixed 2026-06-12**: the first three holes are fixed by porting the
+per-class `classifyExternalArgs` classifier to the x86_64 backend, shared by
+`generateExternalFunctionCall` and `generateExternalPrologue`. Register
+assignment is now per class with SysV back-filling (later int args still use
+remaining registers after an aggregate spills to the stack, unlike AAPCS64
+C.11), stack-passed floats are copied through rax as raw bits so xmm0-7 stay
+intact, and every stack argument gets a whole 8-byte-aligned eightbyte slot.
+AL is now set unconditionally before every external call (see 5.6). The
+fourth hole (SSE-class eightbytes for float-member structs) is *not*
+implemented: doing it properly requires per-eightbyte class info threaded
+through the IR plus matching HFA support on aarch64, where such structs are
+equally mispassed. Instead the typechecker rejects structs with
+floating-point fields (including nested ones) in extern signatures and
+variadic arguments with a clear diagnostic, so no program passes garbage
+silently; tracked as a missing feature in `docs/TODO.md`. The new regression
+test also exposed an aarch64 hole in the 1.6/1.7 fix: Apple's stack-argument
+packing must not apply to composites (clang gives them whole eightbyte slots
+per AAPCS64 C.12); `classifyExternalArgs` now exempts size > 8 arguments from
+packing. Regression tests: `tests/169_extern_abi_floats/` (real C callees;
+verified failing on unfixed x86_64 with every line wrong, green after, and
+green on aarch64 Darwin/Linux) and `tests/170_extern_float_struct_error.pirx`
+(rejection diagnostics).
 
 #### 1.11 `func main()` without return type exits with garbage status — FIXED
 
@@ -595,6 +624,8 @@ sorted keys.
 * x86_64: AL not zeroed for variadic calls using no xmm registers
   (`x86_64_codegen.go:902-906`); SysV requires AL ≤ 8 as a vector-register
   count. Benign with gcc/glibc/musl prologues, formally UB. One-instruction fix.
+  **Fixed 2026-06-12** as part of the 1.10 work: every external call now sets
+  al to the number of xmm argument registers used, including an explicit zero.
 * x86_64: native-call args stored below rsp before `subq` (`:709-718`); beyond
   the 128-byte red zone these can be clobbered by signal delivery.
   Unobservable today; `subq` first costs nothing.

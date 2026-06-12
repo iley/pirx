@@ -138,6 +138,12 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 
 	for _, arg := range fn.Args {
 		c.validateType(arg.Loc, arg.Type)
+		// The code generators don't implement the C ABI rules for aggregates with
+		// floating-point members (SSE-class eightbytes on x86_64, HFAs on arm64),
+		// so reject them in extern signatures rather than pass garbage at runtime.
+		if fn.External && c.isFloatStruct(arg.Type) {
+			c.errorf("%s: argument %s of extern function %s: structs with floating-point fields are not supported in extern functions", fn.Loc, arg.Name, fn.Name)
+		}
 		ok := c.vars.declare(arg.Name, arg.Type /*global=*/, false /*constant=*/, false)
 		if !ok {
 			c.errorf("%s: duplicate function argument: %s", fn.Loc, arg.Name)
@@ -146,6 +152,9 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 
 	if fn.ReturnType != nil {
 		c.validateType(fn.Loc, fn.ReturnType)
+		if fn.External && c.isFloatStruct(fn.ReturnType) {
+			c.errorf("%s: return type of extern function %s: structs with floating-point fields are not supported in extern functions", fn.Loc, fn.Name)
+		}
 	}
 
 	var checkedBody *ast.Block
@@ -168,6 +177,21 @@ func (c *TypeChecker) checkFunction(fn ast.Function) ast.Function {
 		ReturnType: fn.ReturnType,
 		External:   fn.External,
 	}
+}
+
+// isFloatStruct reports whether typ is a struct (passed by value) with a
+// floating-point field, directly or in a nested struct.
+func (c *TypeChecker) isFloatStruct(typ ast.Type) bool {
+	sd, err := c.types.GetStruct(typ)
+	if err != nil {
+		return false
+	}
+	for _, field := range sd.Fields {
+		if ast.IsFloatingPointType(field.Type) || c.isFloatStruct(field.Type) {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *TypeChecker) checkBlock(block *ast.Block) *ast.Block {
@@ -420,7 +444,16 @@ func (c *TypeChecker) checkFunctionCall(call *ast.FunctionCall) *ast.FunctionCal
 		checkedArgs[i] = c.checkValueExpression(expr)
 		actualArgType := checkedArgs[i].GetType()
 
-		if !declared || i >= len(proto.Args) {
+		if !declared {
+			continue
+		}
+
+		if i >= len(proto.Args) {
+			// Variadic arguments go straight into a C call; see the float-struct
+			// restriction on extern signatures in checkFunction.
+			if c.isFloatStruct(actualArgType) {
+				c.errorf("%s: argument #%d of function %s: structs with floating-point fields cannot be passed to extern functions", call.Loc, i+1, call.FunctionName)
+			}
 			continue
 		}
 

@@ -120,6 +120,12 @@ void *PirxOpen(PirxSlice path_str) {
 
 PirxSlice PirxReadLine(void *fp) {
   FILE *file = (FILE *)fp;
+  if (file == NULL) {
+    // A null handle (failed open()) reads as an empty line instead of crashing.
+    PirxSlice empty = {.data = NULL, .size = 0, .cap = 0};
+    return empty;
+  }
+
   char *line = NULL;
   size_t len = 0;
   ssize_t read = getline(&line, &len, file);

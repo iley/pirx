@@ -525,7 +525,7 @@ func (c *TypeChecker) checkAssignment(assignment *ast.Assignment) *ast.Assignmen
 	}
 
 	if valueType != nil && targetType != nil {
-		isValidNullAssignment := ast.IsPointerType(targetType) && valueType.Equals(ast.NullPtr)
+		isValidNullAssignment := isNullable(targetType) && valueType.Equals(ast.NullPtr)
 		if !valueType.Equals(targetType) && !isValidNullAssignment {
 			c.errorf("%s: cannot assign value of type %s to lvalue of type %s",
 				assignment.Loc,
@@ -1082,10 +1082,15 @@ func areCompatibleTypes(left, right ast.Type) bool {
 		return true
 	}
 
-	if left == ast.NullPtr && ast.IsPointerType(right) || right == ast.NullPtr && ast.IsPointerType(left) {
-		// null can be used with pointers of any type.
+	if left == ast.NullPtr && isNullable(right) || right == ast.NullPtr && isNullable(left) {
 		return true
 	}
 
 	return false
+}
+
+// isNullable reports whether null is a valid value of the type. Besides
+// pointers this includes file, because open() returns null on failure.
+func isNullable(typ ast.Type) bool {
+	return ast.IsPointerType(typ) || typ == ast.File
 }

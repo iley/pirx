@@ -576,12 +576,19 @@ computed/substring string. PirxPrintf alone can't fix it (varargs lose the
 size); needs codegen+stdlib coordination (e.g. pass size and rewrite `%s` →
 `%.*s`).
 
-#### 4.2 `open()` failure is undetectable; `readline` on it segfaults — CONFIRMED, medium
+#### 4.2 `open()` failure is undetectable; `readline` on it segfaults — FIXED
 
 `stdlib/builtin.c:107-117`. `PirxOpen` returns NULL on failure; `file == null`
 is a typechecker error; `PirxReadLine` calls getline on the NULL handle →
 SIGSEGV. Minimal fix: allow file/null comparison or make PirxReadLine return
 empty on NULL.
+
+**Fixed 2026-06-12**: both halves. `areCompatibleTypes` now treats `file` as
+nullable alongside pointers (new `isNullable` helper), so `f == null` /
+`f != null` typecheck; since `file` is word-sized, the comparison lowers as a
+plain 8-byte scalar compare with no IR/codegen changes. `PirxReadLine` returns
+an empty string on a NULL handle instead of crashing (`PirxClose` was already
+NULL-safe). Regression test: `tests/177_open_failure.pirx`.
 
 #### 4.3 No slice bounds checking anywhere — CONFIRMED, medium (design gap)
 

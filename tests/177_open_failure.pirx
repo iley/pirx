@@ -1,0 +1,20 @@
+func main(): int {
+  // open() returns null on failure, which must be detectable via comparison.
+  var bad = open("/nonexistent/file");
+  if bad == null {
+    printf("open failed\n");
+  }
+
+  var good = open("/dev/null");
+  if good != null {
+    printf("open succeeded\n");
+  }
+  close(good);
+
+  // readline() on a null handle returns an empty string instead of crashing.
+  var line = readline(bad);
+  printf("readline on null handle: size %d\n", getsize(line));
+  dispose(line);
+
+  return 0;
+}

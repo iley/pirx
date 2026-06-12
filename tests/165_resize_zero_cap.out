@@ -1,0 +1,7 @@
+size = 0 cap = 0
+size = 10 cap = 16
+0000000000
+42 7
+size = 100 cap = 192
+1 2 3
+nonzero = 0

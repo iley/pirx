@@ -1,0 +1,41 @@
+// Regression test: resize() on a zero-cap slice used to hang forever, and
+// memory exposed by growth was not zeroed.
+
+func main(): int {
+  var s: []int;
+  printf("size = %d cap = %d\n", getsize(s), getcap(s));
+
+  resize(&s, 10);
+  printf("size = %d cap = %d\n", getsize(s), getcap(s));
+
+  // All grown elements must read as 0, not stale heap data.
+  for var i = 0; i < 10; i++ {
+    printf("%d", s[i]);
+  }
+  printf("\n");
+
+  s[0] = 42;
+  s[9] = 7;
+  printf("%d %d\n", s[0], s[9]);
+
+  // Growth from a small nonzero cap to a much larger one.
+  var t = new([]int, 3);
+  t[0] = 1;
+  t[1] = 2;
+  t[2] = 3;
+  resize(&t, 100);
+  printf("size = %d cap = %d\n", getsize(t), getcap(t));
+  printf("%d %d %d\n", t[0], t[1], t[2]);
+
+  var nonzero = 0;
+  for var i = 3; i < 100; i++ {
+    if t[i] != 0 {
+      nonzero++;
+    }
+  }
+  printf("nonzero = %d\n", nonzero);
+
+  dispose(s);
+  dispose(t);
+  return 0;
+}

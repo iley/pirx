@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -10,8 +12,18 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
+)
+
+// Timeouts guard against hanging test programs (e.g. runtime bugs causing
+// infinite loops) wedging the whole suite. Test binaries normally finish in
+// milliseconds; compilation gets a larger budget because the suite also runs
+// under qemu emulation in Docker, where pirx itself is slow.
+const (
+	runTimeout     = 10 * time.Second
+	compileTimeout = 60 * time.Second
 )
 
 // TestCase represents a single test case
@@ -681,11 +693,10 @@ func compileTest(testCase TestCase, testsDir string) (string, []string, error) {
 
 	// Use pirx build with -k flag to keep intermediate files for inspection
 	args := buildPirxArgs(testCase)
-	pirxCmd := exec.Command("./pirx", args...)
 	if verbose {
 		fmt.Printf("Executing: ./pirx %s\n", strings.Join(args, " "))
 	}
-	if output, err := pirxCmd.CombinedOutput(); err != nil {
+	if output, err := runCommand(compileTimeout, "./pirx", args...); err != nil {
 		if testCase.IsErrorTest {
 			// For error tests, return the compilation error output
 			return string(output), generatedFiles, nil
@@ -730,11 +741,10 @@ func compileProgram(pirxPath, testsDir, baseName string) (result string, success
 	}
 	args = append(args, pirxPath)
 
-	pirxCmd := exec.Command("./pirx", args...)
 	if verbose {
 		fmt.Printf("Executing: ./pirx %s\n", strings.Join(args, " "))
 	}
-	if output, err := pirxCmd.CombinedOutput(); err != nil {
+	if output, err := runCommand(compileTimeout, "./pirx", args...); err != nil {
 		return string(output), false, generatedFiles
 	}
 
@@ -742,11 +752,11 @@ func compileProgram(pirxPath, testsDir, baseName string) (result string, success
 }
 
 func runTest(binaryPath string) (string, error) {
-	cmd := exec.Command(binaryPath)
-	output, err := cmd.CombinedOutput()
+	output, err := runCommand(runTimeout, binaryPath)
 	if err != nil {
 		// Check if it's a non-zero exit code
-		if exitError, ok := err.(*exec.ExitError); ok {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
 			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
 				return string(output), fmt.Errorf("exit status %d", status.ExitStatus())
 			}
@@ -754,6 +764,18 @@ func runTest(binaryPath string) (string, error) {
 		return string(output), err
 	}
 	return string(output), nil
+}
+
+func runCommand(timeout time.Duration, name string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	output, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		// Report the timeout explicitly instead of the confusing
+		// "signal: killed" the killed process would otherwise produce.
+		return output, fmt.Errorf("test timed out after %v", timeout)
+	}
+	return output, err
 }
 
 func readExpectedOutput(expectedFile string) (string, error) {

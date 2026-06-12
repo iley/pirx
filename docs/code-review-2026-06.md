@@ -320,7 +320,7 @@ hardware.)
 folds to 0, leaving the division for runtime. Regression test:
 `tests/159_optimizer_div_by_zero_fold.pirx` plus unit tests.
 
-#### 2.3 `resize` on a zero-cap slice hangs forever — CONFIRMED, high
+#### 2.3 `resize` on a zero-cap slice hangs forever — FIXED
 
 `stdlib/builtin.c:25-29`. `new_cap *= 2` never escapes 0:
 
@@ -333,6 +333,11 @@ Fix: `if (new_cap == 0) new_cap = 1;` (or start from the requested size).
 Related (medium): `realloc` growth is not zeroed (`builtin.c:31`), unlike
 `new` which uses calloc — grown elements expose stale heap data; `memset` from
 old cap to new.
+
+**Fixed 2026-06-12**: the doubling loop starts from 1 when the capacity is 0,
+and `PirxSliceResize` now zeroes the region exposed by growth (old cap to new
+cap) so grown elements read as 0, matching `new`. Regression test:
+`tests/165_resize_zero_cap.pirx`.
 
 #### 2.4 aarch64 emits unencodable assembly for large frames/arg areas — CONFIRMED, medium
 
@@ -497,12 +502,16 @@ early return, so `pirxc -t ast foo.pirx` leaves an **empty foo.s**, destroying
 a previous good artifact. Move `os.Create` after the ast branches and write to
 `output`.
 
-#### 5.3 testrunner has no timeout on test programs — CONFIRMED, low
+#### 5.3 testrunner has no timeout on test programs — FIXED
 
 `cmd/testrunner/main.go:744-757`. Plain `CombinedOutput()`; any hanging test
 (e.g. finding 2.3) wedges `make test` indefinitely. Fix:
 `exec.CommandContext` with a timeout. (Comparison logic is otherwise sound:
 exact equality, nonzero exit fails, error tests that compile fail.)
+
+**Fixed 2026-06-12**: test binaries run via `exec.CommandContext` with a 10s
+timeout and a clear "test timed out" failure message; `./pirx build`
+invocations get a 60s timeout (generous for qemu-emulated Docker runs).
 
 #### 5.4 Non-deterministic assembly output — CONFIRMED, low
 

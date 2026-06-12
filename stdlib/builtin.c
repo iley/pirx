@@ -23,12 +23,21 @@ PirxSlice PirxSliceAlloc(int32_t elem_size, int32_t size, int32_t cap) {
 void PirxSliceDispose(PirxSlice slice) { PirxDispose(slice.data); }
 
 void PirxSliceResize(int32_t elem_size, PirxSlice *slice_ptr, int32_t size) {
-  int32_t new_cap = slice_ptr->cap;
+  int32_t old_cap = slice_ptr->cap;
+  int32_t new_cap = old_cap;
   while (new_cap < size) {
-    new_cap *= 2;
+    // Doubling a zero capacity would loop forever, so start from 1.
+    new_cap = new_cap > 0 ? new_cap * 2 : 1;
   }
 
-  slice_ptr->data = realloc(slice_ptr->data, elem_size * new_cap);
+  if (new_cap > old_cap) {
+    slice_ptr->data = realloc(slice_ptr->data, elem_size * new_cap);
+    // Unlike new() which uses calloc, realloc leaves the grown region
+    // uninitialized; zero it so new elements read as 0.
+    memset((char *)slice_ptr->data + elem_size * old_cap, 0,
+           elem_size * (new_cap - old_cap));
+  }
+
   slice_ptr->size = size;
   slice_ptr->cap = new_cap;
 }

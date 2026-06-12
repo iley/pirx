@@ -1,0 +1,11 @@
+// Constant folding of a division by zero must not crash the compiler.
+// The division is never executed at runtime, but the optimizer still sees it:
+// both operands are literals, so the fold is attempted regardless of the branch.
+func main(): int {
+  if false {
+    var x = 10 / 0;
+    printf("%d\n", x);
+  }
+  printf("ok\n");
+  return 0;
+}

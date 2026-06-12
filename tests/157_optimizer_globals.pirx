@@ -1,0 +1,23 @@
+// The optimizer must not assume a global keeps its value across a function call
+// or a pointer store: bump() modifies "calls", and "p" points at "g".
+var calls: int;
+var g: int;
+
+func bump() {
+  calls = calls + 1;
+}
+
+func setViaPointer(p: *int) {
+  g = 1;
+  *p = 5;
+  printf("g = %d\n", g);
+}
+
+func main(): int {
+  calls = 0;
+  bump();
+  printf("calls = %d\n", calls);
+
+  setViaPointer(&g);
+  return 0;
+}

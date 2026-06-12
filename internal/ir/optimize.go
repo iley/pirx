@@ -65,6 +65,17 @@ func (oc *optimizationContext) invalidateKnownValue(varname string) {
 	delete(oc.knownValues, varname)
 }
 
+// Globals must be invalidated at every call and pointer store: a callee can write
+// any global, and a pointer can alias a global whose address was taken in another
+// function (the leakedVars pre-scan only sees the current function body).
+func (oc *optimizationContext) invalidateGlobals() {
+	for varname := range oc.knownValues {
+		if IsGlobal(varname) {
+			delete(oc.knownValues, varname)
+		}
+	}
+}
+
 func foldConstants(body []Op) []Op {
 	oc := newOptimizationContext()
 
@@ -114,7 +125,7 @@ func foldConstants(body []Op) []Op {
 				oc.invalidateKnownValue(binop.Result)
 			}
 		} else if unop, ok := op.(UnaryOp); ok {
-			if value, ok := evalUnaryOp(oc, unop.Operation, unop.Value); ok {
+			if value, ok := evalUnaryOp(oc, unop.Operation, unop.Value, unop.Size); ok {
 				oc.addKnownValue(unop.Result, value)
 				op = Assign{
 					Target: unop.Result,
@@ -137,6 +148,7 @@ func foldConstants(body []Op) []Op {
 			call.Args = callArgs
 			op = call
 			oc.invalidateKnownValue(call.Result)
+			oc.invalidateGlobals()
 		} else if call, ok := op.(ExternalCall); ok {
 			callArgs := make([]CallArg, len(call.Args))
 			for i, arg := range call.Args {
@@ -150,6 +162,12 @@ func foldConstants(body []Op) []Op {
 			call.Args = callArgs
 			op = call
 			oc.invalidateKnownValue(call.Result)
+			oc.invalidateGlobals()
+		} else if _, ok := op.(AssignByAddr); ok {
+			// AssignByAddr's GetTarget() is empty, so without this branch a pointer
+			// store would invalidate nothing. Locals are protected by the leakedVars
+			// pre-scan, but globals can be aliased from anywhere.
+			oc.invalidateGlobals()
 		} else {
 			oc.invalidateKnownValue(op.GetTarget())
 		}
@@ -276,19 +294,26 @@ func evalBinaryOp(oc *optimizationContext, operation string, left, right Arg, op
 	// for short-circuit evaluation.
 	switch operation {
 	case "+", "-", "*", "/":
+		// Don't fold integer division by a constant zero: performing it here would
+		// panic the compiler. Leave the op as-is, same as unoptimized code.
+		if operation == "/" && !isFloatArg(leftConst) && !isFloatArg(rightConst) && argIntValue(rightConst) == 0 {
+			return Arg{}, false
+		}
 		return performArithmetic(operation, leftConst, rightConst, operandSize), true
 	}
 	return Arg{}, false
 }
 
-func evalUnaryOp(oc *optimizationContext, operation string, value Arg) (Arg, bool) {
+func evalUnaryOp(oc *optimizationContext, operation string, value Arg, size int) (Arg, bool) {
 	constVal, ok := evalArg(oc, value)
 	if !ok {
 		return Arg{}, false
 	}
 	switch operation {
 	case "-":
-		result := -argIntValue(constVal)
+		// Negate as "0 - x" with sized arithmetic so the result wraps to the
+		// operand size, e.g. -(-128i8) overflows back to -128.
+		result := performSizedIntegerArithmetic("-", 0, argIntValue(constVal), size)
 		return Arg{LiteralInt: &result}, true
 	case "-.":
 		result := -argFloatValue(constVal)

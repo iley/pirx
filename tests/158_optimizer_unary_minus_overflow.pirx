@@ -1,0 +1,13 @@
+// Constant-folded unary minus must wrap to the operand size: -(-128i8) overflows
+// int8 and wraps back to -128, same as at runtime.
+func main(): int {
+  var m: int8 = -128i8;
+  var n = -m;
+  printf("%d\n", n);
+
+  var i = -2147483648;
+  var j = -i;
+  printf("%d\n", j);
+
+  return 0;
+}

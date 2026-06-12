@@ -20,7 +20,7 @@ Severity legend:
 
 ### Tier 1 — silent wrong results (miscompiles)
 
-#### 1.1 Optimizer doesn't invalidate globals at calls — CONFIRMED, high
+#### 1.1 Optimizer doesn't invalidate globals at calls — FIXED
 
 `internal/ir/optimize.go:127-152`. `foldConstants` tracks `@globals` in
 `knownValues` like locals and only invalidates `call.Result` at
@@ -60,6 +60,10 @@ Fix: invalidate all `@`-prefixed keys at every `Call`, `ExternalCall`, and
 unless `&local` appears syntactically in the same function, and the pre-scan is
 order-insensitive). Note: Anchor/Jump/JumpUnless already reset everything, so
 this only bites in straight-line code.
+
+**Fixed 2026-06-12**: `foldConstants` invalidates all globals at `Call`,
+`ExternalCall`, and `AssignByAddr`. First unit tests added in
+`internal/ir/optimize_test.go`. Regression test: `tests/157_optimizer_globals.pirx`.
 
 #### 1.2 `g = *p` with a global target writes to stack offset 0 — CONFIRMED, high
 
@@ -108,7 +112,7 @@ Observed: `calls=2 a0=10` (also at `-O0`). Expected: `calls=1`. Same for
 via a single address computation. Fix belongs in the IR generator (compute the
 address once); expression-level desugar cannot introduce a temporary.
 
-#### 1.4 Unary minus folding ignores operand size — CONFIRMED, high
+#### 1.4 Unary minus folding ignores operand size — FIXED
 
 `internal/ir/optimize.go:289-292`. `evalUnaryOp` negates as int64 and ignores
 `UnaryOp.Size`. Binary folding wraps correctly via
@@ -121,6 +125,10 @@ printf("%d\n", n);   // optimized: 128, -O0: -128
 ```
 
 Same latent issue for int32 `-(-2147483648)`.
+
+**Fixed 2026-06-12**: `evalUnaryOp` now wraps negation via
+`performSizedIntegerArithmetic` using the op size. Regression test:
+`tests/158_optimizer_unary_minus_overflow.pirx` plus unit tests.
 
 #### 1.5 `util.EscapeString` corrupts string literals — CONFIRMED, high
 
@@ -263,7 +271,7 @@ on anything — `unaryOperationResult("&", ...)` unconditionally succeeds
 (`typechecker.go:916-919`) while a correct `isAddressable` sits unused at
 `typechecker.go:527`. Fix: require `isAddressable` for `&` operands.
 
-#### 2.2 Constant-folded division by zero panics the compiler — CONFIRMED, high
+#### 2.2 Constant-folded division by zero panics the compiler — FIXED
 
 `internal/ir/optimize.go:185, 201, 217`. `performSizedIntegerArithmetic`
 executes the Go division; a constant 0 divisor crashes the compiler:
@@ -277,6 +285,10 @@ Reachable via propagation, so the typechecker cannot fully guard it. Fix:
 don't fold `/` when the RHS folds to 0. (`%` is currently safe only because it
 isn't in the fold list; `MinInt / -1` is fine — Go wraps per spec, matching
 hardware.)
+
+**Fixed 2026-06-12**: `evalBinaryOp` refuses to fold integer `/` when the RHS
+folds to 0, leaving the division for runtime. Regression test:
+`tests/159_optimizer_div_by_zero_fold.pirx` plus unit tests.
 
 #### 2.3 `resize` on a zero-cap slice hangs forever — CONFIRMED, high
 

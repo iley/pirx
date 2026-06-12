@@ -514,12 +514,17 @@ Regression test: `tests/173_duplicate_struct_field_error.pirx`.
 the conservative rule (a `while(true)` with no `break` only exits via return)
 would accept this.
 
-#### 3.6 `getptr(string)` is unusable — CONFIRMED, medium
+#### 3.6 `getptr(string)` is unusable — FIXED
 
 `typechecker.go:383-399`. `getptr`'s `AnySlice` parameter accepts strings, but
 `resolveSpecialFunctionReturnType` only special-cases slices, so for a string
 it returns the proto's `voidptr` — not assignable and not inferable. `range`
 handles strings correctly right next to it; `getptr` should return `*int8`.
+
+**Fixed 2026-06-12**: `resolveSpecialFunctionReturnType` now returns `*int8`
+for `getptr` on a string, mirroring the `range` pattern. No IR/runtime changes
+needed: strings share the slice representation, so `PirxSlicePtr` already
+works. Regression test: `tests/174_getptr_string.pirx`.
 
 #### 3.7 Non-ASCII char literals silently truncate — CONFIRMED, medium
 

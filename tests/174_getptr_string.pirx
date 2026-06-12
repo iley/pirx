@@ -1,0 +1,16 @@
+func main(): int {
+  // getptr on a string with explicit and inferred pointer types.
+  var s = "hello";
+  var p: *int8 = getptr(s);
+  var q = getptr(s);
+  printf("%d\n", *p);
+  printf("%d\n", *q);
+
+  // getptr on a slice still works.
+  var sl = new([]int, 2);
+  sl[0] = 42;
+  var sp: *int = getptr(sl);
+  printf("%d\n", *sp);
+
+  return 0;
+}

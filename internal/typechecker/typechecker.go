@@ -409,6 +409,8 @@ func resolveSpecialFunctionReturnType(functionName string, protoReturnType ast.T
 		firstArgType := args[0].GetType()
 		if sliceType, ok := firstArgType.(*ast.SliceType); ok {
 			return &ast.PointerType{ElementType: sliceType.ElementType}
+		} else if firstArgType == ast.String {
+			return &ast.PointerType{ElementType: ast.Int8}
 		}
 	}
 	if functionName == "range" && len(args) >= 1 {

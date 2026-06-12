@@ -1,0 +1,43 @@
+// Field access and indexing on rvalues (function call results) must work
+// without taking an explicit address.
+
+struct Point {
+  x: int;
+  y: int;
+}
+
+struct Line {
+  a: Point;
+  b: Point;
+}
+
+func mk(): Point {
+  var p: Point = {7, 8};
+  return p;
+}
+
+func mkLine(): Line {
+  var l: Line = {{1, 2}, {3, 4}};
+  return l;
+}
+
+func mkslice(): []int {
+  var s: []int = new([]int, 3);
+  s[0] = 42;
+  return s;
+}
+
+func main(): int {
+  var a = mk().x;
+  printf("a = %d\n", a);
+
+  printf("sum = %d\n", mk().x + mk().y);
+
+  // Field access chain on an rvalue struct.
+  printf("b.y = %d\n", mkLine().b.y);
+
+  // Indexing an rvalue slice.
+  printf("s[0] = %d\n", mkslice()[0]);
+
+  return 0;
+}

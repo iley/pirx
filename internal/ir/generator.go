@@ -469,9 +469,22 @@ func (g *Generator) generateFieldAccessAddrOps(object ast.Expression, fieldName 
 	if ast.IsPointerType(object.GetType()) {
 		// If left side is a pointer to the struct, just evaluate it.
 		ops, objArg, _ = g.generateExpressionOps(object)
-	} else {
+	} else if hasAddress(object) {
 		// If struct value, get the address.
 		ops, objArg = g.generateExpressionAddrOps(object)
+	} else {
+		// An rvalue struct (e.g. a function call result) has no location of its own,
+		// so spill it into a temporary and use the temporary's address. The typechecker
+		// rejects such expressions as assignment targets and & operands, so the spilled
+		// copy is only ever read from.
+		valOps, valArg, size := g.generateExpressionOps(object)
+		temp := g.allocTemp(size)
+		addr := g.allocTemp(ast.WORD_SIZE)
+		ops = append(valOps,
+			Assign{Target: temp, Value: valArg, Size: size},
+			UnaryOp{Result: addr, Operation: "&", Value: Arg{Variable: temp}, Size: ast.WORD_SIZE},
+		)
+		objArg = Arg{Variable: addr}
 	}
 
 	// Add offset.
@@ -488,6 +501,18 @@ func (g *Generator) generateFieldAccessAddrOps(object ast.Expression, fieldName 
 	})
 	// Dereference.
 	return ops, Arg{Variable: addrTemp}
+}
+
+// hasAddress reports whether generateExpressionAddrOps can produce the expression's
+// address directly, i.e. without spilling the value to a temporary first.
+func hasAddress(expr ast.Expression) bool {
+	switch e := expr.(type) {
+	case *ast.VariableReference, *ast.FieldAccess, *ast.IndexExpression:
+		return true
+	case *ast.UnaryOperation:
+		return e.Operator == "*"
+	}
+	return false
 }
 
 func (g *Generator) generateIfOps(stmt ast.IfStatement) []Op {

@@ -260,7 +260,7 @@ with a return type; for void main it returns a literal 0. Regression test:
 
 ### Tier 2 — compiler crashes / hangs on valid code
 
-#### 2.1 `f().x` panics the compiler — CONFIRMED, high
+#### 2.1 `f().x` panics the compiler — FIXED
 
 `internal/ir/generator.go:451` (via `:454-474`). Every field read is lowered
 through `generateExpressionAddrOps`, which only handles
@@ -284,6 +284,13 @@ Related: `&mk().x` reaches the same panic because the typechecker accepts `&`
 on anything — `unaryOperationResult("&", ...)` unconditionally succeeds
 (`typechecker.go:916-919`) while a correct `isAddressable` sits unused at
 `typechecker.go:527`. Fix: require `isAddressable` for `&` operands.
+
+**Fixed 2026-06-12**: `generateFieldAccessAddrOps` spills rvalue objects into a
+fresh temp and offsets into the temp's address; `checkUnaryOperation` rejects
+`&` on non-lvalues via `isAddressable`. Indexing rvalue slices
+(`mkslice()[0]`) already worked since `generateIndexAddrOps` evaluates the
+slice as a value. Regression tests: `tests/162_rvalue_field_access.pirx`,
+`tests/163_address_of_rvalue_error.pirx`.
 
 #### 2.2 Constant-folded division by zero panics the compiler — FIXED
 

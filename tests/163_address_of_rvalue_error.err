@@ -1,0 +1,3 @@
+pirxc compilation failed: exit status 1
+Output: tests/163_address_of_rvalue_error.pirx:14:12: cannot take the address of an expression that is not an lvalue
+Error: exit status 1

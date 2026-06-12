@@ -1,0 +1,17 @@
+// Taking the address of an rvalue must be a compile error, not a crash.
+
+struct Point {
+  x: int;
+  y: int;
+}
+
+func mk(): Point {
+  var p: Point = {7, 8};
+  return p;
+}
+
+func main(): int {
+  var px = &mk().x;
+  printf("%d\n", *px);
+  return 0;
+}

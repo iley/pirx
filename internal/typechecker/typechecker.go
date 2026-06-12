@@ -606,6 +606,11 @@ func (c *TypeChecker) checkBinaryOperation(binOp *ast.BinaryOperation) *ast.Bina
 func (c *TypeChecker) checkUnaryOperation(unaryOp *ast.UnaryOperation) *ast.UnaryOperation {
 	operandExpr := c.checkValueExpression(unaryOp.Operand)
 	operandType := operandExpr.GetType()
+	// Addressability is a property of the expression, not its type, so it cannot
+	// be checked in unaryOperationResult.
+	if unaryOp.Operator == "&" && !isAddressable(operandExpr) {
+		c.errorf("%s: cannot take the address of an expression that is not an lvalue", unaryOp.Loc)
+	}
 	resultType, ok := c.unaryOperationResult(unaryOp.Operator, operandType)
 	if !ok {
 		c.errorf("%s: unary operation %s cannot be applied to a value of type %s",
@@ -914,8 +919,8 @@ func (c *TypeChecker) unaryOperationResult(op string, val ast.Type) (ast.Type, b
 	case "-":
 		return val, ast.IsNumericType(val)
 	case "&":
-		// We can make a pointer to any type.
-		// TODO: Check that we're only taking address of lvalues.
+		// Any type can be pointed to; addressability of the operand expression
+		// is checked in checkUnaryOperation.
 		return &ast.PointerType{ElementType: val}, true
 	case "*":
 		if ptr, ok := val.(*ast.PointerType); ok {

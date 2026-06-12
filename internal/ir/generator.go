@@ -58,7 +58,7 @@ func (g *Generator) Generate(node *ast.Program) (IrProgram, []error) {
 	mainStub := g.generateMain()
 	irp.Functions = append(irp.Functions, mainStub)
 
-	return irp, nil
+	return irp, g.errors
 }
 
 func (g *Generator) generateFunction(node ast.Function) IrFunction {

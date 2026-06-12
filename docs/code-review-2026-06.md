@@ -434,7 +434,7 @@ macOS does not guarantee a red zone); add encodability checks
 (`off <= 255 || (off%8 == 0 && off <= 504)`) with an x9 fallback; split large
 SP adjustments.
 
-#### 2.5 IR generator swallows all of its own errors — CONFIRMED, medium
+#### 2.5 IR generator swallows all of its own errors — FIXED
 
 `internal/ir/generator.go:60` ends with `return irp, nil`; every `errorf`
 diagnostic (`:902-904`) is appended to `g.errors` and discarded.
@@ -442,6 +442,15 @@ diagnostic (`:902-904`) is appended to `g.errors` and discarded.
 Downstream effect: error paths continue with nil/garbage — e.g. `getField`
 miss returns nil which the caller dereferences (`field.Size` at `:459`), a
 nil-pointer panic instead of a diagnostic. Fix: `return irp, g.errors`.
+
+**Fixed 2026-06-12**: `Generate` now returns `g.errors`; the driver's existing
+multi-error handling picks them up. All current `errorf` sites (operand size
+mismatches, non-pointer dereference, unknown field, bad `new` count size) are
+unreachable from user programs — the typechecker rejects every such input
+first — so they act as internal-consistency checks. Regression test:
+`TestGenerateReturnsAccumulatedErrors` in `internal/ir/generator_test.go`
+feeds a hand-built (untypechecked) AST to `Generate` and asserts the error
+propagates.
 
 ### Tier 3 — unsound typechecking / wrong rejection
 

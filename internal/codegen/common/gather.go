@@ -2,6 +2,7 @@ package common
 
 import (
 	"maps"
+	"math"
 	"slices"
 
 	"github.com/iley/pirx/internal/ir"
@@ -25,19 +26,25 @@ func GatherStrings(p ir.IrProgram) []string {
 }
 
 func GatherFloats(p ir.IrProgram) []float64 {
-	uniqueFloats := map[float64]struct{}{}
+	// Deduplicate by bit pattern, not by value: 0.0 == -0.0 in Go, but they
+	// are distinct constants and must get separate pool entries.
+	uniqueFloats := map[uint64]struct{}{}
 	for _, f := range p.Functions {
 		for _, op := range f.Ops {
 			args := op.GetArgs()
 			for _, arg := range args {
 				if arg.LiteralFloat != nil {
-					uniqueFloats[*arg.LiteralFloat] = struct{}{}
+					uniqueFloats[math.Float64bits(*arg.LiteralFloat)] = struct{}{}
 				}
 			}
 		}
 	}
-	result := slices.Collect(maps.Keys(uniqueFloats))
-	slices.Sort(result)
+	bits := slices.Collect(maps.Keys(uniqueFloats))
+	slices.Sort(bits)
+	result := make([]float64, len(bits))
+	for i, b := range bits {
+		result[i] = math.Float64frombits(b)
+	}
 	return result
 }
 

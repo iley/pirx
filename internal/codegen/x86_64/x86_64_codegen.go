@@ -20,7 +20,9 @@ const (
 
 type CodegenContext struct {
 	stringLiterals map[string]string
-	floatLiterals  map[float64]string
+	// Keyed by bit pattern so that 0.0 and -0.0 (equal in Go, distinct as
+	// constants) get separate pool entries; the negation mask depends on it.
+	floatLiterals map[uint64]string
 
 	// Function-specific.
 	locals       map[string]int // name -> offset from rbp
@@ -49,9 +51,9 @@ func Generate(irp ir.IrProgram) (asm.Program, error) {
 	}
 
 	// Map from float to a label in the data section.
-	floatLiterals := make(map[float64]string)
+	floatLiterals := make(map[uint64]string)
 	for i, f := range common.GatherFloats(irp) {
-		floatLiterals[f] = fmt.Sprintf(".Lflt%d", i)
+		floatLiterals[math.Float64bits(f)] = fmt.Sprintf(".Lflt%d", i)
 	}
 
 	globalVariables := common.GatherGlobals(irp)
@@ -98,19 +100,20 @@ func generateStringLiterals(literals map[string]string) []asm.StringLiteral {
 // ensureFloatLiteral adds a float literal to the map if it doesn't already exist.
 // This is needed for codegen-generated constants like negative zero.
 func ensureFloatLiteral(cc *CodegenContext, value float64) {
-	if _, ok := cc.floatLiterals[value]; !ok {
+	bits := math.Float64bits(value)
+	if _, ok := cc.floatLiterals[bits]; !ok {
 		label := fmt.Sprintf(".Lflt%d", len(cc.floatLiterals))
-		cc.floatLiterals[value] = label
+		cc.floatLiterals[bits] = label
 	}
 }
 
-func generateFloatLiterals(literals map[float64]string) []asm.FloatLiteral {
+func generateFloatLiterals(literals map[uint64]string) []asm.FloatLiteral {
 	var result []asm.FloatLiteral
 
 	// Create inverse map: label -> value
 	labelToValue := make(map[string]float64)
-	for val, label := range literals {
-		labelToValue[label] = val
+	for bits, label := range literals {
+		labelToValue[label] = math.Float64frombits(bits)
 	}
 
 	// Sort labels and output in order
@@ -385,23 +388,9 @@ func generateAssignment(cc *CodegenContext, assign ir.Assign) ([]asm.Line, error
 			}
 
 			if ir.IsGlobal(assign.Target) {
-				if offset == 0 {
-					lines = append(lines, generateStoreToVariable(cc, reg, assign.Target)...)
-				} else {
-					// For non-zero offset, compute address using leaq + addq
-					label := getGlobalLabel(assign.Target)
-					lines = append(lines, asm.Op2("leaq", asm.Arg{Label: label, Reg: "rip"}, asm.Reg("rcx")))
-					lines = append(lines, asm.Op2("addq", asm.Imm(offset), asm.Reg("rcx")))
-					targetArg := asm.Arg{Reg: "rcx", Deref: true}
-					switch stepSize {
-					case 1:
-						lines = append(lines, asm.Op2("movb", asm.Reg(reg), targetArg))
-					case 4:
-						lines = append(lines, asm.Op2("movl", asm.Reg(reg), targetArg))
-					case 8:
-						lines = append(lines, asm.Op2("movq", asm.Reg(reg), targetArg))
-					}
-				}
+				// RIP-relative store with an addend; no scratch register needed.
+				targetArg := asm.Arg{Label: getGlobalLabel(assign.Target), Reg: "rip", Offset: offset, Deref: true}
+				lines = append(lines, asm.Op2("mov"+sizeToSuffix(stepSize), asm.Reg(reg), targetArg))
 			} else {
 				lines = append(lines, generateStoreToLocalWithOffset(cc, reg, assign.Target, offset)...)
 			}
@@ -1077,7 +1066,7 @@ func generateRegisterLoadWithOffset(cc *CodegenContext, reg string, regSize int,
 		// Load the raw bits of the float literal into a general-purpose register.
 		// This happens when floats are copied via memory, e.g. for Pirx function calls and returns.
 		ensureFloatLiteral(cc, *arg.LiteralFloat)
-		label := cc.floatLiterals[*arg.LiteralFloat]
+		label := cc.floatLiterals[math.Float64bits(*arg.LiteralFloat)]
 		labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
 		switch regSize {
 		case 4:
@@ -1144,34 +1133,17 @@ func generateLocalVariableLoadWithOffset(cc *CodegenContext, reg string, regSize
 
 func generateGlobalVariableLoadWithOffset(reg string, regSize int, variable string, offset int) []asm.Line {
 	var lines []asm.Line
-	label := getGlobalLabel(variable)
 
-	if offset == 0 {
-		// Direct RIP-relative load for zero offset
-		labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
-		switch regSize {
-		case 1:
-			lines = append(lines, asm.Op2("movb", labelArg, asm.Reg(reg)))
-		case 4:
-			lines = append(lines, asm.Op2("movl", labelArg, asm.Reg(reg)))
-		default:
-			lines = append(lines, asm.Op2("movq", labelArg, asm.Reg(reg)))
-		}
-	} else {
-		// For non-zero offset: compute address with leaq, add offset, then load
-		labelArg := asm.Arg{Label: label, Reg: "rip"}
-		lines = append(lines, asm.Op2("leaq", labelArg, asm.Reg("rcx")))
-		lines = append(lines, asm.Op2("addq", asm.Imm(offset), asm.Reg("rcx")))
-
-		memArg := asm.Arg{Reg: "rcx", Deref: true}
-		switch regSize {
-		case 1:
-			lines = append(lines, asm.Op2("movb", memArg, asm.Reg(reg)))
-		case 4:
-			lines = append(lines, asm.Op2("movl", memArg, asm.Reg(reg)))
-		default:
-			lines = append(lines, asm.Op2("movq", memArg, asm.Reg(reg)))
-		}
+	// A single RIP-relative load with an addend (label+offset(%rip)) needs no
+	// scratch register; callers may hold live values in rcx and friends.
+	labelArg := asm.Arg{Label: getGlobalLabel(variable), Reg: "rip", Offset: offset, Deref: true}
+	switch regSize {
+	case 1:
+		lines = append(lines, asm.Op2("movb", labelArg, asm.Reg(reg)))
+	case 4:
+		lines = append(lines, asm.Op2("movl", labelArg, asm.Reg(reg)))
+	default:
+		lines = append(lines, asm.Op2("movq", labelArg, asm.Reg(reg)))
 	}
 
 	return lines
@@ -1281,7 +1253,7 @@ func getGlobalLabel(name string) string {
 }
 
 func generateFloatLiteralLoad(cc *CodegenContext, reg string, regSize int, literal float64) []asm.Line {
-	label := cc.floatLiterals[literal]
+	label := cc.floatLiterals[math.Float64bits(literal)]
 	labelArg := asm.Arg{Label: label, Reg: "rip", Deref: true}
 
 	var lines []asm.Line

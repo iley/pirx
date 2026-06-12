@@ -1,0 +1,52 @@
+// Guards the x86_64 backend against two bugs: the float literal pool
+// collapsing 0.0 and -0.0 into one constant (making runtime float negation a
+// no-op), and rcx being used as scratch for global+offset loads while a
+// caller holds a live pointer or argument in it.
+
+struct Pair {
+  x: int64;
+  y: int64;
+}
+
+var gdst: Pair;
+var gsrc: Pair;
+// Globals are laid out in name order, so gtail sits right after gsrc in
+// memory and catches the stray write to gsrc+16 the rcx bug used to produce.
+var gtail: int64;
+
+extern func pair_sum(a: int, b: int, c: int, p: Pair): int64;
+
+func negate(v: float64): float64 {
+  // The argument is unknown at compile time, so this negation cannot be
+  // constant-folded and must run through the backend's negation path.
+  return -v;
+}
+
+func main(): int {
+  // Float negation must work even though 0.0 appears as a literal too.
+  var zero: float64 = 0.0;
+  var negzero: float64 = -0.0;
+  printf("%.2f %.1f %.1f\n", negate(3.5), zero, negzero);
+
+  gsrc.x = 11l;
+  gsrc.y = 22l;
+  gdst.x = 1l;
+  gdst.y = 2l;
+
+  // Global-to-global struct copy: the destination address is held in a
+  // register across the multi-word copy from the global source.
+  gdst = gsrc;
+  printf("%lld %lld %lld\n", gdst.x, gdst.y, gtail);
+
+  // Store through a pointer while the source is a global struct.
+  var lp: Pair = {0l, 0l};
+  var pp: *Pair = &lp;
+  *pp = gsrc;
+  printf("%lld %lld\n", lp.x, lp.y);
+
+  // 16-byte global struct by value as the 4th argument: on x86_64 its first
+  // half lands in rcx, which the buggy offset load used as scratch.
+  printf("%lld\n", pair_sum(1, 2, 3, gsrc));
+
+  return 0;
+}

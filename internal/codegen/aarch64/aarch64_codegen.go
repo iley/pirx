@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"maps"
+	"math"
 	"slices"
 	"strings"
 
@@ -31,7 +32,9 @@ type Features struct {
 type CodegenContext struct {
 	features       Features
 	stringLiterals map[string]string
-	floatLiterals  map[float64]string
+	// Keyed by bit pattern so that 0.0 and -0.0 (equal in Go, distinct as
+	// constants) get separate pool entries.
+	floatLiterals map[uint64]string
 
 	// Function-specific.
 	locals       map[string]int // name -> size
@@ -60,9 +63,9 @@ func Generate(irp ir.IrProgram, features Features) (asm.Program, error) {
 	}
 
 	// Map from float to a label in the data section.
-	floatLiterals := make(map[float64]string)
+	floatLiterals := make(map[uint64]string)
 	for i, f := range common.GatherFloats(irp) {
-		floatLiterals[f] = fmt.Sprintf(".Lflt%d", i)
+		floatLiterals[math.Float64bits(f)] = fmt.Sprintf(".Lflt%d", i)
 	}
 
 	globalVariables := common.GatherGlobals(irp)
@@ -96,10 +99,10 @@ func generateStringLiterals(literals map[string]string) []asm.StringLiteral {
 	return result
 }
 
-func generateFloatLiterals(literals map[float64]string) []asm.FloatLiteral {
+func generateFloatLiterals(literals map[uint64]string) []asm.FloatLiteral {
 	var result []asm.FloatLiteral
-	for val, label := range literals {
-		result = append(result, asm.FloatLiteral{Label: label, Value: val})
+	for bits, label := range literals {
+		result = append(result, asm.FloatLiteral{Label: label, Value: math.Float64frombits(bits)})
 	}
 	return result
 }
@@ -1173,7 +1176,7 @@ func generateLiteralLoad(reg string, regSize int, val int64) []asm.Line {
 }
 
 func generateFloatLiteralLoad(cc *CodegenContext, reg string, regSize int, literal float64) []asm.Line {
-	label := cc.floatLiterals[literal]
+	label := cc.floatLiterals[math.Float64bits(literal)]
 	var lines []asm.Line
 
 	// Load the address of the float literal into x9 (temporary register)

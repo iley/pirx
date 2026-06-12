@@ -213,7 +213,7 @@ the argument size (largest power of two dividing it, capped at 8), and 12-byte
 struct stack args no longer panic. Regression test:
 `tests/167_extern_abi_args/`, verified natively and under linux/arm64.
 
-#### 1.8 x86_64: float negation is a no-op when the program contains `0.0` — CONFIRMED, high
+#### 1.8 x86_64: float negation is a no-op when the program contains `0.0` — FIXED
 
 `internal/codegen/x86_64/x86_64_codegen.go:89-94, 649-656`. Negation is
 `xorpd` with a pooled `-0.0` constant; the pool is a float-keyed Go map and
@@ -229,7 +229,17 @@ printf("%.2f %.2f\n", y, z);   // observed: 3.50 0.00; expected: -3.50 0.00
 Fix: key the literal pool on `math.Float64bits`, or emit the sign mask via a
 dedicated label/inline.
 
-#### 1.9 x86_64: rcx clobbered by global+offset loads — CONFIRMED, high
+**Fixed 2026-06-12**: the float literal pools in both backends and the
+deduplication in `common.GatherFloats` are now keyed on `math.Float64bits`, so
+bit-distinct but `==`-equal constants (±0.0) get separate pool entries. The
+aarch64 backend negates with `fneg` and never pools a mask, but it shared the
+GatherFloats/pool dedup bug: a program containing both `0.0` and `-0.0`
+literals (the optimizer folds `-0.0` to a literal) collapsed them to one
+constant on every platform. Regression test: `tests/168_global_struct_copy/`
+covers runtime negation with a `0.0` literal present and prints both `0.0` and
+`-0.0`.
+
+#### 1.9 x86_64: rcx clobbered by global+offset loads — FIXED
 
 `x86_64_codegen.go:1149-1163`. The offset≠0 global-load path uses rcx as
 scratch (`leaq label(%rip), %rcx; addq $off, %rcx; mov (%rcx), reg`) while
@@ -246,6 +256,18 @@ Fix: the formatter already supports `label+offset(%rip)` operands
 (`x86_64_linux/formatter.go:66-72`); the offset path can be a single
 RIP-relative mov with addend — no scratch register at all. Same fix applies to
 the zero-assign global path (`:380-392`).
+
+**Fixed 2026-06-12**: `generateGlobalVariableLoadWithOffset` and the
+zero-assign global path now emit a single RIP-relative mov with an addend
+(`label+offset(%rip)`) and use no scratch register. An audit of the remaining
+rcx uses found them safe: division/binop operands, `generateAssignmentByAddr`
+and `generateMemoryCopyFromRef` hold rcx themselves and copy through rax,
+which is never live across these helpers (the xmm0-as-scratch hazard in
+stack-passed float args remains tracked under 1.10). Regression test:
+`tests/168_global_struct_copy/` (global-to-global struct copy with an
+adjacent-global sentinel, `*pp = globalStruct`, and a 16-byte global struct
+passed by value in the rcx:r8 slots of a real C callee); verified failing on
+x86_64 before the fix and green after, and passing natively on aarch64.
 
 #### 1.10 x86_64 external-call ABI holes — CONFIRMED, high/medium
 

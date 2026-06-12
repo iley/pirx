@@ -1,0 +1,9 @@
+// A struct cannot have two fields with the same name.
+struct P {
+  x: int;
+  x: int;
+}
+
+func main(): int {
+  return 0;
+}

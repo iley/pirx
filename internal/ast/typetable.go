@@ -183,7 +183,12 @@ func makeStructDescriptor(node *StructDeclaration, tt *TypeTable) (*StructDescri
 
 	offset := 0
 	maxAlign := 1
+	seenFields := make(map[string]bool)
 	for _, fnode := range node.Fields {
+		if seenFields[fnode.Name] {
+			return nil, fmt.Errorf("%s: duplicate field %s in struct %s", fnode.Loc, fnode.Name, node.Name)
+		}
+		seenFields[fnode.Name] = true
 		size, err := tt.GetSize(fnode.Type)
 		if err != nil {
 			return nil, fmt.Errorf("%s: error in struct declaration: %s", node.Loc, err)

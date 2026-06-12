@@ -497,11 +497,16 @@ list, so pointer-identity comparisons can no longer diverge from name
 equality (simplicity item 2.6). Unit test in `internal/ast/types_test.go`;
 regression test: `tests/172_file_type_equality.pirx`.
 
-#### 3.4 Duplicate struct field names accepted silently — CONFIRMED, medium
+#### 3.4 Duplicate struct field names accepted silently — FIXED
 
 `internal/ast/typetable.go:179-207`. `struct P { x: int; x: int; }` compiles;
 `GetField` returns the first match. Fix: a seen-set in
 `makeStructDescriptor`.
+
+**Fixed 2026-06-12**: `makeStructDescriptor` now tracks seen field names and
+reports `<loc>: duplicate field x in struct P` at the duplicated field's
+location, propagating through the existing `MakeTypeTable` error path.
+Regression test: `tests/173_duplicate_struct_field_error.pirx`.
 
 #### 3.5 `while (true) { return 1; }` rejected for missing return — CONFIRMED, low
 

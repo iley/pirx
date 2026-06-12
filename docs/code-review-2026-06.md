@@ -538,12 +538,21 @@ supported" at the literal's source location. Escape sequences are decoded in
 the lexer and unaffected. Regression test:
 `tests/175_char_literal_range_error.pirx`.
 
-#### 3.8 Generated `PirxEq_<Struct>` collides with user functions — CONFIRMED, medium
+#### 3.8 Generated `PirxEq_<Struct>` collides with user functions — FIXED
 
 `internal/desugar/desugar.go:445-455`. Defining `func PirxEq_Point(...)` and
 also using `==` on `Point` values → assembler error `symbol '_PirxEq_Point'
 is already defined` leaks to the user. Fix: reserve the prefix with a
 diagnostic, or uniquify.
+
+**Fixed 2026-06-12**: `checkDuplicateFunctions` rejects function definitions
+whose name starts with `Pirx` ("function names starting with Pirx are
+reserved"). The whole prefix is reserved — not just `PirxEq_` — because the
+compiler also emits `Pirx_Main`/`Pirx_Init` and links runtime symbols like
+`PirxAlloc` that aren't in the builtins map. Extern declarations without a
+body are still allowed (`tests/094_int8_sign_extend.pirx` declares
+`PirxIntFromInt8`). Regression test:
+`tests/176_reserved_function_name_error.pirx`.
 
 #### 3.9 Struct declaration order matters — CONFIRMED, low
 

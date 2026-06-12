@@ -90,6 +90,14 @@ func (c *TypeChecker) checkDuplicateFunctions() {
 	defined := make(map[string]bool)
 	for _, fn := range c.program.Functions {
 		if fn.Body != nil {
+			// The Pirx prefix is reserved for symbols the compiler generates (e.g. PirxEq_<Struct>,
+			// Pirx_Main) and the runtime defines (e.g. PirxAlloc). Defining such a function would
+			// cause a symbol collision at assembly time. Extern declarations without a body are
+			// still allowed so that runtime functions can be called directly.
+			if strings.HasPrefix(fn.Name, "Pirx") {
+				c.errorf("%s: cannot define function %s: function names starting with Pirx are reserved", fn.Loc, fn.Name)
+				continue
+			}
 			if builtins[fn.Name] {
 				c.errorf("%s: function %s conflicts with a builtin function", fn.Loc, fn.Name)
 				continue

@@ -1,0 +1,18 @@
+// Function names starting with Pirx are reserved for compiler-generated symbols.
+// Defining PirxEq_Point would collide with the equality function the compiler
+// generates for struct comparisons.
+struct Point {
+  x: int;
+  y: int;
+}
+
+func PirxEq_Point(a: Point, b: Point): bool {
+  return true;
+}
+
+func main(): int {
+  var a: Point = {1, 2};
+  var b: Point = {1, 2};
+  printf("%d\n", a == b);
+  return 0;
+}

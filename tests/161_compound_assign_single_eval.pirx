@@ -1,0 +1,37 @@
+// Compound assignment must evaluate the target lvalue exactly once.
+// We used to desugar `T op= V` into `T = T op V`, running side effects in T twice.
+struct Point {
+  x: int;
+}
+
+var calls: int = 0;
+var pt: *Point;
+
+func f(): int {
+  calls = calls + 1;
+  return 0;
+}
+
+func getp(): *Point {
+  calls = calls + 1;
+  return pt;
+}
+
+func main(): int {
+  var a: []int = new([]int, 3);
+  a[f()] += 10;
+  printf("calls=%d a0=%d\n", calls, a[0]);
+
+  calls = 0;
+  a[f()] *= 5;
+  printf("calls=%d a0=%d\n", calls, a[0]);
+
+  pt = new(Point);
+  calls = 0;
+  getp().x += 10;
+  printf("calls=%d x=%d\n", calls, pt.x);
+
+  dispose(pt);
+  dispose(a);
+  return 0;
+}

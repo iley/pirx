@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/util"
@@ -543,6 +544,9 @@ func (g *Generator) generateWhileOps(stmt ast.WhileStatement) []Op {
 }
 
 func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int) {
+	if assgn.Operator != "=" {
+		return g.generateCompoundAssignmentOps(assgn)
+	}
 	if targetVar, ok := assgn.Target.(*ast.VariableReference); ok {
 		ops, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
 		ops = append(ops, Assign{Target: targetVar.Name, Value: rvalueArg, Size: rvalueSize})
@@ -567,6 +571,44 @@ func (g *Generator) generateAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int
 		return ops, rvalueArg, rvalueSize
 	}
 	panic(fmt.Errorf("invalid assignment: %#v", assgn))
+}
+
+// generateCompoundAssignmentOps lowers `target op= value`. Like generateIncDecOps, it
+// computes the target's address once and loads/stores through it, so side effects in
+// the target (e.g. a[f()] += 1) run only once. The target is evaluated before the
+// value, matching the order the desugared `T = T op V` form used to produce.
+// As an expression, a compound assignment evaluates to the new value.
+func (g *Generator) generateCompoundAssignmentOps(assgn *ast.Assignment) ([]Op, Arg, int) {
+	operation := strings.TrimSuffix(assgn.Operator, "=")
+	size := g.types.GetSizeNoError(assgn.Target.GetType())
+	if ast.IsFloatingPointType(assgn.Target.GetType()) {
+		operation += "."
+	}
+
+	ops, addrArg := g.generateExpressionAddrOps(assgn.Target)
+	oldValue := g.allocTemp(size)
+	ops = append(ops, UnaryOp{Result: oldValue, Operation: "*", Value: addrArg, Size: size})
+
+	rvalueOps, rvalueArg, rvalueSize := g.generateExpressionOps(assgn.Value)
+	if rvalueSize != size {
+		g.errorf("%s: size mismatch between operands of %s", assgn.Loc, assgn.Operator)
+		return []Op{}, Arg{}, 0
+	}
+	ops = append(ops, rvalueOps...)
+
+	newValue := g.allocTemp(size)
+	ops = append(ops,
+		BinaryOp{
+			Result:      newValue,
+			Left:        Arg{Variable: oldValue},
+			Operation:   operation,
+			Right:       rvalueArg,
+			Size:        size,
+			OperandSize: size,
+		},
+		AssignByAddr{Target: addrArg, Value: Arg{Variable: newValue}, Size: size},
+	)
+	return ops, Arg{Variable: newValue}, size
 }
 
 // generateExternalCall creates an ExternalCall operation with the appropriate function name.

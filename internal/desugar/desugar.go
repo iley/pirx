@@ -2,7 +2,6 @@ package desugar
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/iley/pirx/internal/ast"
 	"github.com/iley/pirx/internal/util"
@@ -379,37 +378,13 @@ func desugarRangeExpression(dc *desugarContext, expr *ast.RangeExpression) ast.E
 }
 
 func desugarAssignment(dc *desugarContext, expr *ast.Assignment) ast.Expression {
-	target := desugarExpression(dc, expr.Target)
-	value := desugarExpression(dc, expr.Value)
-	switch expr.Operator {
-	case "=":
-		return &ast.Assignment{
-			Loc:      expr.Loc,
-			Target:   target,
-			Value:    value,
-			Operator: "=",
-			Type:     expr.Type,
-		}
-	case "+=", "-=", "*=", "/=", "%=":
-		// Desugar the target a second time to get an independent copy for the read side,
-		// avoiding double-evaluation of a shared AST node.
-		readTarget := desugarExpression(dc, expr.Target)
-		op := strings.TrimSuffix(expr.Operator, "=")
-		return &ast.Assignment{
-			Loc:    expr.Loc,
-			Target: target,
-			Value: &ast.BinaryOperation{
-				Loc:      expr.Loc,
-				Operator: op,
-				Left:     readTarget,
-				Right:    value,
-				Type:     expr.Type,
-			},
-			Operator: "=",
-			Type:     expr.Type,
-		}
-	}
-	panic(fmt.Errorf("unsupported assignment operator %s", expr.Operator))
+	// Compound operators (+= etc.) are kept as-is: expanding `T op= V` into `T = T op V`
+	// here would evaluate the target twice, duplicating side effects like `a[f()] += 1`.
+	// The IR generator lowers them through a single address computation instead.
+	result := *expr
+	result.Target = desugarExpression(dc, expr.Target)
+	result.Value = desugarExpression(dc, expr.Value)
+	return &result
 }
 
 // desugarEquality lowers ==/!= on strings and structs, which have no direct machine

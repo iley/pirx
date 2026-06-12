@@ -98,7 +98,7 @@ stores on x86_64). Additionally, all direct `cc.locals` reads go through a new
 Regression test: `tests/160_global_deref_store.pirx` (int64/int/int8/struct
 globals).
 
-#### 1.3 Compound assignment double-evaluates the lvalue — CONFIRMED, high
+#### 1.3 Compound assignment double-evaluates the lvalue — FIXED
 
 `internal/desugar/desugar.go:393-411`. `T op= V` is lowered to `T = T op V` by
 desugaring the target twice; side effects in the lvalue run twice.
@@ -118,6 +118,13 @@ Observed: `calls=2 a0=10` (also at `-O0`). Expected: `calls=1`. Same for
 `getp().x += 10`. Inconsistent with `a[f()]++`, which the IR generator lowers
 via a single address computation. Fix belongs in the IR generator (compute the
 address once); expression-level desugar cannot introduce a temporary.
+
+**Fixed 2026-06-12**: desugar keeps compound assignments intact; the IR
+generator lowers them in a new `generateCompoundAssignmentOps` mirroring
+`generateIncDecOps`: address once, load, binop, store through the address.
+Target is still evaluated before the RHS, as the desugared form used to do.
+Regression test: `tests/161_compound_assign_single_eval.pirx` (slice index,
+`getp().x += v`, `*=`).
 
 #### 1.4 Unary minus folding ignores operand size — FIXED
 
